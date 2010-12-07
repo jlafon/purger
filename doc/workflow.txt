@@ -1,0 +1,17 @@
+- gather list of uid's that have expired files
+
+- loop: for each uid
+	- gather expired files by uid
+		- for each warned file that has been warned for 7 days
+		      - check if stat(file) matches db
+			      - yes
+					- delete file
+					- add file to delete query
+			      - no
+					- remove from expired files db
+		- remove deleted files from expired files db
+
+		- get unwarned file list
+		      - find e-mail for uid using ldap
+		      - send warning e-mail
+		      - update e-mailed files to warning = 1

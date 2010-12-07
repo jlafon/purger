@@ -1,0 +1,366 @@
+Cluster Archival Project - CAP
+-------------------------------------------
+Created by Aaron Torres for HPC-5 at
+Los Alamos National Laboratories
+Summer 2008
+Mentors - Meghan Wingate and Ben McClelland
+-------------------------------------------
+
+Table of Contents.
+
+I.     INSTALLATION
+II.    POPULATING THE DATABASE
+ A.        snapshot
+ B.        expired_files
+ C.        archive and conversions
+III.   DATABASE STRUCTURE
+ A.        snapshots
+ B.        archive
+IV.    USEFUL QUERIES
+ A.        database statistics/histograms
+V.     MAINTENANCE 
+VI.    MISC
+ A.        mode
+ B.        views
+
+-------------------------------------------
+ 
+I.   INSTALLATION
+
+In order to install and make use of CAP the following programs are required:
+   
+   PostgreSQL 8.3+
+   Python 2.3+
+   
+Once the necessary software is installed Ensure that you're logged into a user 
+account with postgres administrator access.
+
+Run the install.bash script from the home directory of CAP:
+   
+   ./INSTALL
+
+Or run the commands separately"
+   
+   psql -f cap.sql
+   python generate_partitions.py
+   psql -f new_partition.sql cap
+
+Ensure that no errors were reported (warnings are okay). To confirm proper 
+installation, open up a postgres command line "psql cap" and check that the 
+following tables exist when you execute the \d command:
+
+                 List of relations
+    Schema |       Name       | Type  |  Owner  
+   --------+------------------+-------+---------
+    public | archive          | table | username
+    public | archive_y20XXmXX | table | username
+    public | conversions      | table | username
+    public | current_snapshot | table | username
+    public | expired_files    | table | username
+    public | recent_month     | table | username
+    public | snapshot1        | table | username
+    public | snapshot2        | table | username
+
+----------------------------------------
+
+In order to connect to and use the database use either of the following 
+sequence of commands:
+
+   psql
+   \c cap;
+   
+   --OR--
+   
+   psql cap
+
+II. POPULATING THE DATABASE
+
+There's a variety of techniques that must be used in order to populate all of 
+CAP's databases correctly.
+
+
+A. snapshot
+
+Initially, users will want to populate the snapshot database. this should be 
+done during the pstat file walk. The reason for having two databases is to 
+allow  users to view the most recent previous snapshot while a new snapshot 
+is being  generated. To determine the correct snapshot the following query 
+should be run:
+
+   SELECT name FROM current_snapshot WHERE ID = 1;
+
+This command should return either 'snapshot1' or 'snapshot2'. Once known, 
+future requests for data should be directed at the current snapshot:
+   
+   SELECT AVERAGE(size) FROM snapshot;
+   
+   - OR -
+   
+   SELECT AVERAGE(size) FROM snapshot2;
+
+
+NOTE: pstat should modify the current_snapshot table only after completing 
+a file  walk and correctly populating the new corresponding table. To modify 
+the current_snapshot execute the following command:
+
+   UPDATE current_snapshot SET name = 'snapshot1' WHERE ID = 1;
+   
+   - OR -
+   
+   UPDATE current_snapshot SET name = 'snapshot2' WHERE ID = 1;
+
+#### ADD DATE/TIME UPDATE STUFF IN HERE ####  
+ 
+Only pstat should modify this table. Inserts should have the following 
+structure:
+   
+   INSERT INTO snapshot
+   (filename, inode, mode, nlink, uid, gid, size, block, block_size, 
+       atime, mtime, ctime, abslink) 
+       VALUES 
+   (filenamev, inodev, modev, nlinkv, uidv, gidv, sizev, blockv, block_sizev, 
+    atimev, mtimev, ctimev, abslinkv);
+      
+In general the column 'added' should not be tampered with during an insert
+
+
+B. expired_files
+
+expired_files is a table that holds a list of files that are currently 
+delinquent. These should be entered at the same time as the snapshot is 
+generated using the following
+command:
+
+   merge(filename, uid, atime, mtime, ctime);
+
+Another option (assuming expired_files is empty) is to run the query:
+
+   INSERT INTO expired_files (filename, uid, atime, mtime, ctime)
+       SELECT filename, uid, atime, mtime, ctime
+       FROM snapshot WHERE 
+       atime <= now() - INTERVAL '1 week' AND
+       ctime <= now() - INTERVAL '1 week' AND
+       mtime <= now() - INTERVAL '1 week';
+
+This will fail if there are any duplicate filenames. An alternative is to 
+convert the  function merge into a trigger, but then all inserts will be 
+significantly slower (which  may be a fine trade-off).
+
+C. archive and conversions
+
+Populating the archive and conversion table is done separately to the file 
+system walk.  These queries should always be used together:
+
+   INSERT INTO archive SELECT md5(filename), inode, mode, nlink, uid, gid, size, 
+       block, block_size, atime, mtime, ctime, abslink FROM snapshot;
+      
+   INSERT INTO conversions SELECT filename, md5(filename) FROM snapshot 
+      WHERE NOT EXISTS(
+         select 1 from conversions where filename = snapshot.filename);
+
+For future queries of the archive these tables can be combined to retrieve 
+the actual filename for rows. The md5 conversion shrinks this column and the 
+archive database in  return. In other words, it's a future performance 
+tradeoff for size. This can also be modified if needed.
+
+Once per month, the python script generate_partition.py must be run. This 
+can be automated from within pstat by using the recent_month table:
+   
+   SELECT recent  FROM recent_month WHERE ID = 1;
+   
+   -- AND --
+   
+   UPDATE recent_month SET recent = current_date;
+   
+pstat determines if recent_month is storing the current month, and if it is 
+not run  generate_partitions.py and update recent_month. recent_month should 
+not be modified other than by the pstat application unless 
+generate_partitions.py is manually run.
+
+----------------------------------------
+
+III. DATABASE STRUCTURE
+
+The database has several interesting table structures.
+
+A. snapshot
+
+There are two snapshot databases. This is to prevent incorrect statistics 
+while creating a current snapshot. One snapshot contains that most recently 
+completed file walk while the other is volatile and being created. It's the 
+responsibility of the user to check which table is current using the 
+current_snapshot table:
+   
+   SELECT name FROM current_snapshot WHERE ID = 1;
+   
+These two tables are otherwise identical in structure
+   
+B. archive
+
+Archives are partitioned monthly so directing queries at archive will 
+automatically query it's partition tables. If a list of all available archive
+partitions is needed the following query can be run:
+
+   SELECT table_name FROM information_schema.tables
+   WHERE table_type = 'BASE TABLE'
+      AND table_schema NOT IN ('pg_catalog', 'information_schema')
+      AND table_name like 'archive_%';
+      
+If a large portion of data needs to be deleted, the partition can be removed
+and also unlinked from the main archive table. Postgres provides documentation
+on how to do this.
+
+----------------------------------------
+
+IV. USEFUL QUERIES
+
+There are several queries that make using and adminstrating cap easier. A lot 
+of the queries mentioned in this README can be found in extra.sql for easy 
+access.
+
+A. database statistics/histograms
+
+The next query gathers a number of useful aggregate statistics from the 
+archive:
+
+   SELECT uid, COUNT(*), avg(size), min(size), max(size) from archive 
+      GROUP BY uid;
+
+Postgres provides a width_bucket that can be used in a variety of ways to 
+generate histograms of your data. As arguments, the width_bucket function 
+take the column to use the minimum range, the maximum range, and the number 
+of buckets:
+
+   SELECT bucket, (bucket-1)*1000 AS low, (bucket)*1000 AS high, COUNT(1) 
+      AS cnt
+   FROM
+   (
+      SELECT WIDTH_BUCKET(size, 0, 75816, 10) AS bucket FROM archive
+   ) AS derived_table
+   GROUP BY bucket ORDER BY bucket;
+   
+This can also be used for histograms of time by converting time to epochs, 
+subtracting it from the current time, and converting it through division to 
+the correct units. The following query creates a histogram based on 'weeks 
+old':
+
+   SELECT bucket, (bucket-1)*10 AS low, (bucket)*10 AS high, COUNT(1) AS cnt
+   FROM
+   (
+      SELECT WIDTH_BUCKET(EXTRACT(EPOCH FROM (now() - atime))/(60*60*24), 0, 
+      100, 10) AS bucket FROM archive
+   ) AS derived_table
+   GROUP BY bucket ORDER BY bucket;
+   
+If desired, a function can be written for a specific column to dynamically 
+chose the max and min for your width_bucket and generate histograms:
+
+   CREATE OR REPLACE FUNCTION generate_size_histogram(refcursor) RETURNS SETOF 
+   refcursor AS
+   $$
+   DECLARE
+      TOTAL_COUNT INTEGER;
+      AVERAGE_VAL FLOAT;
+      MAX_VAL INTEGER;
+      MIN_VAL INTEGER;   
+      STEP INTEGER;
+      
+      NUM_BUCKETS INTEGER;
+   
+      rowvar RECORD;
+   
+   
+   BEGIN
+      RAISE NOTICE '--- Generating Histogram For Columns size ---';
+      SELECT COUNT(*), AVG(size), MAX(size), MIN(size) 
+         INTO TOTAL_COUNT, AVERAGE_VAL, MAX_VAL, MIN_VAL 
+         FROM archive;
+         
+      RAISE NOTICE '--- THE COUNT IS % ---', TOTAL_COUNT;
+      RAISE NOTICE '--- THE AVERAGE VAL IS % ---', AVERAGE_VAL;
+      RAISE NOTICE '--- THE MAX VAL IS % ---', MAX_VAL;
+      RAISE NOTICE '--- THE MIN VAL IS % ---', MIN_VAL;
+      
+      NUM_BUCKETS := CEILING(1 + 3.3 * log(TOTAL_COUNT));
+      STEP := (MAX_VAL-MIN_VAL)/NUM_BUCKETS;
+      
+      RAISE NOTICE '--- Histogram Contains % Buckets ---', NUM_BUCKETS;
+      RAISE NOTICE '--- Step Size is % ---', STEP;
+      
+      OPEN $1 for 
+         SELECT bucket, MIN_VAL + (bucket-1)*STEP AS low, 
+            MIN_VAL + bucket*STEP AS high, COUNT(1) AS cnt
+         FROM
+         (
+            SELECT width_bucket(size, MIN_VAL, MAX_VAL+1, NUM_BUCKETS) 
+               AS bucket FROM archive
+         ) AS derived_table
+         GROUP BY bucket ORDER BY bucket;
+      
+      RETURN NEXT $1;
+   
+   END;
+   $$
+   LANGUAGE plpgsql;
+   
+The function is executed with the following series of commands:
+
+   BEGIN;
+   SELECT * FROM generate_size_histogram('a');
+   FETCH ALL FROM a;
+   COMMIT;
+ 
+V. MAINTENANCE
+ 
+Periodically the database should be vacuumed and reindexed. Postgres 
+provides a vacuum daemon which can be set up. Alternatively, from the
+command line run:
+
+	vacuumdb cap
+	
+To reindex the database from with in postgres the following command 
+can be run:
+
+	REINDEX DATABASE CAP;
+	
+or from the unix command line:
+
+	reindexdb cap
+	
+Aside from these everything should be automatic. Backups are standard 
+across Postgres databases and can be performed in a variety of ways.
+
+VI. MISC
+
+A. mode
+
+information about mode can be found in a unix environment by typing
+man lstat and scrolling down. Traditionally, modes are set using octal.
+For a quick script to convert octal to binary in python:
+
+# Python Octal to Binary 
+def int2bin(n, count=24):
+    return "".join([str((n >> y) & 1) for y in range(count-1, -1, -1)])
+        
+int2bin(int("0100000", 8), 32)
+# => '00000000000000001000000000000000'
+
+
+B. views
+
+Sometimes it may be necessary to determine which directory a file is 
+stored in easily. To accomplish this a view may be used:
+
+CREATE OR REPLACE VIEW file_paths as 
+SELECT 
+    (regexp_matches(filename, E'(.*/)(.*?\.?.*)'))[1] as filepath,
+    (regexp_matches(filename, E'(.*/)(.*?\.?.*)'))[2] as filename
+FROM snapshot
+WHERE mode & b'00000000000000001000000000000000' = 
+b'00000000000000001000000000000000';
+
+This view is a list of all paths/filenames that are classified as a 
+file by their mode.
+
+
+

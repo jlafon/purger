@@ -1,0 +1,10 @@
+su - postgres
+psql -f /etc/fsdb/init.sql
+psql -f /etc/fsdb/scratch2.sql
+psql -f /etc/fsdb/scratch3.sql
+
+--------
+not yet inplemented: partitions for historical queries
+
+python generate_partitions.py
+psql -f new_partition.sql cap
