@@ -21,7 +21,7 @@
        <bool>true</bool>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <property name="tabsClosable">
        <bool>false</bool>
@@ -99,7 +99,7 @@
             </item>
             <item>
              <widget class="QLineEdit" name="lineEdit">
-              <property name="placeholderText">
+              <property name="placeholderText" stdset="0">
                <string/>
               </property>
              </widget>

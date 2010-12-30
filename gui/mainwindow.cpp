@@ -40,62 +40,84 @@
 #include "ui_mainwindow.h"
 
 
-
+//! Constructor for the MainWindow
+/**
+  \param QWidget *parent
+*/
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-
+    // Initialize UI
     ui->setupUi(this);
+
+    // Hide the lower text box
     ui->lineEdit_2->hide();
     showAdvanced = true;
+
+    // Show version
     ui->textBrowser->append("PathFinder 0.0.1");
 
+    // Initialize new model
     model = new PFileSystemModel();
+
+    // Set up connections
     connect(model, SIGNAL(statusChanged(QString)), this, SLOT(debug(QString)));
     connect(model, SIGNAL(queryStringChanged(QString)), this, SLOT(setQueryString(QString)));
-    connect(model,SIGNAL(dataChanged(QModelIndex,QModelIndex)), ui->treeView, SLOT(dataChanged(QModelIndex,QModelIndex)));
-    model->connectToDatabase();
-    model->setupDatabase();
+    connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)), ui->treeView, SLOT(dataChanged(QModelIndex,QModelIndex)));
     connect(ui->delButton, SIGNAL(clicked()), this, SLOT(delButtonClicked()));
-    //connect(ui->lineEdit_2, SIGNAL(editingFinished()), ui->lineEdit_2, SLOT(hide()));
     connect(ui->lineEdit_2, SIGNAL(textChanged(QString)), this, SLOT(search(QString)));
 
+    // Connect to DataBase and Initialize query
+    model->connectToDatabase();
+    model->setupDatabase();
 
+    // Associate the tree model to the view
     ui->treeView->setModel(model);
+
+    // Set up Icons and Table
     ui->pushButton->setIcon(QIcon::fromTheme("object-flip-vertical"));
     ui->delButton->setIcon(QIcon::fromTheme("edit-delete"));
     for(int i = 0; i < ui->treeView->header()->count(); i++)
         ui->treeView->header()->setResizeMode(i,QHeaderView::ResizeToContents);
+
     //Looks pretty but runs slow
     //ui->treeView->setAnimated(true);
+
+    // Set up child expansion
     connect(ui->treeView, SIGNAL(expanded(QModelIndex)), model, SLOT(expandChild(QModelIndex)) );
+
     on_tabWidget_currentChanged(1);
 
     }
+//! Function to change the query string displayed.
 void MainWindow::setQueryString(QString msg)
 {
     ui->lineEdit->setText(msg);
 }
 
+//! Function to handle file deletion.
+/**
+  * \todo Get this feature working
+  */
 void MainWindow::delButtonClicked()
 {
     ui->textBrowser->append("<font color=red>Feature not implemented.</font>");
 }
 
+//! Function to display debugging messages
 void MainWindow::debug(QString s)
 {
     ui->textBrowser->append(s);
-
-
 }
 
+//! Function to send a message to the status bar
 void MainWindow::fileLayoutChanged(QString s)
 {
     ui->statusBar->showMessage(s);
-
 }
 
+//! Destructor
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -103,6 +125,7 @@ MainWindow::~MainWindow()
 
 }
 
+//! Handle other languages
 void MainWindow::changeEvent(QEvent *e)
 {
     QMainWindow::changeEvent(e);
@@ -115,11 +138,14 @@ void MainWindow::changeEvent(QEvent *e)
     }
 }
 
+//! Unimplemented
 void MainWindow::on_textBrowser_textChanged()
 {
 
 }
 
+//! This function is called when a user presses return after typing in a new search statement.
+/** No validation is done */
 void MainWindow::on_lineEdit_returnPressed()
 {
     //ui->textBrowser->append(QString("Updating query filter to <font color=blue><em>%1</em></font>").arg(ui->lineEdit->text()));
@@ -127,14 +153,19 @@ void MainWindow::on_lineEdit_returnPressed()
     model->setQueryString(ui->lineEdit->text());
 
 }
+
+//! Function to search the gui for a term, not yet implemented.
+/** \todo Implement the gui search */
 void MainWindow::search(QString s)
 {
 
     qDebug() << "Searching for " << s;
 }
 
+//! Function to switch between the basic and advanced controls
 void MainWindow::on_pushButton_clicked()
 {
+    //! Check to see if all controls are to be shown.
     if(showAdvanced)
         {
         ui->pushButton->setText("Show");
@@ -144,7 +175,6 @@ void MainWindow::on_pushButton_clicked()
         sizes.replace(2,0);
         sizes.replace(3,ui->pushButton->height());
         ui->splitter->setSizes(sizes);
-
         }
     else
         {

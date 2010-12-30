@@ -11,10 +11,10 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
   const char *ldapbasem = NULL;
 
   cf = &cfg;
-  config_init_(cf);
+  config_init(cf);
 
   if (!config_read_file(cf, CFG_FILE)){
-    frpintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
     config_destroy(cf);
     return EXIT_FAILURE;
   }
@@ -102,10 +102,10 @@ int parse_config_dbonly(dbinfo_t *dbinfo){
   const char *passwd = NULL;
 
   cf = &cfg;
-  config_init_(cf);
+  config_init(cf);
 
   if (!config_read_file(cf, CFG_FILE)){
-    frpintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
     config_destroy(cf);
     return EXIT_FAILURE;
   }

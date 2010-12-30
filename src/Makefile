@@ -1,4 +1,4 @@
-CFLAGS 	+= -Wall -D_GNU_SOURCE -g -pedantic -ansi --std=c99
+CFLAGS 	+= -lconfig -Wall -D_GNU_SOURCE -g -pedantic -ansi --std=c99
 
 all:	config log ldap mail
 

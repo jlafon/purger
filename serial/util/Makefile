@@ -1,6 +1,6 @@
 SRCDIR  =  ../../src/
 INCLUDE += -I`pg_config --includedir` -I$(SRCDIR)
-LIBS    += -L`pg_config --libdir` -lpq
+LIBS    += -L`pg_config --libdir` -lpq -lconfig
 CFLAGS  += -Wall -D_GNU_SOURCE -g -pedantic -ansi --std=c99
 
 all:	dbtest chkscratch update_expired idtest
