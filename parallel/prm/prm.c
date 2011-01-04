@@ -31,7 +31,7 @@ int main( int argc, char *argv[] )
   struct timeval tv;
   int db_defined=0;
   char db_name[PATHSIZE_PLUS];
-
+  dbinfo_t dbinfo;
   static struct option long_options[] =
   {
        {"db",          required_argument, 0, 'd'},
@@ -44,7 +44,7 @@ int main( int argc, char *argv[] )
   
   gettimeofday(&tv, NULL);
   starttime = (int)tv.tv_sec;
-  
+  memset(db_name, '\0', sizeof(char) * PATHSIZE_PLUS);
   while ((c = getopt_long(argc, argv, "d:h", long_options, &option_index)) != -1) {
     switch (c) {
     case 'd':
@@ -89,14 +89,21 @@ int main( int argc, char *argv[] )
     return -1;
   }
   
-  if (!db_name) {
+  if (strlen(db_name) < 1) {
     fprintf(stderr, "Need to specify DATABASE name\n");
     MPI_Finalize();
     return -1;
   }
   
   /*add parse_config here*/
-
+  
+  if(parse_config_dbonly(&dbinfo)< 0)
+  {
+    fprintf(stderr, "Configurationf file error.\n");
+    MPI_Finalize();
+    return -1;
+  }
+  
   conn = PQsetdbLogin(dbinfo.host, dbinfo.port, NULL, NULL, db_name, dbinfo.user, dbinfo.pass);
   
   if (PQstatus(conn) != CONNECTION_OK) {

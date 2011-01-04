@@ -1,6 +1,7 @@
 all:
 	- cd src && make
 	- cd serial && make
+	- cd parallel && make
 
 serial:
 	- cd src && make

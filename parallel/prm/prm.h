@@ -6,6 +6,9 @@
 #include <getopt.h>
 #include "utils.h"
 
+/* Config parser */
+#include "config.h"
+
 /*PostgreSQL*/
 #include <libpq-fe.h>
 

@@ -8,6 +8,5 @@
 #define MAX_STAT 1000
 
 typedef unsigned long long int uint_64;
-
 int verbose_on;
 #endif

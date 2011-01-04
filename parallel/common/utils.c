@@ -28,16 +28,16 @@ void usage(int rank)
     if (rank == 0) {
     printf("\npstat:\n");
     printf("Walk through directory tree structure and gather statistics on files and\n");
-    printf("directories encountered.\n");
+    printf("directories encountered.\n\n");
     printf("Usage:  pstat --path [-p] path --expire [-e] {#}{d,w,m,y} [--verbose[-v] path] [--usage[-u] path] [--stats[-s] path] [-db[-d]] [--deletefiles[-f]] [--help[-h]]\n");
-    printf("--path -p <path>     Path to start walk (required argument)\n");
-    printf("--expire -e <time>   expiration time (required argument)\n");
-    printf("--verbose -v <path>  Print debug to rankfiles prefixed by specified path\n");
-    printf("--stats -s <path>    Print filesystem stats to files prefixed by specified path\n");
-    printf("--usage -u <file>    Print filesystem usage by uid to file specified\n");
-    printf("--db -d              Turn on database inserts\n");
-    printf("--deletefiles -f     Turn on expired file deletion\n");
-    printf("--help -h            Display help\n\n");
+    printf("--path\t\t -p <path>\tPath to start walk (required argument)\n");
+    printf("--expire,\t -e <time>\tExpiration time (required argument)\n");
+    printf("--verbose,\t -v <path>\tPrint debug to rankfiles prefixed by specified path\n");
+    printf("--stats,\t -s <path>\tPrint filesystem stats to files prefixed by specified path\n");
+    printf("--usage,\t -u <file>\tPrint filesystem usage by uid to file specified\n");
+    printf("--db,\t\t -d\t\tTurn on database inserts\n");
+    printf("--deletefiles,\t -f\t\tTurn on expired file deletion\n");
+    printf("--help,\t\t -h\t\tDisplay help\n\n");
     }
     return;
 }

@@ -199,7 +199,7 @@ int main( int argc, char *argv[] )
   }
 
   if (db_on) {
-    if (!db_name) {
+    if (strlen(db_name) < 1) {
       fprintf(stderr, "Need to specify DATABASE name\n");
       MPI_Finalize();
       return -1;
@@ -258,7 +258,7 @@ int main( int argc, char *argv[] )
   }
   
   if (restart) {
-    if (!restart_name) {
+    if (strlen(restart_name) < 1) {
       fprintf(stderr, "Need to specify restart name to restart from file\n");
       MPI_Finalize();
       return -1;
@@ -416,25 +416,25 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
     restart_file = fopen("/scratch1/ben/restart", "r");
     fgets(line, sizeof(line), restart_file);
     if (line[strlen(line) - 1] == '\n') {
-      line[strlen(line) - 1] == '\0';
+      line[strlen(line) - 1] = '\0';
     }
     nreqcnt = atoi(line);
     for (loop=0; loop<nreqcnt; loop++) {
       fgets(line, sizeof(line), restart_file);
       if (line[strlen(line) - 1] == '\n') {
-	line[strlen(line) - 1] == '\0';
+	line[strlen(line) - 1] = '\0';
       }
       strncpy(nqueue[loop].req, line, PATHSIZE_PLUS);
     }
     fgets(line, sizeof(line), restart_file);
     if (line[strlen(line) - 1] == '\n') {
-      line[strlen(line) - 1] == '\0';
+      line[strlen(line) - 1] = '\0';
     }
     dreqcnt = atoi(line);
     for (loop=0; loop<dreqcnt; loop++) {
       fgets(line, sizeof(line), restart_file);
       if (line[strlen(line) - 1] == '\n') {
-        line[strlen(line) - 1] == '\0';
+        line[strlen(line) - 1] = '\0';
       }
       strncpy(dqueue[loop].req, line, PATHSIZE_PLUS);
     }

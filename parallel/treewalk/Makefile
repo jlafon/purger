@@ -1,6 +1,6 @@
 CC		=	gcc
 CFLAGS		=	-Wall -D_GNU_SOURCE -g
-CLIBS		=
+CLIBS		=   -lconfig
 
 MPICC		=	mpicc
 MPICFLAGS	=	$(MPI_COMPILE_FLAGS) -g
@@ -17,7 +17,7 @@ all:	pstat
 
 pstat:	$(OBJECTS) $(UTILOBJS)
 	$(MPICC) $(MPICLIBS) $(PGLIBS) $(PGINCLUDE) \
-		$(OBJECTS) $(UTILOBJS) -o pstat
+		$(OBJECTS) $(UTILOBJS) $(CLIBS) -o pstat
 
 pstat.o:	../common/utils.o pstat.c pstat.h ../common/common.h
 	$(MPICC) $(CFLAGS) $(MPICFLAGS) \
