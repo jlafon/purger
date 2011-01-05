@@ -11,7 +11,7 @@ log: log.c log.h
 mail: mail.c mail.h
 	$(CC) $(CFLAGS) -g -c $@.c
 
-ldap: ldap.c ldap.h
+ldap: ldap.c _ldap.h
 	$(CC) $(CFLAGS) -g -DWITH_OPENLDAP -DLDAP_DEPRECATED -c $@.c
 
 clean:
