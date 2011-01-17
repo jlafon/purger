@@ -111,6 +111,15 @@ CREATE TABLE expired_files(
 
 CREATE INDEX expired_files_uid_index ON expired_files(uid);
 
+-- Creates the exceptions table
+CREATE TABLE exceptions(
+   uid INT NOT NULL PRIMARY KEY,
+   username TEXT,
+   moniker TEXT,
+   added TIMESTAMP DEFAULT NOW(),
+   expiration TIMESTAMP DEFAULT NOW()
+);
+
 -- Set permissions on tables
 GRANT ALL PRIVILEGES ON archive TO treewalk;
 GRANT ALL PRIVILEGES ON conversions TO treewalk;

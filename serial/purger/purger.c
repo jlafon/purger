@@ -1,4 +1,4 @@
-#include "purger.h"
+include "purger.h"
 
 int main(int argc, char *argv[]){
 
@@ -137,7 +137,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
   /* Time struct */
   time_t rawtime;
   
-  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND warned = False;", 
+  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store' AND warned = False;", 
 	  uid, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
@@ -158,7 +158,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
     }
   }  
   
-  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%';", 
+  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store';", 
 	   uid, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
@@ -258,8 +258,7 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
   time(&rawtime);
   fprintf (dlog, "\n%s\n", ctime(&rawtime));
   
-  /*
-  snprintf(files_query, 100, "SELECT * FROM exceptions WHERE uid = %s;", uid);
+  snprintf(files_query, 1024, "SELECT * FROM exceptions WHERE uid = %s AND expiration > now();", uid);
   exceptions = PQexec(conn, files_query);
   if (PQresultStatus(exceptions) != PGRES_TUPLES_OK) {
     PURGER_ELOG("process_warned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
@@ -268,21 +267,21 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
   }
   
   if (PQntuples(files) > 0) {
-    PURGER_LOG("process_warned_files()", "found exception for uid=%s. removing files from expired_files list.", PQntuples(files), uid);
-    snprintf(files_query, 100, "DELETE FROM expired_files WHERE uid=%s;", uid);
-    files = PQexec(conn, files_query);
-    if (PQresultStatus(files) != PGRES_TUPLES_OK) {
-      PURGER_ELOG("process_warned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
-      PQclear(files);
+    PURGER_LOG("process_warned_files()", "found exception for uid=%s. Setting all files to unwarned", uid);
+    snprintf(files_query, 1024, "UPDATE expired_files SET warned = False WHERE uid=%s;", uid);
+    exceptions = PQexec(conn, files_query);
+    if (PQresultStatus(exceptions) != PGRES_COMMAND_OK) {
+      PURGER_ELOG("process_warned_files()", "update warned command failed: %s", PQerrorMessage(conn));
+      PQclear(exceptions);
+      PURGER_ELOG("process_warned_files()", "bailing to protect execptions.\n");
       exit_nicely(conn);
-    }
-    PQclear(exceptions);
-    fclose(dlog);
+    } 
+ 
+    flcose(dlog);
     return EXIT_SUCCESS;
   }
-  */
 
-  snprintf(files_query, 500, "SELECT * FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '7 days';", 
+  snprintf(files_query, 500, "SELECT * FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store' AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '7 days';", 
 	   uid, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
