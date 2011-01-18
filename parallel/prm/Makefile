@@ -1,5 +1,4 @@
 # Customize these to your system
-MPI_ROOT = /usr/lib64/openmpi
 MPI_LD_FLAGS = -lmpi
 
 CONFIG_PATH = ../../src
@@ -7,7 +6,7 @@ CC		=	gcc
 CFLAGS		=	-Wall -D_GNU_SOURCE -g -pedantic -std=c99 -I$(CONFIG_PATH) -I../common/
 CLIBS		=   -lconfig
 
-MPICC		=	${MPI_ROOT}/bin/mpicc
+MPICC		=	mpicc
 MPICFLAGS	=	$(MPI_COMPILE_FLAGS) -g
 MPICLIBS	=	$(MPI_LD_FLAGS)
 
@@ -39,4 +38,7 @@ clean:
 	- /bin/rm -f core
 
 cleanall:	clean
+	- /bin/rm -f prm
+
+distclean:	clean
 	- /bin/rm -f prm

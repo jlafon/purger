@@ -177,24 +177,24 @@ void manager(char *db_name, int nproc)
     fprintf(stderr, "SELECT DISTINCT(uid) command failed: %s", 
                 PQerrorMessage(conn));
     PQclear(uids);
-    fprintf(sterr, "bailing to protect execptions.\n");
+    fprintf(stderr, "bailing to protect execptions.\n");
     MPI_Abort(MPI_COMM_WORLD, -1);
   }
   
   for (i = 0; i < PQntuples(uids); i++) {
     snprintf(query, 1024, "UPDATE expired_files SET warned = False WHERE uid=%s;", PQgetvalue(uids, i, 0));
-    res = PQexec(conn, update_query);
+    res = PQexec(conn, query);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
       fprintf(stderr, "update warned command failed: %s", PQerrorMessage(conn));
       PQclear(res);
-      fprintf(sterr, "bailing to protect execptions.\n");
+      fprintf(stderr, "bailing to protect execptions.\n");
       MPI_Abort(MPI_COMM_WORLD, -1);
     } 
   }
   
   PQclear(uids);
 
-  snprintf(query, 1024, "SELECT filename, extract(epoch from atime at time zone 'GMT') as atime, extract(epoch from mtime at time zone 'GMT') as mtime, extract(epoch from ctime at time zone 'GMT') as ctime FROM expired_files where filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.plfs_store' AND uid != 0 AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '6 days';", db_name);
+  snprintf(query, 1024, "SELECT filename, extract(epoch from atime at time zone 'GMT') as atime, extract(epoch from mtime at time zone 'GMT') as mtime, extract(epoch from ctime at time zone 'GMT') as ctime FROM expired_files where filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.plfs_store' AND uid != 0 AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '6 days';", db_name, db_name);
   files = PQexec(conn, query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
     fprintf(stderr, "SELECT * command failed: %s", PQerrorMessage(conn));
