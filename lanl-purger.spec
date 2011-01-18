@@ -70,6 +70,7 @@ fi
 /etc/fsdb/new_tables.sql
 /etc/fsdb/README
 /etc/fsdb/scratch.sql
+%doc AUTHORS
 %doc COPYRIGHT
 
 %changelog
