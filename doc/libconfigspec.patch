@@ -1,0 +1,11 @@
+--- libconfig.spec.orig	2011-01-19 10:23:27.000000000 -0700
++++ libconfig.spec	2011-01-19 10:24:45.000000000 -0700
+@@ -54,6 +54,7 @@
+ %doc AUTHORS COPYING.LIB ChangeLog INSTALL NEWS README
+ %{_libdir}/%{name}.so*
+ %{_libdir}/%{name}++.so*
++%{_bindir}/libconfig_tests
+ 
+ %files devel
+ %defattr(-,root,root,-)
+

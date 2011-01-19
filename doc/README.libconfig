@@ -1,0 +1,6 @@
+wget http://www.hyperrealm.com/libconfig/libconfig-1.4.6.tar.gz
+rpmbuild -ts libconfig-1.4.6.tar.gz
+rpm -ihv /usr/src/redhat/SRPMS/libconfig-1.4.6-1.src.rpm
+cd /usr/src/redhat/SPECS/
+patch -p0 < <lanl-purger root>/doc/libconfigspec.patch
+rpm -ihv /usr/src/redhat/RPMS/<arch>/libconfig-1.4.6-1.x86_64.rpm  /usr/src/redhat/RPMS/<arch>/libconfig-devel-1.4.6-1.x86_64.rpm

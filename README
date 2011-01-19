@@ -1,0 +1,6 @@
+build/run requires libconfig
+see doc/README.libconfig for pointers on how to install
+
+
+To build:
+make
