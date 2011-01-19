@@ -1,12 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpq-fe.h>
+#include "config.h"
 
-int main() {
+int main(int argc, char *argv[]){
   PGconn *conn;
   PGresult *snapshot;
+  dbinfo_t dbinfo;
 
-  conn = PQsetdbLogin("db.localdomain", "5432", NULL, NULL, "scratch2", "treewalk", "testing");
+  if (parse_config_dbonly(&dbinfo) != 0){
+    fprintf(stderr, "error parsing config\n");
+    return 1;
+  }
+  
+  if (argc<2){
+    fprintf(stderr, "need to specify database\n");
+    return 1;
+  }
+
+  fprintf(stdout, "host: %s\nport: %s\nuser: %s\npass: %s\ndatabase: %s\n", dbinfo.host, dbinfo.port, dbinfo.user, dbinfo.pass, argv[1]);
+
+  conn = PQsetdbLogin(dbinfo.host, dbinfo.port, NULL, NULL, argv[1], dbinfo.user, dbinfo.pass);
   if (PQstatus(conn) != CONNECTION_OK) {
     fprintf(stderr, "Connection to database failed: %s",
 	    PQerrorMessage(conn));

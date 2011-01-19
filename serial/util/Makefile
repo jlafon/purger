@@ -6,7 +6,7 @@ CFLAGS  += -Wall -D_GNU_SOURCE -g -pedantic -ansi --std=c99
 all:	dbtest chkscratch update_expired idtest
 
 dbtest:	dbtest.c
-	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c -o $@
+	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c $(SRCDIR)config.o -o $@
 
 idtest:	idtest.c
 	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c -o $@
