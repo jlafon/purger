@@ -2,17 +2,9 @@
 #include <string.h>
 #include <libpq-fe.h>
 #include <getopt.h>
+#include "config.h"
 
-#define CFG_FILE "db.conf"
 #define PATHSIZE_PLUS 1024
-
-struct dbinfo_t {
-  char host[256];
-  char port[16];
-  char user[256];
-  char pass[256];
-};
-typedef struct dbinfo_t dbinfo_t;
 
 int update(const char* filesystem, dbinfo_t dbinfo) {
   PGconn *conn;
@@ -38,8 +30,21 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
   snprintf(snapshot, 30, (PQgetvalue(snapshot_res, 0, 0)));
 
   PQclear(snapshot_res);
-  
-  snprintf(query, 500, "SELECT merge(filename, uid, atime, mtime, ctime) FROM %s WHERE (atime <= (now() - '14 days'::interval)) AND (mtime <= (now() - '14 days'::interval)) AND (ctime <= (now() - '14 days'::interval));", snapshot);
+
+  fprintf(stdout, "Removing files in expired_files table that are no longer in the snapshot.\n");  
+
+  snprintf(query, 1000, "DELETE FROM expired_files WHERE expired_files.filename IN (SELECT expired_files.filename FROM expired_files LEFT OUTER JOIN %s ON (expired_files.filename = %s.filename) WHERE expired_files.atime != %s.atime OR expired_files.mtime != %s.mtime OR expired_files.ctime != %s.ctime OR %s.filename IS NULL);", snapshot, snapshot, snapshot, snapshot, snapshot, snapshot);
+  query_res = PQexec(conn, query);
+  if (PQresultStatus(query_res) != PGRES_TUPLES_OK) {
+    fprintf(stderr, "DEELTE command failed: %s", PQerrorMessage(conn));
+    PQclear(query_res);
+    PQfinish(conn);
+    return -1;
+  }
+
+  fprintf(stdout, "Merging new files from snapshot into expired_files table\n");  
+
+  snprintf(query, 1000, "SELECT merge(filename, uid, atime, mtime, ctime) FROM %s WHERE (atime <= (now() - '14 days'::interval)) AND (mtime <= (now() - '14 days'::interval)) AND (ctime <= (now() - '14 days'::interval));", snapshot);
   query_res = PQexec(conn, query);
   if (PQresultStatus(query_res) != PGRES_TUPLES_OK) {
     fprintf(stderr, "SELECT command failed: %s", PQerrorMessage(conn));
@@ -85,9 +90,12 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  /*put in config parser */
+  if (parse_config_dbonly(&dbinfo) != 0){
+    fprintf(stderr, "error parsing config\n");
+    return 1;
+  }
 
-  printf("warning: this could take a little while...\n");
+  printf("warning: merging snapshot to expired_files for %s.  this could take a little while...\n", dbname);
   fflush(stdout);
 
   ret = update(dbname, dbinfo);
