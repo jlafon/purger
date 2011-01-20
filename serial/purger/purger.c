@@ -264,7 +264,7 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
     exit_nicely(conn);
   }
   
-  if (PQntuples(files) > 0) {
+  if (PQntuples(exceptions) > 0) {
     PURGER_LOG("process_warned_files()", "found exception for uid=%s. Setting all files to unwarned", uid);
     snprintf(files_query, 1024, "UPDATE expired_files SET warned = False WHERE uid=%s;", uid);
     exceptions = PQexec(conn, files_query);
