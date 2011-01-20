@@ -128,6 +128,7 @@ GRANT ALL PRIVILEGES ON expired_files TO treewalk;
 GRANT ALL PRIVILEGES ON recent_month TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot1 TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot2 TO treewalk;
+GRANT ALL PRIVILEGES ON exceptions TO treewalk;
 ALTER TABLE snapshot1 OWNER TO treewalk;
 ALTER TABLE snapshot2 OWNER TO treewalk;
 

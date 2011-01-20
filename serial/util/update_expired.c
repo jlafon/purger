@@ -35,7 +35,7 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
 
   snprintf(query, 1000, "DELETE FROM expired_files WHERE expired_files.filename IN (SELECT expired_files.filename FROM expired_files LEFT OUTER JOIN %s ON (expired_files.filename = %s.filename) WHERE expired_files.atime != %s.atime OR expired_files.mtime != %s.mtime OR expired_files.ctime != %s.ctime OR %s.filename IS NULL);", snapshot, snapshot, snapshot, snapshot, snapshot, snapshot);
   query_res = PQexec(conn, query);
-  if (PQresultStatus(query_res) != PGRES_TUPLES_OK) {
+  if (PQresultStatus(query_res) != PGRES_COMMAND_OK) {
     fprintf(stderr, "DEELTE command failed: %s", PQerrorMessage(conn));
     PQclear(query_res);
     PQfinish(conn);
