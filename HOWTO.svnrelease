@@ -1,0 +1,17 @@
+substitiute 1.0.0 for version you want to release
+
+svn copy -m "Creating release branch 1.0.0" https://lanl-purger.svn.sourceforge.net/svnroot/lanl-purger/trunk https://lanl-purger.svn.sourceforge.net/svnroot/lanl-purger/branches/RB-1.0.0
+svn up
+
+make changes necessary for release
+* changelog
+* specfile release num
+
+svn copy -m "Tag release 1.1.0" https://lanl-purger.svn.sourceforge.net/svnroot/lanl-purger/branches/RB-1.0.0 https://lanl-purger.svn.sourceforge.net/svnroot/lanl-purger/tags/REL-1.0.0
+
+cd to directory to place release
+
+svn export https://lanl-purger.svn.sourceforge.net/svnroot/lanl-purger/tags/REL-1.0.0 lanl-purger-1.0.0
+tar czf lanl-purger-1.0.0.tar.gz lanl-purger-1.0.0
+
+upload to sf
