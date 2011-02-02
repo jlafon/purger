@@ -1,0 +1,8 @@
+AUTOMAKE_OPTIONS = foreign
+CFLAGS = -Wall -D_GNU_SOURCE -ansi -std=c99 -DVERSION=\"$(VERSION)\" -DPROG="\"$(PACKAGE)\"" \
+		 -I`pg_config --includedir` -I../../src -I../common
+LDFLAGS = -lconfig -L/usr/local/lib -lpq -lmpi
+
+bin_PROGRAMS = pstat
+pstat_CFLAGS = 
+pstat_SOURCES = pstat.c ../common/utils.c ../../src/config.c

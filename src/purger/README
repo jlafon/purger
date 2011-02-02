@@ -1,0 +1,4 @@
+#this should be in /root/.bashrc now
+export TZ=:/etc/localtime
+
+./purger scratch1
