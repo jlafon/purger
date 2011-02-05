@@ -27,9 +27,9 @@ void worker(int);
 #define PACKSIZE MAX_STAT
 #define WORKSIZE (QSIZE * PACKSIZE * 10)
 #define MAX_NCOUNT 300000
-
+#ifndef CFG_FILE
 #define CFG_FILE "db.conf"
-
+#endif
 /*these are the different commands that can be sent around
   basically its just a tag of what we are talking about
   in our MPI communications*/

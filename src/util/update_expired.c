@@ -27,7 +27,7 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
     return -1;
   }
   
-  snprintf(snapshot, 30, (PQgetvalue(snapshot_res, 0, 0)));
+  snprintf(snapshot, 30, (PQgetvalue(snapshot_res, 0, 0)),NULL);
 
   PQclear(snapshot_res);
 

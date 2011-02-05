@@ -1,0 +1,76 @@
+################################################################################
+# Copyright 2008-2009 Los Alamos National Security, LLC. All Rights Reserved.  #
+#                                                                              #
+# Redistribution and use in source and binary forms, with or without           #
+# modification, are permitted provided that the following conditions are met:  #
+#                                                                              #
+#                                                                              #
+#   o Redistributions of source code must retain the above copyright notice,   #
+#     this list of conditions and the following disclaimer.                    #
+#   o Redistributions in binary form must reproduce the above copyright        #
+#     notice, this list of conditions and the following disclaimer in the      #
+#     documentation and/or other materials provided with the distribution.     #
+#   o Neither the name of the copyright holders nor the names of its           #
+#     contributors may be used to endorse or promote products derived from     #
+#     this software without specific prior written permission.                 #
+#                                                                              #
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
+# POSSIBILITY OF SUCH DAMAGE.                                                  #
+################################################################################
+
+Required Libraries
+==================
+libldap
+liblber
+libconfig
+libpostgresql (pq)
+libqt4 (for the GUI)
+
+
+Directions for building:
+========================
+run `./configure`
+run `make`             Note: support `make install` is not finished yet.
+This will build of the libraries, utilities, and tests included with lanl-purger except for the GUI.
+
+Directions for building the GUI:
+================================
+Note:  The GUI component is not required to use the rest of the project.
+To build the GUI (you must have the Qt framework installed - http://qt.nokia.com):
+cd gui
+run `qmake`
+run `make`
+This will build the gui component called PathFinder.
+
+Project Structure
+=================
+lanlpurger
+  -doc              Project documentation
+  -etc              Configuration files
+  -src              Command line tools
+  -lib              Shared libraries
+  -test             Tests
+  -include          Common header files
+  -postgres_setup   SQL code for setting up Postgres
+  -gui              GUI component
+  -src/purger       Purger utility
+  -src/treewalk     Parallel Purger
+  -src/util         Purger tests
+  -lib/config       Wrapper library for libconfig
+  -lib/ldap         Wrapper library for libldap
+  -lib/log          Log file library
+  -lib/prm          Parallel rm library
+  -lib/utils        Common parallel functions
+  -lib/mail         Sendmail wrapper library
+  -test/email       Test email library
+  -test/ldap        Test ldap library
+  -test/log         Test log library

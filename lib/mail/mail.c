@@ -10,7 +10,7 @@ void sendmail_write(
   if (arg != NULL)
     snprintf(buf, sizeof(buf), str, arg);        
   else
-    snprintf(buf, sizeof(buf), str);
+    snprintf(buf, sizeof(buf), str, NULL);
   
   send(sock, buf, strlen(buf), 0);
 }

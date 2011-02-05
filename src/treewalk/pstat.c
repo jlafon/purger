@@ -414,25 +414,34 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   /*set restart if continuing from checkpoint*/
   if (restart) {
     restart_file = fopen("/scratch1/ben/restart", "r");
-    fgets(line, sizeof(line), restart_file);
+    char * p = fgets(line, sizeof(line), restart_file);
+    if(p == NULL)
+        exit(EXIT_FAILURE);
+    if(i < 0)
+        exit(EXIT_FAILURE);
     if (line[strlen(line) - 1] == '\n') {
       line[strlen(line) - 1] = '\0';
     }
     nreqcnt = atoi(line);
     for (loop=0; loop<nreqcnt; loop++) {
-      fgets(line, sizeof(line), restart_file);
+        
+      char * p = fgets(line, sizeof(line), restart_file);
+      if(p == NULL)
+          exit(EXIT_FAILURE);
       if (line[strlen(line) - 1] == '\n') {
 	line[strlen(line) - 1] = '\0';
       }
       strncpy(nqueue[loop].req, line, PATHSIZE_PLUS);
     }
-    fgets(line, sizeof(line), restart_file);
+    p = fgets(line, sizeof(line), restart_file);
+    if(p == NULL) exit(EXIT_FAILURE);
     if (line[strlen(line) - 1] == '\n') {
       line[strlen(line) - 1] = '\0';
     }
     dreqcnt = atoi(line);
     for (loop=0; loop<dreqcnt; loop++) {
-      fgets(line, sizeof(line), restart_file);
+      p = fgets(line, sizeof(line), restart_file);
+      if(p == NULL) exit(EXIT_FAILURE);
       if (line[strlen(line) - 1] == '\n') {
         line[strlen(line) - 1] = '\0';
       }
