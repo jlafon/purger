@@ -53,7 +53,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 pstat_SOURCES = pstat.c
 pstat_OBJECTS = pstat-pstat.$(OBJEXT)
-pstat_DEPENDENCIES =
+pstat_DEPENDENCIES = ../../lib/utils/.libs/libutils.la \
+	../../lib/config/.libs/libconfig.la
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
@@ -234,12 +235,15 @@ top_srcdir = @top_srcdir@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 pstat_CFLAGS = \
-			   -I`pg_config --includedir` 
+			   -I`pg_config --includedir` \
+               -I../../include
 
 pstat_LDADD = \
-			  -lconfig \
 			  -lpq \
-			  -lmpi
+			  -lmpi \
+              ../../lib/utils/.libs/libutils.la \
+              ../../lib/config/.libs/libconfig.la \
+			  -lconfig 
 
 all: all-am
 

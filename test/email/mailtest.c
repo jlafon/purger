@@ -3,7 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include "mail.h"
-#include "_ldap.h"
+#include "../../include/lanl-ldap.h"
 
 #define CFG_FILE "purger.conf"
 

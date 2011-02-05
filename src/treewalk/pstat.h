@@ -4,8 +4,8 @@
 #include <signal.h>
 #include <dirent.h>
 #include <getopt.h>
-#include "../common/utils.h"
-#include "../../src/config.h"
+#include "../../include/utils.h"
+#include "../../include/lconfig.h"
 
 /*PostgreSQL*/
 #include <libpq-fe.h>

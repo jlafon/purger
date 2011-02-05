@@ -1,4 +1,4 @@
-#include "ldap.h"
+#include "../../include/lanl-ldap.h"
 
 int main ( int argc, char *argv[] ) {
   char ldap_host[256];

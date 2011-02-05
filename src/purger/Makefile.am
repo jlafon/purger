@@ -31,12 +31,9 @@ bin_PROGRAMS = purger
 purger_SOURCES = purge_user.c
 purger_CFLAGS = \
                 -I../../include \
-				-I../../lib/config \
-				-I../../lib/ldap \
-				-I../../lib/mail \
-				-I../../lib/log
 				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 purger_LDADD = \
 				-lpq -lldap -llber \
 				../../lib/ldap/.libs/libldap.la \
-				../../lib/config/.libs/libconfig.la
+				../../lib/config/.libs/libconfig.la \
+                ../../lib/mail/.libs/libmail.la

@@ -31,9 +31,12 @@ AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = pstat
 
 pstat_CFLAGS = \
-			   -I`pg_config --includedir` 
+			   -I`pg_config --includedir` \
+               -I../../include
 pstat_LDADD = \
-			  -lconfig \
 			  -lpq \
-			  -lmpi
+			  -lmpi \
+              ../../lib/utils/.libs/libutils.la \
+              ../../lib/config/.libs/libconfig.la \
+			  -lconfig 
 

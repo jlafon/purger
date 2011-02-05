@@ -54,7 +54,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am_purger_OBJECTS = purger-purge_user.$(OBJEXT)
 purger_OBJECTS = $(am_purger_OBJECTS)
 purger_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la \
-	../../lib/config/.libs/libconfig.la
+	../../lib/config/.libs/libconfig.la \
+	../../lib/mail/.libs/libmail.la
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
@@ -237,15 +238,13 @@ AM_LIBTOOLFLAGS = --silent
 purger_SOURCES = purge_user.c
 purger_CFLAGS = \
                 -I../../include \
-				-I../../lib/config \
-				-I../../lib/ldap \
-				-I../../lib/mail \
-				-I../../lib/log
+				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
 purger_LDADD = \
 				-lpq -lldap -llber \
 				../../lib/ldap/.libs/libldap.la \
-				../../lib/config/.libs/libconfig.la
+				../../lib/config/.libs/libconfig.la \
+                ../../lib/mail/.libs/libmail.la
 
 all: all-am
 
@@ -582,7 +581,6 @@ uninstall-am: uninstall-binPROGRAMS
 	pdf pdf-am ps ps-am tags uninstall uninstall-am \
 	uninstall-binPROGRAMS
 
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

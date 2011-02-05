@@ -1,4 +1,3 @@
 EXTRA_DIST = README LICENSE AUTHORS
-SUBDIRS = src lib
+SUBDIRS = lib src test
 ACLOCAL_AMFLAGS = -I config
-

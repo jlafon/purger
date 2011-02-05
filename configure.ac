@@ -64,6 +64,9 @@ AC_OUTPUT([
         src/Makefile
         lib/Makefile
         test/Makefile
+        test/email/Makefile
+        test/ldap/Makefile
+        test/log/Makefile
         src/purger/Makefile
         src/treewalk/Makefile
         src/util/Makefile

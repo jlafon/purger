@@ -1,3 +1,0 @@
-logtest.o: logtest.c ../../../src/log.h
-
-../../../src/log.h:

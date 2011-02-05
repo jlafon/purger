@@ -226,7 +226,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = README LICENSE AUTHORS
-SUBDIRS = src lib
+SUBDIRS = lib src test
 ACLOCAL_AMFLAGS = -I config
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive

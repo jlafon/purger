@@ -23,14 +23,14 @@
 #include <time.h>
 
 /* Email */
-#include "mail.h"
+#include "../../include/mail.h"
 
 /* LDAP */
-#include "lanl-ldap.h"
+#include "../../include/lanl-ldap.h"
 #include <ldap.h>
 #include <lber.h>
 /* Puger Logging */
-#include "log.h"
+#include "../../include/log.h"
 
 
 /* Memory Debug */
