@@ -7,10 +7,10 @@
 #include "utils.h"
 
 /* Config parser */
-#include "config.h"
+#include "lconfig.h"
 
 /*PostgreSQL*/
-#include <libpq-fe.h>
+#include <postgresql/libpq-fe.h>
 
 /*Time*/
 #include <time.h>

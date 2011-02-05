@@ -146,7 +146,7 @@ PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /bin/sed
 SET_MAKE = 
-SHELL = /bin/sh
+SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.1
 abs_builddir = /home/jlafon/lanl-purger/branches/jharrod/lib/config
@@ -202,8 +202,8 @@ top_build_prefix = ../../
 top_builddir = ../..
 top_srcdir = ../..
 noinst_LTLIBRARIES = libconfig.la
-libconfig_la_CFLAGS = -I../log
-libconfig_la_SOURCES = config.h config.c
+libconfig_la_CFLAGS = -I../../include
+libconfig_la_SOURCES = config.c
 libconfig_la_LIBADD = -lconfig ../log/liblog.la
 all: all-am
 

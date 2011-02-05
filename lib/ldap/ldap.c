@@ -1,4 +1,4 @@
-#include "ldap.h"
+#include "../../include/lanl-ldap.h"
 
 int get_email( const char *uid, const char* ldap_host, const char *base, char *email ) {
   LDAP *ld;

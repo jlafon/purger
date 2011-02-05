@@ -72,11 +72,14 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libprm_la_DEPENDENCIES =
-am_libprm_la_OBJECTS = prm.lo
+am_libprm_la_OBJECTS = libprm_la-prm.lo
 libprm_la_OBJECTS = $(am_libprm_la_OBJECTS)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
+libprm_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libprm_la_CFLAGS) \
+	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I. -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -165,7 +168,7 @@ PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /bin/sed
 SET_MAKE = 
-SHELL = /bin/sh
+SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.1
 abs_builddir = /home/jlafon/lanl-purger/branches/jharrod/lib/prm
@@ -221,7 +224,8 @@ top_build_prefix = ../../
 top_builddir = ../..
 top_srcdir = ../..
 lib_LTLIBRARIES = libprm.la
-libprm_la_SOURCES = prm.h prm.c
+libprm_la_SOURCES = prm.c
+libprm_la_CFLAGS = -I../../include
 libprm_la_LIBADD = -lpq
 all: all-am
 
@@ -289,7 +293,7 @@ clean-libLTLIBRARIES:
 	  rm -f "$${dir}/so_locations"; \
 	done
 libprm.la: $(libprm_la_OBJECTS) $(libprm_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(LINK) -rpath $(libdir) $(libprm_la_OBJECTS) $(libprm_la_LIBADD) $(LIBS)
+	$(AM_V_CCLD)$(libprm_la_LINK) -rpath $(libdir) $(libprm_la_OBJECTS) $(libprm_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -297,7 +301,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-include ./$(DEPDIR)/prm.Plo
+include ./$(DEPDIR)/libprm_la-prm.Plo
 
 .c.o:
 	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -322,6 +326,14 @@ include ./$(DEPDIR)/prm.Plo
 #	source='$<' object='$@' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LTCOMPILE) -c -o $@ $<
+
+libprm_la-prm.lo: prm.c
+	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libprm_la_CFLAGS) $(CFLAGS) -MT libprm_la-prm.lo -MD -MP -MF $(DEPDIR)/libprm_la-prm.Tpo -c -o libprm_la-prm.lo `test -f 'prm.c' || echo '$(srcdir)/'`prm.c
+	$(AM_V_at)$(am__mv) $(DEPDIR)/libprm_la-prm.Tpo $(DEPDIR)/libprm_la-prm.Plo
+#	$(AM_V_CC) \
+#	source='prm.c' object='libprm_la-prm.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libprm_la_CFLAGS) $(CFLAGS) -c -o libprm_la-prm.lo `test -f 'prm.c' || echo '$(srcdir)/'`prm.c
 
 mostlyclean-libtool:
 	-rm -f *.lo

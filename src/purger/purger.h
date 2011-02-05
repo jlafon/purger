@@ -13,10 +13,10 @@
 #define STRLIM PATHSIZE_PLUS
 #define MAX_STATS 20000
 /* Config Parser */
-#include "config.h"
+#include "../../include/lconfig.h"
 
 /* PostgreSQL */
-#include <libpq-fe.h>
+#include <postgresql/libpq-fe.h>
 
 /* File Stats */
 #include <sys/stat.h>
@@ -26,7 +26,7 @@
 #include "mail.h"
 
 /* LDAP */
-#include "ldap.h"
+#include "lanl-ldap.h"
 #include <ldap.h>
 #include <lber.h>
 /* Puger Logging */

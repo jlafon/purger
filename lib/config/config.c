@@ -1,4 +1,33 @@
-#include "config.h"
+#include "../../include/lconfig.h"
+/*
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+
+#include "log.h"
+
+#include <libconfig.h>
+#define CFG_FILE "purger.conf"
+
+struct dbinfo_t {
+  char host[256];
+  char port[16];
+  char user[256];
+  char pass[256];
+};
+typedef struct dbinfo_t dbinfo_t;
+
+struct ldapinfo_t {
+  char host[256];
+  char base[256];
+  char basem[256];
+};
+typedef struct ldapinfo_t ldapinfo_t;
+
+int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo);
+int parse_config_dbonly(dbinfo_t *dbinfo);
+
+*/
 
 int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
   config_t cfg, *cf;

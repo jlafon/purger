@@ -49,12 +49,15 @@ CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
-libldap_la_DEPENDENCIES =
-am_libldap_la_OBJECTS = ldap.lo
+libldap_la_LIBADD =
+am_libldap_la_OBJECTS = libldap_la-ldap.lo
 libldap_la_OBJECTS = $(am_libldap_la_OBJECTS)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
+libldap_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(libldap_la_CFLAGS) \
+	$(CFLAGS) $(libldap_la_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -199,8 +202,9 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 noinst_LTLIBRARIES = libldap.la
-libldap_la_SOURCES = ldap.h ldap.c
-libldap_la_LIBADD = -lldap -llber
+libldap_la_SOURCES = ldap.c
+libldap_la_LDFLAGS = -llber -lldap
+libldap_la_CFLAGS = -DWITH_OPENLDAP -DLDAP_DEPRECATED
 all: all-am
 
 .SUFFIXES:
@@ -245,7 +249,7 @@ clean-noinstLTLIBRARIES:
 	  rm -f "$${dir}/so_locations"; \
 	done
 libldap.la: $(libldap_la_OBJECTS) $(libldap_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(LINK)  $(libldap_la_OBJECTS) $(libldap_la_LIBADD) $(LIBS)
+	$(AM_V_CCLD)$(libldap_la_LINK)  $(libldap_la_OBJECTS) $(libldap_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -253,7 +257,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ldap.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libldap_la-ldap.Plo@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -278,6 +282,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+libldap_la-ldap.lo: ldap.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libldap_la_CFLAGS) $(CFLAGS) -MT libldap_la-ldap.lo -MD -MP -MF $(DEPDIR)/libldap_la-ldap.Tpo -c -o libldap_la-ldap.lo `test -f 'ldap.c' || echo '$(srcdir)/'`ldap.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libldap_la-ldap.Tpo $(DEPDIR)/libldap_la-ldap.Plo
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ldap.c' object='libldap_la-ldap.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libldap_la_CFLAGS) $(CFLAGS) -c -o libldap_la-ldap.lo `test -f 'ldap.c' || echo '$(srcdir)/'`ldap.c
 
 mostlyclean-libtool:
 	-rm -f *.lo

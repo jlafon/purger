@@ -30,6 +30,7 @@ AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = purger
 purger_SOURCES = purge_user.c
 purger_CFLAGS = \
+                -I../../include \
 				-I../../lib/config \
 				-I../../lib/ldap \
 				-I../../lib/mail \
@@ -37,5 +38,5 @@ purger_CFLAGS = \
 				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 purger_LDADD = \
 				-lpq -lldap -llber \
-				../../lib/ldap/libldap.la \
-				../../lib/config/libconfig.la
+				../../lib/ldap/.libs/libldap.la \
+				../../lib/config/.libs/libconfig.la

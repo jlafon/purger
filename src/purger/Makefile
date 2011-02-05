@@ -53,8 +53,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_OBJECTS = purger-purge_user.$(OBJEXT)
 purger_OBJECTS = $(am_purger_OBJECTS)
-purger_DEPENDENCIES = ../../lib/ldap/libldap.la \
-	../../lib/config/libconfig.la
+purger_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la \
+	../../lib/config/.libs/libconfig.la
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
 am__v_lt_0 = --silent
@@ -149,7 +149,7 @@ PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /bin/sed
 SET_MAKE = 
-SHELL = /bin/sh
+SHELL = /bin/bash
 STRIP = strip
 VERSION = 0.1
 abs_builddir = /home/jlafon/lanl-purger/branches/jharrod/src/purger
@@ -236,6 +236,7 @@ top_srcdir = ../..
 AM_LIBTOOLFLAGS = --silent
 purger_SOURCES = purge_user.c
 purger_CFLAGS = \
+                -I../../include \
 				-I../../lib/config \
 				-I../../lib/ldap \
 				-I../../lib/mail \
@@ -243,8 +244,8 @@ purger_CFLAGS = \
 
 purger_LDADD = \
 				-lpq -lldap -llber \
-				../../lib/ldap/libldap.la \
-				../../lib/config/libconfig.la
+				../../lib/ldap/.libs/libldap.la \
+				../../lib/config/.libs/libconfig.la
 
 all: all-am
 
