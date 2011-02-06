@@ -28,7 +28,7 @@
 ################################################################################
 
 AC_PREREQ([2.65])
-AC_INIT([lanl-purger], [0.1], [jharrodlafon@users.sourceforge.net])
+AC_INIT([lanl-purger], [1.0.0], [jharrodlafon@users.sourceforge.net])
 AC_COPYRIGHT([
         [Copyright 2008-2010 Los Alamos National Security, LLC. All Rights Reserved.]
         ])

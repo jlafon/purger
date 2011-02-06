@@ -225,7 +225,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-EXTRA_DIST = README LICENSE AUTHORS
+EXTRA_DIST = README LICENSE AUTHORS include
 SUBDIRS = lib src test
 ACLOCAL_AMFLAGS = -I config
 all: config.h
