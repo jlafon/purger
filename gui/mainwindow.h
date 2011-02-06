@@ -67,6 +67,7 @@ private:
     PFileSystemModel *model;
     bool showAdvanced;
     QSettings settings;
+  enum { MATCH, MATCHNOCASE, NOMATCH, NOMATCHNOCASE };
 private slots:
     void on_pushButton_2_clicked();
     void on_tabWidget_currentChanged(int index);

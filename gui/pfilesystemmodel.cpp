@@ -98,10 +98,33 @@ void PFileSystemModel::setQueryString(QString query)
 void PFileSystemModel::sort(int column, Qt::SortOrder order)
 {
     qDebug() << "Sorting column" << column;
+
+}
+
+QStringList PFileSystemModel::getTableFields()
+{
+    QStringList rootData;
+    rootData << "filename"
+    << "inode" \
+    << "mode" \
+    << "nlink"\
+    << "uid" \
+    << "gid" \
+    << "size" \
+    << "block" \
+    << "block_size" \
+    << "atime" \
+    << "mtime" \
+    << "ctime" \
+    << "abslink" \
+    << "added";
+    return rootData;
 }
 
 void PFileSystemModel::setupModelData(pFileNode *parent)
 {
+    if(tableModel->rowCount() > 16584)
+        emit statusChanged(QString("<font color=blue>More than 16k records returned.  Please apply a filter."));
     //Abandon all hope, ye who enter here
     QHash<QString, pFileNode* > ch;
     pFileNode* last = 0;

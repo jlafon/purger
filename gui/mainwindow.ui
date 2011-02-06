@@ -98,6 +98,12 @@
              </widget>
             </item>
             <item>
+             <widget class="QComboBox" name="fieldBox"/>
+            </item>
+            <item>
+             <widget class="QComboBox" name="regexBox"/>
+            </item>
+            <item>
              <widget class="QLineEdit" name="lineEdit">
               <property name="placeholderText" stdset="0">
                <string/>

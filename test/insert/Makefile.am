@@ -27,5 +27,10 @@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-
-SUBDIRS = email ldap log insert
+bin_PROGRAMS = insert
+insert_SOURCES = testinsert.c
+insert_CFLAGS = \
+                -I../../include \
+				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+insert_LDADD = \
+				-lpq 

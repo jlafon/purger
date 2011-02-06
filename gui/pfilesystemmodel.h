@@ -78,6 +78,9 @@ public:
     //! Returns the best model matching the string
     QModelIndex search(const QString) const;
 
+    //! Returns the list of fields for a given table
+    QStringList getTableFields();
+
     //! Returns the row count of a given item.
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
 

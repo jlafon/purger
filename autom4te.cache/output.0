@@ -10681,7 +10681,7 @@ fi
 
 done
 
-ac_config_files="$ac_config_files Makefile lib/config/Makefile lib/ldap/Makefile lib/log/Makefile lib/mail/Makefile lib/prm/Makefile lib/utils/Makefile src/Makefile lib/Makefile test/Makefile test/email/Makefile test/ldap/Makefile test/log/Makefile src/purger/Makefile src/treewalk/Makefile src/util/Makefile"
+ac_config_files="$ac_config_files Makefile lib/config/Makefile lib/ldap/Makefile lib/log/Makefile lib/mail/Makefile lib/prm/Makefile lib/utils/Makefile src/Makefile lib/Makefile test/Makefile test/email/Makefile test/ldap/Makefile test/log/Makefile test/insert/Makefile src/purger/Makefile src/treewalk/Makefile src/util/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -11671,6 +11671,7 @@ do
     "test/email/Makefile") CONFIG_FILES="$CONFIG_FILES test/email/Makefile" ;;
     "test/ldap/Makefile") CONFIG_FILES="$CONFIG_FILES test/ldap/Makefile" ;;
     "test/log/Makefile") CONFIG_FILES="$CONFIG_FILES test/log/Makefile" ;;
+    "test/insert/Makefile") CONFIG_FILES="$CONFIG_FILES test/insert/Makefile" ;;
     "src/purger/Makefile") CONFIG_FILES="$CONFIG_FILES src/purger/Makefile" ;;
     "src/treewalk/Makefile") CONFIG_FILES="$CONFIG_FILES src/treewalk/Makefile" ;;
     "src/util/Makefile") CONFIG_FILES="$CONFIG_FILES src/util/Makefile" ;;
@@ -14027,6 +14028,7 @@ do
     "test/email/Makefile") CONFIG_FILES="$CONFIG_FILES test/email/Makefile" ;;
     "test/ldap/Makefile") CONFIG_FILES="$CONFIG_FILES test/ldap/Makefile" ;;
     "test/log/Makefile") CONFIG_FILES="$CONFIG_FILES test/log/Makefile" ;;
+    "test/insert/Makefile") CONFIG_FILES="$CONFIG_FILES test/insert/Makefile" ;;
     "src/purger/Makefile") CONFIG_FILES="$CONFIG_FILES src/purger/Makefile" ;;
     "src/treewalk/Makefile") CONFIG_FILES="$CONFIG_FILES src/treewalk/Makefile" ;;
     "src/util/Makefile") CONFIG_FILES="$CONFIG_FILES src/util/Makefile" ;;

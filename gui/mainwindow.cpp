@@ -75,6 +75,15 @@ MainWindow::MainWindow(QWidget *parent) :
     // Associate the tree model to the view
     ui->treeView->setModel(model);
 
+    // Set up filter stuff
+    ui->fieldBox->insertItems(0,model->getTableFields());
+    QStringList regexOptions;
+    regexOptions << "match regex" \
+                 << "match regex case sensitive" \
+                 << "does not match regex" \
+                 << "does not match regex case sensitive";
+    ui->regexBox->insertItems(0,regexOptions);
+
     // Set up Icons and Table
     ui->pushButton->setIcon(QIcon::fromTheme("object-flip-vertical"));
     ui->delButton->setIcon(QIcon::fromTheme("edit-delete"));
@@ -148,9 +157,25 @@ void MainWindow::on_textBrowser_textChanged()
 /** No validation is done */
 void MainWindow::on_lineEdit_returnPressed()
 {
+    QString field = ui->fieldBox->currentText();
+    QString regexOperator = QString("");
+    int rtype = ui->regexBox->currentIndex();
+    switch(rtype)
+    {
+    case MATCH: regexOperator = "~";
+        break;
+    case MATCHNOCASE: regexOperator = "~*";
+        break;
+    case NOMATCH: regexOperator = "!~";
+        break;
+    case NOMATCHNOCASE: regexOperator = "!~*";
+        break;
+    }
+    QString query = QString("%0 %1 '%2'").arg(field).arg(regexOperator).arg(ui->lineEdit->text());
+    ui->textBrowser->append(QString("Updating query filter to <font color=blue><em>%1</em></font>").arg(query));
     //ui->textBrowser->append(QString("Updating query filter to <font color=blue><em>%1</em></font>").arg(ui->lineEdit->text()));
     //filename ~ '^/+usr/+include/+[a-zA-Z0-9_-\s\.]+/+[a-zA-Z0-9_-\s\.]*$';
-    model->setQueryString(ui->lineEdit->text());
+    model->setQueryString(query);
 
 }
 

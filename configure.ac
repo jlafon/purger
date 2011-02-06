@@ -67,6 +67,7 @@ AC_OUTPUT([
         test/email/Makefile
         test/ldap/Makefile
         test/log/Makefile
+        test/insert/Makefile
         src/purger/Makefile
         src/treewalk/Makefile
         src/util/Makefile

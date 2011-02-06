@@ -40,7 +40,7 @@
 #include <QBitArray>
 #include <QDebug>
 pFileNode::pFileNode(const QList<QVariant> &data, pFileNode *parent)
-{
+{http://i.imgur.com/lWKUH.jpg
     isDir = false;
     parentItem = parent;
     itemData = data;
