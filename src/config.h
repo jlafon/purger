@@ -29,8 +29,18 @@ struct ldapinfo_t {
 };
 typedef struct ldapinfo_t ldapinfo_t;
 
+struct mailinfo_t {
+  char from[256];
+  char fromreal[256];
+  char defaultto[256];
+  char subject[256];
+  char server[256];
+  char txt[2048];
+};
+typedef struct mailinfo_t mailinfo_t;
+
 /* Function Definitions */
-int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo);
+int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo);
 int parse_config_dbonly(dbinfo_t *dbinfo);
 
 #endif

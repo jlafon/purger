@@ -1,6 +1,6 @@
 #include "config.h"
 
-int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
+int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
   config_t cfg, *cf;
   const char *host = NULL;
   const char *port = NULL;
@@ -9,6 +9,12 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
   const char *ldaphost = NULL;
   const char *ldapbase = NULL;
   const char *ldapbasem = NULL;
+  const char *mailtxt = NULL;
+  const char *mailfrom = NULL;
+  const char *mailfromreal = NULL;
+  const char *maildefaultto = NULL;
+  const char *mailsubject = NULL;
+  const char *mailserver = NULL;
 
   cf = &cfg;
   config_init(cf);
@@ -23,73 +29,133 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "port", &port) == CONFIG_FALSE){
     fprintf(stderr, "port not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "user", &user) == CONFIG_FALSE){
     fprintf(stderr, "user not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "passwd", &passwd) == CONFIG_FALSE){
     fprintf(stderr, "passwd not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "ldaphost", &ldaphost) == CONFIG_FALSE){
     fprintf(stderr, "ldaphost not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "ldapbase", &ldapbase) == CONFIG_FALSE){
     fprintf(stderr, "ldapbase not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if(config_lookup_string(cf, "ldapbasem", &ldapbasem) == CONFIG_FALSE){
     fprintf(stderr, "ldapbasem not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
+  if(config_lookup_string(cf, "mailtxt", &mailtxt) == CONFIG_FALSE){
+    fprintf(stderr, "mailtxt not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if(config_lookup_string(cf, "mailfrom", &mailfrom) == CONFIG_FALSE){
+    fprintf(stderr, "mailfrom not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if(config_lookup_string(cf, "mailfromreal", &mailfromreal) == CONFIG_FALSE){
+    fprintf(stderr, "mailfromreal not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if(config_lookup_string(cf, "maildefaultto", &maildefaultto) == CONFIG_FALSE){
+    fprintf(stderr, "maildefaultto not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if(config_lookup_string(cf, "mailsubject", &mailsubject) == CONFIG_FALSE){
+    fprintf(stderr, "mailsubject not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if(config_lookup_string(cf, "mailserver", &mailserver) == CONFIG_FALSE){
+    fprintf(stderr, "ldapbasem not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
 
   if (!strncpy(dbinfo->host, host, 256)) {
     fprintf(stderr, "could not copy host\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(dbinfo->port, port, 16)) {
     fprintf(stderr, "could not copy port\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(dbinfo->user, user, 256)) {
     fprintf(stderr, "could not copy user\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(dbinfo->pass, passwd, 256)) {
     fprintf(stderr, "could not copy passwd\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(ldapinfo->host, ldaphost, 256)) {
     fprintf(stderr, "could not copy ldaphost\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(ldapinfo->base, ldapbase, 256)) {
     fprintf(stderr, "could not copy ldapbase\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
   if (!strncpy(ldapinfo->basem, ldapbasem, 256)) {
     fprintf(stderr, "could not copy ldapbasem\n");
     config_destroy(cf);
     return EXIT_FAILURE;
-  }    
+  }
+  if (!strncpy(mailinfo->txt, mailtxt, 2048)) {
+    fprintf(stderr, "could not copy mailtxt\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if (!strncpy(mailinfo->from, mailfrom, 256)) {
+    fprintf(stderr, "could not copy mailfrom\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if (!strncpy(mailinfo->fromreal, mailfromreal, 256)) {
+    fprintf(stderr, "could not copy mailfromreal\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if (!strncpy(mailinfo->defaultto, maildefaultto, 256)) {
+    fprintf(stderr, "could not copy maildefaultto\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if (!strncpy(mailinfo->subject, mailsubject, 256)) {
+    fprintf(stderr, "could not copy mailsubject\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
+  if (!strncpy(mailinfo->server, mailserver, 256)) {
+    fprintf(stderr, "could not copy mailserver\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }
