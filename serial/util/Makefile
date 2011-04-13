@@ -12,7 +12,7 @@ idtest:	idtest.c
 	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c -o $@
 
 chkscratch: chkscratch.c
-	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c $(SRCDIR)config.o $(SRCDIR)log.o -o $@
+	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c $(SRCDIR)config.o $(SRCDIR)log.o $(SRCDIR)ldap.o -o $@ -lldap -llber
 
 update_expired:	update_expired.c
 	$(CC) $(INCLUDE) $(LIBS) $(CFLAGS) $@.c $(SRCDIR)config.o $(SRCDIR)log.o -o $@
