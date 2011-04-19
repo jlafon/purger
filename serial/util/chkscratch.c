@@ -70,7 +70,7 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
   else if (query_type == NFILES)
     snprintf(query, 80, "SELECT uid,count(*) FROM %s GROUP BY uid ORDER BY count DESC;", snapshot);
   else if (query_type == USAGE)
-    snprintf(query, 80, "SELECT uid,sum(block*block_size) FROM %s GROUP BY uid ORDER BY sum DESC;", snapshot);
+    snprintf(query, 80, "SELECT uid,sum(block*512) FROM %s GROUP BY uid ORDER BY sum DESC;", snapshot);
   else if (query_type == GROUP)
     snprintf(query, 80, "SELECT gid,sum(size) FROM %s GROUP BY gid ORDER BY sum DESC;", snapshot);
 
