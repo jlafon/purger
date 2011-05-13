@@ -58,10 +58,10 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
     return -1;
   }
   
-  if (strncmp(PQgetvalue(snapshot_res, 0, 0), "snapshot", 10) == 0)
-    snprintf(snapshot, 30, "snapshot2");
+  if (strncmp(PQgetvalue(snapshot_res, 0, 0), "snapshot1", 10) == 0)
+    snprintf(snapshot, 30, "snapshot1");
   else
-    snprintf(snapshot, 30, "snapshot");
+    snprintf(snapshot, 30, "snapshot2");
 
   PQclear(snapshot_res);
   
@@ -97,7 +97,7 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
 	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
-      elseif (get_moniker(atoi(PQgetvalue(query_res, i, 0)), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
 	printf("%10s %9.2f %8lu\n", moniker, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))); 
       else
 	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
@@ -112,11 +112,11 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
     for (i = 0; i < results; i++) {
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
-	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0 * 10))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))/10);
-      elseif (get_moniker(atoi(PQgetvalue(query_res, i, 0)), ldapinfo->host, ldapinfo->basem, moniker) == 0)
-        printf("%10s %9.2f %8lu\n", moniker, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0 * 10))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))/10);
+	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+        printf("%10s %9.2f %8lu\n", moniker, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
       else
-	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0 * 10))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))/10);
+	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
     }
   }
   else if (query_type == NFILES) {
@@ -129,7 +129,7 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
 	printf("%10s %8s\n", pw->pw_name, PQgetvalue(query_res, i, 1));
-      elseif (get_moniker(atoi(PQgetvalue(query_res, i, 0)), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
         printf("%10s %8s\n", moniker, PQgetvalue(query_res, i, 1));
       else
 	printf("%10s %8s\n", PQgetvalue(query_res, i, 0), PQgetvalue(query_res, i, 1));
@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
   printf("\n");
   gb = printstat("scratch2");
   printf("\n");
-  ret = printusage("scratch2", results, gb, query_type, dbinfo, ldapinfo);
+  ret = printusage("scratch2", results, gb, query_type, &dbinfo, &ldapinfo);
 
   //printf("\n");
   //printf("\n");
