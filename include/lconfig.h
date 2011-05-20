@@ -11,7 +11,7 @@
 
 /* Config Parser */
 #include <libconfig.h>
-#define CFG_FILE "purger.conf"
+#define CFG_FILE "/etc/purger.conf"
 
 /* Structs */
 struct dbinfo_t {

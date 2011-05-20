@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <libpq-fe.h>
 #include "config.h"
+struct dbinfo_t {
+  char host[256];
+  char port[16];
+  char user[256];
+  char pass[256];
+};
+typedef struct dbinfo_t dbinfo_t;
+
 
 int main(int argc, char *argv[]){
   PGconn *conn;

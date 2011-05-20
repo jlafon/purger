@@ -35,7 +35,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = chkscratch$(EXEEXT) update_expired$(EXEEXT) \
-	deleter$(EXEEXT)
+	deleter$(EXEEXT) dbtest$(EXEEXT)
 subdir = src/util
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -61,6 +61,12 @@ am__v_lt_0 = --silent
 chkscratch_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(chkscratch_CFLAGS) \
 	$(CFLAGS) $(chkscratch_LDFLAGS) $(LDFLAGS) -o $@
+am_dbtest_OBJECTS = dbtest-dbtest.$(OBJEXT)
+dbtest_OBJECTS = $(am_dbtest_OBJECTS)
+dbtest_DEPENDENCIES = ../../lib/config/.libs/libconfig.la
+dbtest_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(dbtest_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_deleter_OBJECTS = deleter.$(OBJEXT)
 deleter_OBJECTS = $(am_deleter_OBJECTS)
 deleter_LDADD = $(LDADD)
@@ -100,10 +106,10 @@ am__v_CCLD_0 = @echo "  CCLD  " $@;
 AM_V_GEN = $(am__v_GEN_$(V))
 am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
 am__v_GEN_0 = @echo "  GEN   " $@;
-SOURCES = $(chkscratch_SOURCES) $(deleter_SOURCES) \
+SOURCES = $(chkscratch_SOURCES) $(dbtest_SOURCES) $(deleter_SOURCES) \
 	$(update_expired_SOURCES)
-DIST_SOURCES = $(chkscratch_SOURCES) $(deleter_SOURCES) \
-	$(update_expired_SOURCES)
+DIST_SOURCES = $(chkscratch_SOURCES) $(dbtest_SOURCES) \
+	$(deleter_SOURCES) $(update_expired_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -250,6 +256,9 @@ top_srcdir = @top_srcdir@
 ################################################################################
 EXTRA_DIST = deleter.h
 AM_LIBTOOLFLAGS = --silent
+dbtest_SOURCES = dbtest.c
+dbtest_CFLAGS = -lconfig -lpq -I/usr/include/postgresql/ -I../../include
+dbtest_LDADD = ../../lib/config/.libs/libconfig.la
 chkscratch_SOURCES = chkscratch.c
 chkscratch_CFLAGS = -I../../include
 chkscratch_LDFLAGS = -lpq -lconfig
@@ -338,6 +347,9 @@ clean-binPROGRAMS:
 chkscratch$(EXEEXT): $(chkscratch_OBJECTS) $(chkscratch_DEPENDENCIES) 
 	@rm -f chkscratch$(EXEEXT)
 	$(AM_V_CCLD)$(chkscratch_LINK) $(chkscratch_OBJECTS) $(chkscratch_LDADD) $(LIBS)
+dbtest$(EXEEXT): $(dbtest_OBJECTS) $(dbtest_DEPENDENCIES) 
+	@rm -f dbtest$(EXEEXT)
+	$(AM_V_CCLD)$(dbtest_LINK) $(dbtest_OBJECTS) $(dbtest_LDADD) $(LIBS)
 deleter$(EXEEXT): $(deleter_OBJECTS) $(deleter_DEPENDENCIES) 
 	@rm -f deleter$(EXEEXT)
 	$(AM_V_CCLD)$(deleter_LINK) $(deleter_OBJECTS) $(deleter_LDADD) $(LIBS)
@@ -352,6 +364,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkscratch-chkscratch.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dbtest-dbtest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/deleter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/update_expired.Po@am__quote@
 
@@ -394,6 +407,22 @@ chkscratch-chkscratch.obj: chkscratch.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='chkscratch.c' object='chkscratch-chkscratch.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(chkscratch_CFLAGS) $(CFLAGS) -c -o chkscratch-chkscratch.obj `if test -f 'chkscratch.c'; then $(CYGPATH_W) 'chkscratch.c'; else $(CYGPATH_W) '$(srcdir)/chkscratch.c'; fi`
+
+dbtest-dbtest.o: dbtest.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -MT dbtest-dbtest.o -MD -MP -MF $(DEPDIR)/dbtest-dbtest.Tpo -c -o dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/dbtest-dbtest.Tpo $(DEPDIR)/dbtest-dbtest.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='dbtest-dbtest.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -c -o dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c
+
+dbtest-dbtest.obj: dbtest.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -MT dbtest-dbtest.obj -MD -MP -MF $(DEPDIR)/dbtest-dbtest.Tpo -c -o dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/dbtest-dbtest.Tpo $(DEPDIR)/dbtest-dbtest.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='dbtest-dbtest.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -c -o dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

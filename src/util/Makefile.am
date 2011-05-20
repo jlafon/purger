@@ -28,7 +28,10 @@
 ################################################################################
 EXTRA_DIST = deleter.h
 AM_LIBTOOLFLAGS = --silent
-bin_PROGRAMS = chkscratch update_expired deleter
+bin_PROGRAMS = chkscratch update_expired deleter dbtest
+dbtest_SOURCES = dbtest.c
+dbtest_CFLAGS = -lconfig -lpq -I/usr/include/postgresql/ -I../../include
+dbtest_LDADD = ../../lib/config/.libs/libconfig.la
 chkscratch_SOURCES = chkscratch.c
 chkscratch_CFLAGS = -I../../include
 chkscratch_LDFLAGS = -lpq -lconfig

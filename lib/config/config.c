@@ -134,7 +134,8 @@ int parse_config_dbonly(dbinfo_t *dbinfo){
   config_init(cf);
 
   if (!config_read_file(cf, CFG_FILE)){
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
+//fprintf(stderr, "[%s][%d]<%s> %s:%d - %s\n", __FILE__,__LINE__,CFG_FILE,config_error_file(cf), config_error_line(cf), config_error_text(cf));
+    fprintf(stderr, "[%s][%d] Error <%s>\n", __FILE__,__LINE__,CFG_FILE);
     config_destroy(cf);
     return EXIT_FAILURE;
   }
