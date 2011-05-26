@@ -13,7 +13,7 @@
 
 
 // PostgreSQL
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 
 // File Stats
 #include <sys/stat.h>

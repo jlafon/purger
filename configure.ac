@@ -27,20 +27,21 @@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 
-AC_PREREQ([2.65])
+#AC_PREREQ([2.65])
 AC_INIT([lanl-purger], [1.0.0], [jharrodlafon@users.sourceforge.net])
 AC_COPYRIGHT([
         [Copyright 2008-2010 Los Alamos National Security, LLC. All Rights Reserved.]
         ])
 
 # Put all build stuff in config
-AC_CONFIG_AUX_DIR([config])
+#AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([config])
     
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
 # Minimize output    
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
+AC_GNU_SOURCE
 
 AC_PROG_CC
 AC_PROG_CC_C_O
@@ -48,9 +49,8 @@ AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 # Not necessary but doesn't hurt anything
 AC_CONFIG_HEADERS([config.h])
-AC_USE_SYSTEM_EXTENSIONS
+#AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_LIBTOOL
-AC_GNU_SOURCE
 AC_PROG_MAKE_SET
 AC_CHECK_HEADERS([netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
 AC_OUTPUT([

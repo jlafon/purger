@@ -1,3 +1,5 @@
+#include<stdlib.h>
+#include<stdio.h>
 #include "prm.h"
 
 void catch_alarm (int sig) {

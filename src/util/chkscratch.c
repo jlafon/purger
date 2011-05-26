@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 #include <sys/statfs.h>
 #include <pwd.h>
 #include <grp.h>

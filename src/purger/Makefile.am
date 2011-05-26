@@ -30,9 +30,10 @@ EXTRA_DIST = purger.h
 AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = purger
 purger_SOURCES = purge_user.c
-purger_CFLAGS = \
+purger_CFLAGS = -I`pg_config --includedir` \
                 -I../../include \
 				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+purger_LDFLAGS =  -I`pg_config --includedir` -L`pg_config --libdir` 
 purger_LDADD = \
 				-lpq -lldap -llber \
 				../../lib/ldap/.libs/libldap.la \

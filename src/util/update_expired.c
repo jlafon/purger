@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <postgresql/libpq-fe.h>
+#include <libpq-fe.h>
 #include <getopt.h>
 #include "../../include/lconfig.h"
 
