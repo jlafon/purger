@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
 void dec2bin(int decimal, char *binary) {
   int k = 0, n= 0;
   int remain;
@@ -25,6 +24,7 @@ void dec2bin(int decimal, char *binary) {
 
 int main( int argc, char *argv[] )
 {
+  
   PGresult *snapshot;
   PGconn *conn;
   char snapshot_name[16];

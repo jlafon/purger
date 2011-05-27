@@ -29,10 +29,10 @@
 AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = mailtest
 mailtest_SOURCES = mailtest.c
-mailtest_CFLAGS = -I`pg_config --includedir` \
+mailtest_CFLAGS =  \
                 -I../../include \
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-mailtest_LDFLAGS = -lpq -lldap -llber -L`pg_config --libdir`
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+mailtest_LDFLAGS = -lldap -llber 
 mailtest_LDADD = \
-				../../lib/ldap/.libs/libldap.la \
-                ../../lib/mail/.libs/libmail.la
+		../../lib/ldap/.libs/libldap.a \
+                ../../lib/mail/.libs/libmail.a

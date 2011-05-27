@@ -51,8 +51,8 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_mailtest_OBJECTS = mailtest-mailtest.$(OBJEXT)
 mailtest_OBJECTS = $(am_mailtest_OBJECTS)
-mailtest_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la \
-	../../lib/mail/.libs/libmail.la
+mailtest_DEPENDENCIES = ../../lib/ldap/.libs/libldap.a \
+	../../lib/mail/.libs/libmail.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -117,6 +117,7 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PGCONFIG = @PGCONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -197,14 +198,14 @@ target_alias = @target_alias@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 mailtest_SOURCES = mailtest.c
-mailtest_CFLAGS = -I`pg_config --includedir` \
+mailtest_CFLAGS = \
                 -I../../include \
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-mailtest_LDFLAGS = -lpq -lldap -llber -L`pg_config --libdir`
+mailtest_LDFLAGS = -lldap -llber 
 mailtest_LDADD = \
-				../../lib/ldap/.libs/libldap.la \
-                ../../lib/mail/.libs/libmail.la
+		../../lib/ldap/.libs/libldap.a \
+                ../../lib/mail/.libs/libmail.a
 
 all: all-am
 

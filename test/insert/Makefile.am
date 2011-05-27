@@ -29,8 +29,7 @@
 AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = insert
 insert_SOURCES = testinsert.c
-insert_CFLAGS = -I`pg_config --includedir` \
+insert_CFLAGS = -I`pg_config --includedir` -L`pg_config --libdir`\
                 -I../../include \
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-insert_LDFLAGS = -L`pg_config --libdir` -lpq
-insert_LDADD = -lpq
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+insert_LDFLAGS = -lpq

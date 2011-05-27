@@ -28,7 +28,7 @@
 ################################################################################
 
 #AC_PREREQ([2.65])
-AC_INIT([lanl-purger], [1.0.0], [jharrodlafon@users.sourceforge.net])
+AC_INIT([lanl-purger], [1.0.0], [jlafon@lanl.gov])
 AC_COPYRIGHT([
         [Copyright 2008-2010 Los Alamos National Security, LLC. All Rights Reserved.]
         ])
@@ -53,6 +53,11 @@ AC_CONFIG_HEADERS([config.h])
 AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
 AC_CHECK_HEADERS([netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_PROG(PGCONFIG,pg_config,pg_config,false)
+if test "x$PGCONFIG" = "xfalse"; then
+	AC_MSG_ERROR([pg_config is required.])
+fi
+AC_SEARCH_LIBS([PQexec],[pq], , LIBS+=-L`pg_config --libdir`)
 AC_OUTPUT([
         Makefile
         lib/config/Makefile

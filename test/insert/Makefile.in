@@ -51,7 +51,7 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_insert_OBJECTS = insert-testinsert.$(OBJEXT)
 insert_OBJECTS = $(am_insert_OBJECTS)
-insert_DEPENDENCIES =
+insert_LDADD = $(LDADD)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -116,6 +116,7 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PGCONFIG = @PGCONFIG@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -196,12 +197,11 @@ target_alias = @target_alias@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 insert_SOURCES = testinsert.c
-insert_CFLAGS = -I`pg_config --includedir` \
+insert_CFLAGS = -I`pg_config --includedir` -L`pg_config --libdir`\
                 -I../../include \
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-insert_LDFLAGS = -L`pg_config --libdir` -lpq
-insert_LDADD = -lpq
+insert_LDFLAGS = -lpq
 all: all-am
 
 .SUFFIXES:
