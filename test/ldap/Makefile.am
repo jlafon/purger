@@ -27,15 +27,15 @@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-bin_PROGRAMS = bensearch ldapemail
-bensearch_SOURCES = bensearch.c
-bensearch_CFLAGS = -I../../include \
+bin_PROGRAMS = purger_bensearch purger_ldapemail_test
+purger_bensearch_SOURCES = bensearch.c
+purger_bensearch_CFLAGS = -I../../include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-bensearch_LDFLAGS = -lldap -llber
-bensearch_LDADD = ../../lib/ldap/.libs/libldap.la
-ldapemail_SOURCES = main.c
-ldapemail_CFLAGS = -I../../include \
+purger_bensearch_LDFLAGS = -lldap -llber
+purger_bensearch_LDADD = ../../lib/ldap/.libs/libldap.la
+purger_ldapemail_test_SOURCES = main.c
+purger_ldapemail_test_CFLAGS = -I../../include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-ldapemail_LDFLAGS = -lldap -llber
-ldapemail_LDADD = ../../lib/ldap/.libs/libldap.la
+purger_ldapemail_test_LDFLAGS = -lldap -llber
+purger_ldapemail_test_LDADD = ../../lib/ldap/.libs/libldap.la
 

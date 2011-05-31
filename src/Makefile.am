@@ -29,6 +29,7 @@
 AM_LIBTOOLFLAGS = --silent
 
 SUBDIRS = \
-		  purger \
-		  treewalk \
-		  util
+		prm	 \
+		purger   \
+	        treewalk \
+	        util

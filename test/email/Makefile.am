@@ -27,12 +27,12 @@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-bin_PROGRAMS = mailtest
-mailtest_SOURCES = mailtest.c
-mailtest_CFLAGS =  \
+bin_PROGRAMS = purger_mailtest
+purger_mailtest_SOURCES = mailtest.c
+purger_mailtest_CFLAGS =  \
                 -I../../include \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-mailtest_LDFLAGS = -lldap -llber 
-mailtest_LDADD = \
+purger_mailtest_LDFLAGS = -lldap -llber 
+purger_mailtest_LDADD = \
 		../../lib/ldap/.libs/libldap.a \
                 ../../lib/mail/.libs/libmail.a

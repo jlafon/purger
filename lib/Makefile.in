@@ -189,7 +189,6 @@ SUBDIRS = \
 		  config \
 		  ldap \
 		  mail \
-		  prm \
 		  utils
 
 all: all-recursive

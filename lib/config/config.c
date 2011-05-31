@@ -50,37 +50,37 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
     return EXIT_FAILURE;
   }
 
-  if(config_lookup_string(cf, "host", &host) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "port", &port) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.port", &port) == CONFIG_FALSE){
     fprintf(stderr, "port not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "user", &user) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.user", &user) == CONFIG_FALSE){
     fprintf(stderr, "user not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "passwd", &passwd) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.passwd", &passwd) == CONFIG_FALSE){
     fprintf(stderr, "passwd not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "ldaphost", &ldaphost) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldaphost", &ldaphost) == CONFIG_FALSE){
     fprintf(stderr, "ldaphost not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "ldapbase", &ldapbase) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldapbase", &ldapbase) == CONFIG_FALSE){
     fprintf(stderr, "ldapbase not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "ldapbasem", &ldapbasem) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldapbasem", &ldapbasem) == CONFIG_FALSE){
     fprintf(stderr, "ldapbasem not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
@@ -138,28 +138,28 @@ int parse_config_dbonly(dbinfo_t *dbinfo){
       fprintf(stderr,"[%s][%d] Parsing config file: %s\n",__FILE__,__LINE__,CFG_FILE);
 
   if (!config_read_file(cf, CFG_FILE)){
-fprintf(stderr, "[%s][%d]<%s> %s:%d - %s\n", __FILE__,__LINE__,CFG_FILE,config_error_file(cf), config_error_line(cf), config_error_text(cf));
+    fprintf(stderr, "[%s][%d]<%s> %s:%d - %s\n", __FILE__,__LINE__,CFG_FILE,config_error_file(cf), config_error_line(cf), config_error_text(cf));
     fprintf(stderr, "[%s][%d] Error <%s>\n", __FILE__,__LINE__,CFG_FILE);
     config_destroy(cf);
     return EXIT_FAILURE;
   }
 
-  if(config_lookup_string(cf, "host", &host) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "port", &port) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.port", &port) == CONFIG_FALSE){
     fprintf(stderr, "port not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "user", &user) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.user", &user) == CONFIG_FALSE){
     fprintf(stderr, "user not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }    
-  if(config_lookup_string(cf, "passwd", &passwd) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.passwd", &passwd) == CONFIG_FALSE){
     fprintf(stderr, "passwd not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;

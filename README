@@ -54,23 +54,23 @@ This will build the gui component called PathFinder.
 Project Structure
 =================
 lanlpurger
-  -doc              Project documentation
-  -etc              Configuration files
-  -src              Command line tools
-  -lib              Shared libraries
-  -test             Tests
-  -include          Common header files
-  -postgres_setup   SQL code for setting up Postgres
-  -gui              GUI component
-  -src/purger       Purger utility
-  -src/treewalk     Parallel Purger
-  -src/util         Purger tests
-  -lib/config       Wrapper library for libconfig
-  -lib/ldap         Wrapper library for libldap
-  -lib/log          Log file library
-  -lib/prm          Parallel rm library
-  -lib/utils        Common parallel functions
-  -lib/mail         Sendmail wrapper library
-  -test/email       Test email library
-  -test/ldap        Test ldap library
-  -test/log         Test log library
+  -doc            	  Project documentation
+  -etc			  Configuration files
+  -src             	  Command line tools
+  -lib            	  Shared libraries
+  -test             	  Tests
+  -include          	  Common header files
+  -etc/postgres_setup     SQL code for setting up Postgres
+  -gui            	  GUI component
+  -src/purger     	  Purger utility
+  -src/treewalk   	  Parallel Purger
+  -src/util        	  Purger tests
+  -lib/config       	  Wrapper library for libconfig
+  -lib/ldap         	  Wrapper library for libldap
+  -lib/log          	  Log file library
+  -lib/prm         	  Parallel rm library
+  -lib/utils         	  Common parallel functions
+  -lib/mail         	  Sendmail wrapper library
+  -test/email       	  Test email library
+  -test/ldap        	  Test ldap library
+  -test/log         	  Test log library

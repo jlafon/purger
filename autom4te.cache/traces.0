@@ -9208,7 +9208,7 @@ m4trace:configure.ac:79: -1- AC_CONFIG_FILES([
         lib/ldap/Makefile
         lib/log/Makefile
         lib/mail/Makefile
-        lib/prm/Makefile
+        src/prm/Makefile
         lib/utils/Makefile
         src/Makefile
         lib/Makefile

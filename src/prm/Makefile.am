@@ -26,10 +26,29 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
+
+AUTOMAKE_OPTIONS = foreign
+
 AM_LIBTOOLFLAGS = --silent
-bin_PROGRAMS = purger_logtest
-purger_logtest_SOURCES = logtest.c
-purger_logtest_CFLAGS = -I../../include \
-                   -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-purger_logtest_LDFLAGS = -lldap -llber
-purger_logtest_LDADD = ../../lib/log/.libs/liblog.la
+
+bin_PROGRAMS = purger_prm
+
+purger_prm_SOURCES = prm.c
+
+purger_prm_CFLAGS = \
+	       -I$(top_srcdir)/include	  \
+	       -I`pg_config --includedir` \
+               -I$(top_srcdir)
+
+purger_prm_LDFLAGS = -I`pg_config --includedir` \
+		     -L`pg_config --libdir`	\
+		     -lpq -lmpi
+
+libdir = $(top_srcdir)/lib
+
+convenience_libs = $(libdir)/config/.libs/libconfig.la \
+		   $(libdir)/utils/.libs/libutils.la
+
+purger_prm_LDADD = 				\
+	      $(convenience_libs)		\
+	      -lpq -lmpi -lconfig	

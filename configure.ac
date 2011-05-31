@@ -64,7 +64,7 @@ AC_OUTPUT([
         lib/ldap/Makefile
         lib/log/Makefile
         lib/mail/Makefile
-        lib/prm/Makefile
+        src/prm/Makefile
         lib/utils/Makefile
         src/Makefile
         lib/Makefile

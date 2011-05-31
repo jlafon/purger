@@ -36,7 +36,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = mailtest$(EXEEXT)
+bin_PROGRAMS = purger_mailtest$(EXEEXT)
 subdir = test/email
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -49,9 +49,9 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_mailtest_OBJECTS = mailtest-mailtest.$(OBJEXT)
-mailtest_OBJECTS = $(am_mailtest_OBJECTS)
-mailtest_DEPENDENCIES = ../../lib/ldap/.libs/libldap.a \
+am_purger_mailtest_OBJECTS = purger_mailtest-mailtest.$(OBJEXT)
+purger_mailtest_OBJECTS = $(am_purger_mailtest_OBJECTS)
+purger_mailtest_DEPENDENCIES = ../../lib/ldap/.libs/libldap.a \
 	../../lib/mail/.libs/libmail.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -64,8 +64,8 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(mailtest_SOURCES)
-DIST_SOURCES = $(mailtest_SOURCES)
+SOURCES = $(purger_mailtest_SOURCES)
+DIST_SOURCES = $(purger_mailtest_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -197,13 +197,13 @@ target_alias = @target_alias@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-mailtest_SOURCES = mailtest.c
-mailtest_CFLAGS = \
+purger_mailtest_SOURCES = mailtest.c
+purger_mailtest_CFLAGS = \
                 -I../../include \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-mailtest_LDFLAGS = -lldap -llber 
-mailtest_LDADD = \
+purger_mailtest_LDFLAGS = -lldap -llber 
+purger_mailtest_LDADD = \
 		../../lib/ldap/.libs/libldap.a \
                 ../../lib/mail/.libs/libmail.a
 
@@ -268,9 +268,9 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-mailtest$(EXEEXT): $(mailtest_OBJECTS) $(mailtest_DEPENDENCIES) 
-	@rm -f mailtest$(EXEEXT)
-	$(LINK) $(mailtest_LDFLAGS) $(mailtest_OBJECTS) $(mailtest_LDADD) $(LIBS)
+purger_mailtest$(EXEEXT): $(purger_mailtest_OBJECTS) $(purger_mailtest_DEPENDENCIES) 
+	@rm -f purger_mailtest$(EXEEXT)
+	$(LINK) $(purger_mailtest_LDFLAGS) $(purger_mailtest_OBJECTS) $(purger_mailtest_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -278,7 +278,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mailtest-mailtest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_mailtest-mailtest.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -301,19 +301,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-mailtest-mailtest.o: mailtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mailtest_CFLAGS) $(CFLAGS) -MT mailtest-mailtest.o -MD -MP -MF "$(DEPDIR)/mailtest-mailtest.Tpo" -c -o mailtest-mailtest.o `test -f 'mailtest.c' || echo '$(srcdir)/'`mailtest.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/mailtest-mailtest.Tpo" "$(DEPDIR)/mailtest-mailtest.Po"; else rm -f "$(DEPDIR)/mailtest-mailtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mailtest.c' object='mailtest-mailtest.o' libtool=no @AMDEPBACKSLASH@
+purger_mailtest-mailtest.o: mailtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_mailtest_CFLAGS) $(CFLAGS) -MT purger_mailtest-mailtest.o -MD -MP -MF "$(DEPDIR)/purger_mailtest-mailtest.Tpo" -c -o purger_mailtest-mailtest.o `test -f 'mailtest.c' || echo '$(srcdir)/'`mailtest.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_mailtest-mailtest.Tpo" "$(DEPDIR)/purger_mailtest-mailtest.Po"; else rm -f "$(DEPDIR)/purger_mailtest-mailtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mailtest.c' object='purger_mailtest-mailtest.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mailtest_CFLAGS) $(CFLAGS) -c -o mailtest-mailtest.o `test -f 'mailtest.c' || echo '$(srcdir)/'`mailtest.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_mailtest_CFLAGS) $(CFLAGS) -c -o purger_mailtest-mailtest.o `test -f 'mailtest.c' || echo '$(srcdir)/'`mailtest.c
 
-mailtest-mailtest.obj: mailtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mailtest_CFLAGS) $(CFLAGS) -MT mailtest-mailtest.obj -MD -MP -MF "$(DEPDIR)/mailtest-mailtest.Tpo" -c -o mailtest-mailtest.obj `if test -f 'mailtest.c'; then $(CYGPATH_W) 'mailtest.c'; else $(CYGPATH_W) '$(srcdir)/mailtest.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/mailtest-mailtest.Tpo" "$(DEPDIR)/mailtest-mailtest.Po"; else rm -f "$(DEPDIR)/mailtest-mailtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mailtest.c' object='mailtest-mailtest.obj' libtool=no @AMDEPBACKSLASH@
+purger_mailtest-mailtest.obj: mailtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_mailtest_CFLAGS) $(CFLAGS) -MT purger_mailtest-mailtest.obj -MD -MP -MF "$(DEPDIR)/purger_mailtest-mailtest.Tpo" -c -o purger_mailtest-mailtest.obj `if test -f 'mailtest.c'; then $(CYGPATH_W) 'mailtest.c'; else $(CYGPATH_W) '$(srcdir)/mailtest.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_mailtest-mailtest.Tpo" "$(DEPDIR)/purger_mailtest-mailtest.Po"; else rm -f "$(DEPDIR)/purger_mailtest-mailtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mailtest.c' object='purger_mailtest-mailtest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(mailtest_CFLAGS) $(CFLAGS) -c -o mailtest-mailtest.obj `if test -f 'mailtest.c'; then $(CYGPATH_W) 'mailtest.c'; else $(CYGPATH_W) '$(srcdir)/mailtest.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_mailtest_CFLAGS) $(CFLAGS) -c -o purger_mailtest-mailtest.obj `if test -f 'mailtest.c'; then $(CYGPATH_W) 'mailtest.c'; else $(CYGPATH_W) '$(srcdir)/mailtest.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

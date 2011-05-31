@@ -185,9 +185,10 @@ target_alias = @target_alias@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 SUBDIRS = \
-		  purger \
-		  treewalk \
-		  util
+		prm	 \
+		purger   \
+	        treewalk \
+	        util
 
 all: all-recursive
 

@@ -36,7 +36,8 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = bensearch$(EXEEXT) ldapemail$(EXEEXT)
+bin_PROGRAMS = purger_bensearch$(EXEEXT) \
+	purger_ldapemail_test$(EXEEXT)
 subdir = test/ldap
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -49,12 +50,13 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_bensearch_OBJECTS = bensearch-bensearch.$(OBJEXT)
-bensearch_OBJECTS = $(am_bensearch_OBJECTS)
-bensearch_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la
-am_ldapemail_OBJECTS = ldapemail-main.$(OBJEXT)
-ldapemail_OBJECTS = $(am_ldapemail_OBJECTS)
-ldapemail_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la
+am_purger_bensearch_OBJECTS = purger_bensearch-bensearch.$(OBJEXT)
+purger_bensearch_OBJECTS = $(am_purger_bensearch_OBJECTS)
+purger_bensearch_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la
+am_purger_ldapemail_test_OBJECTS =  \
+	purger_ldapemail_test-main.$(OBJEXT)
+purger_ldapemail_test_OBJECTS = $(am_purger_ldapemail_test_OBJECTS)
+purger_ldapemail_test_DEPENDENCIES = ../../lib/ldap/.libs/libldap.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -66,8 +68,9 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(bensearch_SOURCES) $(ldapemail_SOURCES)
-DIST_SOURCES = $(bensearch_SOURCES) $(ldapemail_SOURCES)
+SOURCES = $(purger_bensearch_SOURCES) $(purger_ldapemail_test_SOURCES)
+DIST_SOURCES = $(purger_bensearch_SOURCES) \
+	$(purger_ldapemail_test_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -199,18 +202,18 @@ target_alias = @target_alias@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-bensearch_SOURCES = bensearch.c
-bensearch_CFLAGS = -I../../include \
+purger_bensearch_SOURCES = bensearch.c
+purger_bensearch_CFLAGS = -I../../include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-bensearch_LDFLAGS = -lldap -llber
-bensearch_LDADD = ../../lib/ldap/.libs/libldap.la
-ldapemail_SOURCES = main.c
-ldapemail_CFLAGS = -I../../include \
+purger_bensearch_LDFLAGS = -lldap -llber
+purger_bensearch_LDADD = ../../lib/ldap/.libs/libldap.la
+purger_ldapemail_test_SOURCES = main.c
+purger_ldapemail_test_CFLAGS = -I../../include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-ldapemail_LDFLAGS = -lldap -llber
-ldapemail_LDADD = ../../lib/ldap/.libs/libldap.la
+purger_ldapemail_test_LDFLAGS = -lldap -llber
+purger_ldapemail_test_LDADD = ../../lib/ldap/.libs/libldap.la
 all: all-am
 
 .SUFFIXES:
@@ -272,12 +275,12 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-bensearch$(EXEEXT): $(bensearch_OBJECTS) $(bensearch_DEPENDENCIES) 
-	@rm -f bensearch$(EXEEXT)
-	$(LINK) $(bensearch_LDFLAGS) $(bensearch_OBJECTS) $(bensearch_LDADD) $(LIBS)
-ldapemail$(EXEEXT): $(ldapemail_OBJECTS) $(ldapemail_DEPENDENCIES) 
-	@rm -f ldapemail$(EXEEXT)
-	$(LINK) $(ldapemail_LDFLAGS) $(ldapemail_OBJECTS) $(ldapemail_LDADD) $(LIBS)
+purger_bensearch$(EXEEXT): $(purger_bensearch_OBJECTS) $(purger_bensearch_DEPENDENCIES) 
+	@rm -f purger_bensearch$(EXEEXT)
+	$(LINK) $(purger_bensearch_LDFLAGS) $(purger_bensearch_OBJECTS) $(purger_bensearch_LDADD) $(LIBS)
+purger_ldapemail_test$(EXEEXT): $(purger_ldapemail_test_OBJECTS) $(purger_ldapemail_test_DEPENDENCIES) 
+	@rm -f purger_ldapemail_test$(EXEEXT)
+	$(LINK) $(purger_ldapemail_test_LDFLAGS) $(purger_ldapemail_test_OBJECTS) $(purger_ldapemail_test_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -285,8 +288,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bensearch-bensearch.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ldapemail-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_bensearch-bensearch.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_ldapemail_test-main.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -309,33 +312,33 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-bensearch-bensearch.o: bensearch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bensearch_CFLAGS) $(CFLAGS) -MT bensearch-bensearch.o -MD -MP -MF "$(DEPDIR)/bensearch-bensearch.Tpo" -c -o bensearch-bensearch.o `test -f 'bensearch.c' || echo '$(srcdir)/'`bensearch.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/bensearch-bensearch.Tpo" "$(DEPDIR)/bensearch-bensearch.Po"; else rm -f "$(DEPDIR)/bensearch-bensearch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bensearch.c' object='bensearch-bensearch.o' libtool=no @AMDEPBACKSLASH@
+purger_bensearch-bensearch.o: bensearch.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_bensearch_CFLAGS) $(CFLAGS) -MT purger_bensearch-bensearch.o -MD -MP -MF "$(DEPDIR)/purger_bensearch-bensearch.Tpo" -c -o purger_bensearch-bensearch.o `test -f 'bensearch.c' || echo '$(srcdir)/'`bensearch.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_bensearch-bensearch.Tpo" "$(DEPDIR)/purger_bensearch-bensearch.Po"; else rm -f "$(DEPDIR)/purger_bensearch-bensearch.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bensearch.c' object='purger_bensearch-bensearch.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bensearch_CFLAGS) $(CFLAGS) -c -o bensearch-bensearch.o `test -f 'bensearch.c' || echo '$(srcdir)/'`bensearch.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_bensearch_CFLAGS) $(CFLAGS) -c -o purger_bensearch-bensearch.o `test -f 'bensearch.c' || echo '$(srcdir)/'`bensearch.c
 
-bensearch-bensearch.obj: bensearch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bensearch_CFLAGS) $(CFLAGS) -MT bensearch-bensearch.obj -MD -MP -MF "$(DEPDIR)/bensearch-bensearch.Tpo" -c -o bensearch-bensearch.obj `if test -f 'bensearch.c'; then $(CYGPATH_W) 'bensearch.c'; else $(CYGPATH_W) '$(srcdir)/bensearch.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/bensearch-bensearch.Tpo" "$(DEPDIR)/bensearch-bensearch.Po"; else rm -f "$(DEPDIR)/bensearch-bensearch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bensearch.c' object='bensearch-bensearch.obj' libtool=no @AMDEPBACKSLASH@
+purger_bensearch-bensearch.obj: bensearch.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_bensearch_CFLAGS) $(CFLAGS) -MT purger_bensearch-bensearch.obj -MD -MP -MF "$(DEPDIR)/purger_bensearch-bensearch.Tpo" -c -o purger_bensearch-bensearch.obj `if test -f 'bensearch.c'; then $(CYGPATH_W) 'bensearch.c'; else $(CYGPATH_W) '$(srcdir)/bensearch.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_bensearch-bensearch.Tpo" "$(DEPDIR)/purger_bensearch-bensearch.Po"; else rm -f "$(DEPDIR)/purger_bensearch-bensearch.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bensearch.c' object='purger_bensearch-bensearch.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(bensearch_CFLAGS) $(CFLAGS) -c -o bensearch-bensearch.obj `if test -f 'bensearch.c'; then $(CYGPATH_W) 'bensearch.c'; else $(CYGPATH_W) '$(srcdir)/bensearch.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_bensearch_CFLAGS) $(CFLAGS) -c -o purger_bensearch-bensearch.obj `if test -f 'bensearch.c'; then $(CYGPATH_W) 'bensearch.c'; else $(CYGPATH_W) '$(srcdir)/bensearch.c'; fi`
 
-ldapemail-main.o: main.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ldapemail_CFLAGS) $(CFLAGS) -MT ldapemail-main.o -MD -MP -MF "$(DEPDIR)/ldapemail-main.Tpo" -c -o ldapemail-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/ldapemail-main.Tpo" "$(DEPDIR)/ldapemail-main.Po"; else rm -f "$(DEPDIR)/ldapemail-main.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='ldapemail-main.o' libtool=no @AMDEPBACKSLASH@
+purger_ldapemail_test-main.o: main.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_ldapemail_test_CFLAGS) $(CFLAGS) -MT purger_ldapemail_test-main.o -MD -MP -MF "$(DEPDIR)/purger_ldapemail_test-main.Tpo" -c -o purger_ldapemail_test-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_ldapemail_test-main.Tpo" "$(DEPDIR)/purger_ldapemail_test-main.Po"; else rm -f "$(DEPDIR)/purger_ldapemail_test-main.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='purger_ldapemail_test-main.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ldapemail_CFLAGS) $(CFLAGS) -c -o ldapemail-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_ldapemail_test_CFLAGS) $(CFLAGS) -c -o purger_ldapemail_test-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 
-ldapemail-main.obj: main.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ldapemail_CFLAGS) $(CFLAGS) -MT ldapemail-main.obj -MD -MP -MF "$(DEPDIR)/ldapemail-main.Tpo" -c -o ldapemail-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/ldapemail-main.Tpo" "$(DEPDIR)/ldapemail-main.Po"; else rm -f "$(DEPDIR)/ldapemail-main.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='ldapemail-main.obj' libtool=no @AMDEPBACKSLASH@
+purger_ldapemail_test-main.obj: main.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_ldapemail_test_CFLAGS) $(CFLAGS) -MT purger_ldapemail_test-main.obj -MD -MP -MF "$(DEPDIR)/purger_ldapemail_test-main.Tpo" -c -o purger_ldapemail_test-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_ldapemail_test-main.Tpo" "$(DEPDIR)/purger_ldapemail_test-main.Po"; else rm -f "$(DEPDIR)/purger_ldapemail_test-main.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='main.c' object='purger_ldapemail_test-main.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ldapemail_CFLAGS) $(CFLAGS) -c -o ldapemail-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_ldapemail_test_CFLAGS) $(CFLAGS) -c -o purger_ldapemail_test-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

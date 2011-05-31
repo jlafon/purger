@@ -26,16 +26,31 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
+
+AUTOMAKE_OPTIONS = foreign
+
 EXTRA_DIST = purger.h
+
 AM_LIBTOOLFLAGS = --silent
+
 bin_PROGRAMS = purger
+
 purger_SOURCES = purge_user.c
-purger_CFLAGS = -I`pg_config --includedir` \
-                -I../../include \
-				-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-purger_LDFLAGS =  -I`pg_config --includedir` -L`pg_config --libdir` 
-purger_LDADD = \
-				-lpq -lldap -llber \
-				../../lib/ldap/.libs/libldap.la \
-				../../lib/config/.libs/libconfig.la \
-                ../../lib/mail/.libs/libmail.la
+
+purger_CFLAGS = 				\
+		-I`pg_config --includedir`	\
+                -I$(top_srcdir) 		\
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+
+purger_LDFLAGS = 				\
+		-I`pg_config --includedir` -L`pg_config --libdir` 
+
+libdir = $(top_srcdir)/lib
+
+convenience_libs =					\
+		$(libdir)/ldap/.libs/libldap.la 	\
+		$(libdir)/config/.libs/libconfig.la 	\
+                $(libdir)/mail/.libs/libmail.la
+purger_LDADD = 				\
+		-lpq -lldap -llber 	\
+		$(convenience_libs)

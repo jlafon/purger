@@ -14,6 +14,35 @@
 
 @SET_MAKE@
 
+################################################################################
+# Copyright 2008-2009 Los Alamos National Security, LLC. All Rights Reserved.  #
+#                                                                              #
+# Redistribution and use in source and binary forms, with or without           #
+# modification, are permitted provided that the following conditions are met:  #
+#                                                                              #
+#                                                                              #
+#   o Redistributions of source code must retain the above copyright notice,   #
+#     this list of conditions and the following disclaimer.                    #
+#   o Redistributions in binary form must reproduce the above copyright        #
+#     notice, this list of conditions and the following disclaimer in the      #
+#     documentation and/or other materials provided with the distribution.     #
+#   o Neither the name of the copyright holders nor the names of its           #
+#     contributors may be used to endorse or promote products derived from     #
+#     this software without specific prior written permission.                 #
+#                                                                              #
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
+# POSSIBILITY OF SUCH DAMAGE.                                                  #
+################################################################################
+
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -36,7 +65,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = pstat$(EXEEXT)
+bin_PROGRAMS = purger_pstat$(EXEEXT)
 subdir = src/treewalk
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -49,10 +78,11 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-pstat_SOURCES = pstat.c
-pstat_OBJECTS = pstat-pstat.$(OBJEXT)
-pstat_DEPENDENCIES = ../../lib/utils/.libs/libutils.la \
-	../../lib/config/.libs/libconfig.la
+am_purger_pstat_OBJECTS = purger_pstat-pstat.$(OBJEXT)
+purger_pstat_OBJECTS = $(am_purger_pstat_OBJECTS)
+am__DEPENDENCIES_1 = $(libdir)/utils/.libs/libutils.la \
+	$(libdir)/config/.libs/libconfig.la
+purger_pstat_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -64,8 +94,8 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = pstat.c
-DIST_SOURCES = pstat.c
+SOURCES = $(purger_pstat_SOURCES)
+DIST_SOURCES = $(purger_pstat_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -155,7 +185,7 @@ host_vendor = @host_vendor@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libdir = @libdir@
+libdir = $(top_srcdir)/lib
 libexecdir = @libexecdir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -167,47 +197,21 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-
-################################################################################
-# Copyright 2008-2009 Los Alamos National Security, LLC. All Rights Reserved.  #
-#                                                                              #
-# Redistribution and use in source and binary forms, with or without           #
-# modification, are permitted provided that the following conditions are met:  #
-#                                                                              #
-#                                                                              #
-#   o Redistributions of source code must retain the above copyright notice,   #
-#     this list of conditions and the following disclaimer.                    #
-#   o Redistributions in binary form must reproduce the above copyright        #
-#     notice, this list of conditions and the following disclaimer in the      #
-#     documentation and/or other materials provided with the distribution.     #
-#   o Neither the name of the copyright holders nor the names of its           #
-#     contributors may be used to endorse or promote products derived from     #
-#     this software without specific prior written permission.                 #
-#                                                                              #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
-# POSSIBILITY OF SUCH DAMAGE.                                                  #
-################################################################################
+AUTOMAKE_OPTIONS = foreign
 EXTRA_DIST = pstat.h
 AM_LIBTOOLFLAGS = --silent
-pstat_CFLAGS = \
-			   -I`pg_config --includedir` \
-               -I../../include
+purger_pstat_SOURCES = pstat.c
+purger_pstat_CFLAGS = \
+	       -I`pg_config --includedir` \
+               -I$(topsrc_dir)
 
-pstat_LDADD = \
-			  -lpq \
-			  -lmpi \
-              ../../lib/utils/.libs/libutils.la \
-              ../../lib/config/.libs/libconfig.la \
-			  -lconfig 
+convenience_libs = \
+              $(libdir)/utils/.libs/libutils.la	\
+              $(libdir)/config/.libs/libconfig.la
+
+purger_pstat_LDADD = \
+	      -lpq -lmpi -lconfig	\
+	      $(convenience_libs)
 
 all: all-am
 
@@ -270,9 +274,9 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-pstat$(EXEEXT): $(pstat_OBJECTS) $(pstat_DEPENDENCIES) 
-	@rm -f pstat$(EXEEXT)
-	$(LINK) $(pstat_LDFLAGS) $(pstat_OBJECTS) $(pstat_LDADD) $(LIBS)
+purger_pstat$(EXEEXT): $(purger_pstat_OBJECTS) $(purger_pstat_DEPENDENCIES) 
+	@rm -f purger_pstat$(EXEEXT)
+	$(LINK) $(purger_pstat_LDFLAGS) $(purger_pstat_OBJECTS) $(purger_pstat_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -280,7 +284,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pstat-pstat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_pstat-pstat.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -303,19 +307,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-pstat-pstat.o: pstat.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pstat_CFLAGS) $(CFLAGS) -MT pstat-pstat.o -MD -MP -MF "$(DEPDIR)/pstat-pstat.Tpo" -c -o pstat-pstat.o `test -f 'pstat.c' || echo '$(srcdir)/'`pstat.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pstat-pstat.Tpo" "$(DEPDIR)/pstat-pstat.Po"; else rm -f "$(DEPDIR)/pstat-pstat.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pstat.c' object='pstat-pstat.o' libtool=no @AMDEPBACKSLASH@
+purger_pstat-pstat.o: pstat.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_pstat_CFLAGS) $(CFLAGS) -MT purger_pstat-pstat.o -MD -MP -MF "$(DEPDIR)/purger_pstat-pstat.Tpo" -c -o purger_pstat-pstat.o `test -f 'pstat.c' || echo '$(srcdir)/'`pstat.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_pstat-pstat.Tpo" "$(DEPDIR)/purger_pstat-pstat.Po"; else rm -f "$(DEPDIR)/purger_pstat-pstat.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pstat.c' object='purger_pstat-pstat.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pstat_CFLAGS) $(CFLAGS) -c -o pstat-pstat.o `test -f 'pstat.c' || echo '$(srcdir)/'`pstat.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_pstat_CFLAGS) $(CFLAGS) -c -o purger_pstat-pstat.o `test -f 'pstat.c' || echo '$(srcdir)/'`pstat.c
 
-pstat-pstat.obj: pstat.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pstat_CFLAGS) $(CFLAGS) -MT pstat-pstat.obj -MD -MP -MF "$(DEPDIR)/pstat-pstat.Tpo" -c -o pstat-pstat.obj `if test -f 'pstat.c'; then $(CYGPATH_W) 'pstat.c'; else $(CYGPATH_W) '$(srcdir)/pstat.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/pstat-pstat.Tpo" "$(DEPDIR)/pstat-pstat.Po"; else rm -f "$(DEPDIR)/pstat-pstat.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pstat.c' object='pstat-pstat.obj' libtool=no @AMDEPBACKSLASH@
+purger_pstat-pstat.obj: pstat.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_pstat_CFLAGS) $(CFLAGS) -MT purger_pstat-pstat.obj -MD -MP -MF "$(DEPDIR)/purger_pstat-pstat.Tpo" -c -o purger_pstat-pstat.obj `if test -f 'pstat.c'; then $(CYGPATH_W) 'pstat.c'; else $(CYGPATH_W) '$(srcdir)/pstat.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_pstat-pstat.Tpo" "$(DEPDIR)/purger_pstat-pstat.Po"; else rm -f "$(DEPDIR)/purger_pstat-pstat.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pstat.c' object='purger_pstat-pstat.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pstat_CFLAGS) $(CFLAGS) -c -o pstat-pstat.obj `if test -f 'pstat.c'; then $(CYGPATH_W) 'pstat.c'; else $(CYGPATH_W) '$(srcdir)/pstat.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_pstat_CFLAGS) $(CFLAGS) -c -o purger_pstat-pstat.obj `if test -f 'pstat.c'; then $(CYGPATH_W) 'pstat.c'; else $(CYGPATH_W) '$(srcdir)/pstat.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

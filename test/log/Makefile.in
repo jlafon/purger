@@ -36,7 +36,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = logtest$(EXEEXT)
+bin_PROGRAMS = purger_logtest$(EXEEXT)
 subdir = test/log
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -49,9 +49,9 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_logtest_OBJECTS = logtest-logtest.$(OBJEXT)
-logtest_OBJECTS = $(am_logtest_OBJECTS)
-logtest_DEPENDENCIES = ../../lib/log/.libs/liblog.la
+am_purger_logtest_OBJECTS = purger_logtest-logtest.$(OBJEXT)
+purger_logtest_OBJECTS = $(am_purger_logtest_OBJECTS)
+purger_logtest_DEPENDENCIES = ../../lib/log/.libs/liblog.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -63,8 +63,8 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(logtest_SOURCES)
-DIST_SOURCES = $(logtest_SOURCES)
+SOURCES = $(purger_logtest_SOURCES)
+DIST_SOURCES = $(purger_logtest_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -196,12 +196,12 @@ target_alias = @target_alias@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-logtest_SOURCES = logtest.c
-logtest_CFLAGS = -I../../include \
+purger_logtest_SOURCES = logtest.c
+purger_logtest_CFLAGS = -I../../include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-logtest_LDFLAGS = -lldap -llber
-logtest_LDADD = ../../lib/log/.libs/liblog.la
+purger_logtest_LDFLAGS = -lldap -llber
+purger_logtest_LDADD = ../../lib/log/.libs/liblog.la
 all: all-am
 
 .SUFFIXES:
@@ -263,9 +263,9 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-logtest$(EXEEXT): $(logtest_OBJECTS) $(logtest_DEPENDENCIES) 
-	@rm -f logtest$(EXEEXT)
-	$(LINK) $(logtest_LDFLAGS) $(logtest_OBJECTS) $(logtest_LDADD) $(LIBS)
+purger_logtest$(EXEEXT): $(purger_logtest_OBJECTS) $(purger_logtest_DEPENDENCIES) 
+	@rm -f purger_logtest$(EXEEXT)
+	$(LINK) $(purger_logtest_LDFLAGS) $(purger_logtest_OBJECTS) $(purger_logtest_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -273,7 +273,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logtest-logtest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_logtest-logtest.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -296,19 +296,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-logtest-logtest.o: logtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(logtest_CFLAGS) $(CFLAGS) -MT logtest-logtest.o -MD -MP -MF "$(DEPDIR)/logtest-logtest.Tpo" -c -o logtest-logtest.o `test -f 'logtest.c' || echo '$(srcdir)/'`logtest.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/logtest-logtest.Tpo" "$(DEPDIR)/logtest-logtest.Po"; else rm -f "$(DEPDIR)/logtest-logtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logtest.c' object='logtest-logtest.o' libtool=no @AMDEPBACKSLASH@
+purger_logtest-logtest.o: logtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_logtest_CFLAGS) $(CFLAGS) -MT purger_logtest-logtest.o -MD -MP -MF "$(DEPDIR)/purger_logtest-logtest.Tpo" -c -o purger_logtest-logtest.o `test -f 'logtest.c' || echo '$(srcdir)/'`logtest.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_logtest-logtest.Tpo" "$(DEPDIR)/purger_logtest-logtest.Po"; else rm -f "$(DEPDIR)/purger_logtest-logtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logtest.c' object='purger_logtest-logtest.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(logtest_CFLAGS) $(CFLAGS) -c -o logtest-logtest.o `test -f 'logtest.c' || echo '$(srcdir)/'`logtest.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_logtest_CFLAGS) $(CFLAGS) -c -o purger_logtest-logtest.o `test -f 'logtest.c' || echo '$(srcdir)/'`logtest.c
 
-logtest-logtest.obj: logtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(logtest_CFLAGS) $(CFLAGS) -MT logtest-logtest.obj -MD -MP -MF "$(DEPDIR)/logtest-logtest.Tpo" -c -o logtest-logtest.obj `if test -f 'logtest.c'; then $(CYGPATH_W) 'logtest.c'; else $(CYGPATH_W) '$(srcdir)/logtest.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/logtest-logtest.Tpo" "$(DEPDIR)/logtest-logtest.Po"; else rm -f "$(DEPDIR)/logtest-logtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logtest.c' object='logtest-logtest.obj' libtool=no @AMDEPBACKSLASH@
+purger_logtest-logtest.obj: logtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_logtest_CFLAGS) $(CFLAGS) -MT purger_logtest-logtest.obj -MD -MP -MF "$(DEPDIR)/purger_logtest-logtest.Tpo" -c -o purger_logtest-logtest.obj `if test -f 'logtest.c'; then $(CYGPATH_W) 'logtest.c'; else $(CYGPATH_W) '$(srcdir)/logtest.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_logtest-logtest.Tpo" "$(DEPDIR)/purger_logtest-logtest.Po"; else rm -f "$(DEPDIR)/purger_logtest-logtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='logtest.c' object='purger_logtest-logtest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(logtest_CFLAGS) $(CFLAGS) -c -o logtest-logtest.obj `if test -f 'logtest.c'; then $(CYGPATH_W) 'logtest.c'; else $(CYGPATH_W) '$(srcdir)/logtest.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_logtest_CFLAGS) $(CFLAGS) -c -o purger_logtest-logtest.obj `if test -f 'logtest.c'; then $(CYGPATH_W) 'logtest.c'; else $(CYGPATH_W) '$(srcdir)/logtest.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -1,9 +1,9 @@
 #!/bin/bash 
 echo "Testing email..."
-email/mailtest
+email/purger_mailtest
 echo "Testing LDAP..."
-ldap/ldapemail
+ldap/purger_ldapemail_test
 echo "Testing log..."
-log/logtest
+log/purger_logtest
 echo "Testing database insert..."
-insert/insert
+insert/purger_insert .

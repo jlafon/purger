@@ -33,5 +33,4 @@ SUBDIRS = \
 		  config \
 		  ldap \
 		  mail \
-		  prm \
 		  utils

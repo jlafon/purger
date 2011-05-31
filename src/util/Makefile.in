@@ -14,6 +14,35 @@
 
 @SET_MAKE@
 
+################################################################################
+# Copyright 2008-2009 Los Alamos National Security, LLC. All Rights Reserved.  #
+#                                                                              #
+# Redistribution and use in source and binary forms, with or without           #
+# modification, are permitted provided that the following conditions are met:  #
+#                                                                              #
+#                                                                              #
+#   o Redistributions of source code must retain the above copyright notice,   #
+#     this list of conditions and the following disclaimer.                    #
+#   o Redistributions in binary form must reproduce the above copyright        #
+#     notice, this list of conditions and the following disclaimer in the      #
+#     documentation and/or other materials provided with the distribution.     #
+#   o Neither the name of the copyright holders nor the names of its           #
+#     contributors may be used to endorse or promote products derived from     #
+#     this software without specific prior written permission.                 #
+#                                                                              #
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
+# POSSIBILITY OF SUCH DAMAGE.                                                  #
+################################################################################
+
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
@@ -36,8 +65,9 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = chkscratch$(EXEEXT) update_expired$(EXEEXT) \
-	deleter$(EXEEXT) dbtest$(EXEEXT)
+bin_PROGRAMS = purger_chkscratch$(EXEEXT) \
+	purger_update_expired$(EXEEXT) purger_deleter$(EXEEXT) \
+	purger_dbtest$(EXEEXT)
 subdir = src/util
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -50,18 +80,20 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_chkscratch_OBJECTS = chkscratch-chkscratch.$(OBJEXT)
-chkscratch_OBJECTS = $(am_chkscratch_OBJECTS)
-chkscratch_LDADD = $(LDADD)
-am_dbtest_OBJECTS = dbtest-dbtest.$(OBJEXT)
-dbtest_OBJECTS = $(am_dbtest_OBJECTS)
-dbtest_DEPENDENCIES = ../../lib/config/.libs/libconfig.la
-am_deleter_OBJECTS = deleter-deleter.$(OBJEXT)
-deleter_OBJECTS = $(am_deleter_OBJECTS)
-deleter_LDADD = $(LDADD)
-am_update_expired_OBJECTS = update_expired-update_expired.$(OBJEXT)
-update_expired_OBJECTS = $(am_update_expired_OBJECTS)
-update_expired_DEPENDENCIES = ../../lib/config/.libs/libconfig.la
+am_purger_chkscratch_OBJECTS = purger_chkscratch-chkscratch.$(OBJEXT)
+purger_chkscratch_OBJECTS = $(am_purger_chkscratch_OBJECTS)
+purger_chkscratch_LDADD = $(LDADD)
+am_purger_dbtest_OBJECTS = purger_dbtest-dbtest.$(OBJEXT)
+purger_dbtest_OBJECTS = $(am_purger_dbtest_OBJECTS)
+am__DEPENDENCIES_1 = $(libdir)/config/.libs/libconfig.la
+purger_dbtest_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_purger_deleter_OBJECTS = purger_deleter-deleter.$(OBJEXT)
+purger_deleter_OBJECTS = $(am_purger_deleter_OBJECTS)
+purger_deleter_LDADD = $(LDADD)
+am_purger_update_expired_OBJECTS =  \
+	purger_update_expired-update_expired.$(OBJEXT)
+purger_update_expired_OBJECTS = $(am_purger_update_expired_OBJECTS)
+purger_update_expired_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -73,10 +105,10 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(chkscratch_SOURCES) $(dbtest_SOURCES) $(deleter_SOURCES) \
-	$(update_expired_SOURCES)
-DIST_SOURCES = $(chkscratch_SOURCES) $(dbtest_SOURCES) \
-	$(deleter_SOURCES) $(update_expired_SOURCES)
+SOURCES = $(purger_chkscratch_SOURCES) $(purger_dbtest_SOURCES) \
+	$(purger_deleter_SOURCES) $(purger_update_expired_SOURCES)
+DIST_SOURCES = $(purger_chkscratch_SOURCES) $(purger_dbtest_SOURCES) \
+	$(purger_deleter_SOURCES) $(purger_update_expired_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -166,7 +198,7 @@ host_vendor = @host_vendor@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libdir = @libdir@
+libdir = $(top_srcdir)/lib
 libexecdir = @libexecdir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -178,51 +210,25 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-
-################################################################################
-# Copyright 2008-2009 Los Alamos National Security, LLC. All Rights Reserved.  #
-#                                                                              #
-# Redistribution and use in source and binary forms, with or without           #
-# modification, are permitted provided that the following conditions are met:  #
-#                                                                              #
-#                                                                              #
-#   o Redistributions of source code must retain the above copyright notice,   #
-#     this list of conditions and the following disclaimer.                    #
-#   o Redistributions in binary form must reproduce the above copyright        #
-#     notice, this list of conditions and the following disclaimer in the      #
-#     documentation and/or other materials provided with the distribution.     #
-#   o Neither the name of the copyright holders nor the names of its           #
-#     contributors may be used to endorse or promote products derived from     #
-#     this software without specific prior written permission.                 #
-#                                                                              #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"  #
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE    #
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE   #
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE    #
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR          #
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF         #
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS     #
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN      #
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)      #
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
-# POSSIBILITY OF SUCH DAMAGE.                                                  #
-################################################################################
 EXTRA_DIST = deleter.h
+convenience_libs = \
+		   $(libdir)/config/.libs/libconfig.la 
+
 AM_LIBTOOLFLAGS = --silent
-dbtest_SOURCES = dbtest.c
-dbtest_CFLAGS = -lconfig -I../../include -I`pg_config --includedir`
-dbtest_LDADD = ../../lib/config/.libs/libconfig.la
-dbtest_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
-chkscratch_SOURCES = chkscratch.c
-chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
-chkscratch_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
-update_expired_SOURCES = update_expired.c
-update_expired_CFLAGS = -I`pg_config --includedir`
-update_expired_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
-update_expired_LDADD = ../../lib/config/.libs/libconfig.la
-deleter_CFLAGS = -I`pg_config --includedir`
-deleter_SOURCES = deleter.c
-deleter_LDFLAGS = -lpq -I`pg_config --includedir` -L`pg_config --libdir`
+purger_dbtest_SOURCES = dbtest.c
+purger_dbtest_CFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_dbtest_LDADD = $(convenience_libs)
+purger_dbtest_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_chkscratch_SOURCES = chkscratch.c
+purger_chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
+purger_chkscratch_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_update_expired_SOURCES = update_expired.c
+purger_update_expired_CFLAGS = -I`pg_config --includedir`
+purger_update_expired_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_update_expired_LDADD = $(convenience_libs)
+purger_deleter_CFLAGS = -I`pg_config --includedir`
+purger_deleter_SOURCES = deleter.c
+purger_deleter_LDFLAGS = -lpq -I`pg_config --includedir` -L`pg_config --libdir`
 all: all-am
 
 .SUFFIXES:
@@ -284,18 +290,18 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-chkscratch$(EXEEXT): $(chkscratch_OBJECTS) $(chkscratch_DEPENDENCIES) 
-	@rm -f chkscratch$(EXEEXT)
-	$(LINK) $(chkscratch_LDFLAGS) $(chkscratch_OBJECTS) $(chkscratch_LDADD) $(LIBS)
-dbtest$(EXEEXT): $(dbtest_OBJECTS) $(dbtest_DEPENDENCIES) 
-	@rm -f dbtest$(EXEEXT)
-	$(LINK) $(dbtest_LDFLAGS) $(dbtest_OBJECTS) $(dbtest_LDADD) $(LIBS)
-deleter$(EXEEXT): $(deleter_OBJECTS) $(deleter_DEPENDENCIES) 
-	@rm -f deleter$(EXEEXT)
-	$(LINK) $(deleter_LDFLAGS) $(deleter_OBJECTS) $(deleter_LDADD) $(LIBS)
-update_expired$(EXEEXT): $(update_expired_OBJECTS) $(update_expired_DEPENDENCIES) 
-	@rm -f update_expired$(EXEEXT)
-	$(LINK) $(update_expired_LDFLAGS) $(update_expired_OBJECTS) $(update_expired_LDADD) $(LIBS)
+purger_chkscratch$(EXEEXT): $(purger_chkscratch_OBJECTS) $(purger_chkscratch_DEPENDENCIES) 
+	@rm -f purger_chkscratch$(EXEEXT)
+	$(LINK) $(purger_chkscratch_LDFLAGS) $(purger_chkscratch_OBJECTS) $(purger_chkscratch_LDADD) $(LIBS)
+purger_dbtest$(EXEEXT): $(purger_dbtest_OBJECTS) $(purger_dbtest_DEPENDENCIES) 
+	@rm -f purger_dbtest$(EXEEXT)
+	$(LINK) $(purger_dbtest_LDFLAGS) $(purger_dbtest_OBJECTS) $(purger_dbtest_LDADD) $(LIBS)
+purger_deleter$(EXEEXT): $(purger_deleter_OBJECTS) $(purger_deleter_DEPENDENCIES) 
+	@rm -f purger_deleter$(EXEEXT)
+	$(LINK) $(purger_deleter_LDFLAGS) $(purger_deleter_OBJECTS) $(purger_deleter_LDADD) $(LIBS)
+purger_update_expired$(EXEEXT): $(purger_update_expired_OBJECTS) $(purger_update_expired_DEPENDENCIES) 
+	@rm -f purger_update_expired$(EXEEXT)
+	$(LINK) $(purger_update_expired_LDFLAGS) $(purger_update_expired_OBJECTS) $(purger_update_expired_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -303,10 +309,10 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkscratch-chkscratch.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dbtest-dbtest.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/deleter-deleter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/update_expired-update_expired.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_chkscratch-chkscratch.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_dbtest-dbtest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_deleter-deleter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_update_expired-update_expired.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -329,61 +335,61 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
-chkscratch-chkscratch.o: chkscratch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(chkscratch_CFLAGS) $(CFLAGS) -MT chkscratch-chkscratch.o -MD -MP -MF "$(DEPDIR)/chkscratch-chkscratch.Tpo" -c -o chkscratch-chkscratch.o `test -f 'chkscratch.c' || echo '$(srcdir)/'`chkscratch.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/chkscratch-chkscratch.Tpo" "$(DEPDIR)/chkscratch-chkscratch.Po"; else rm -f "$(DEPDIR)/chkscratch-chkscratch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='chkscratch.c' object='chkscratch-chkscratch.o' libtool=no @AMDEPBACKSLASH@
+purger_chkscratch-chkscratch.o: chkscratch.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_chkscratch_CFLAGS) $(CFLAGS) -MT purger_chkscratch-chkscratch.o -MD -MP -MF "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo" -c -o purger_chkscratch-chkscratch.o `test -f 'chkscratch.c' || echo '$(srcdir)/'`chkscratch.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo" "$(DEPDIR)/purger_chkscratch-chkscratch.Po"; else rm -f "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='chkscratch.c' object='purger_chkscratch-chkscratch.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(chkscratch_CFLAGS) $(CFLAGS) -c -o chkscratch-chkscratch.o `test -f 'chkscratch.c' || echo '$(srcdir)/'`chkscratch.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_chkscratch_CFLAGS) $(CFLAGS) -c -o purger_chkscratch-chkscratch.o `test -f 'chkscratch.c' || echo '$(srcdir)/'`chkscratch.c
 
-chkscratch-chkscratch.obj: chkscratch.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(chkscratch_CFLAGS) $(CFLAGS) -MT chkscratch-chkscratch.obj -MD -MP -MF "$(DEPDIR)/chkscratch-chkscratch.Tpo" -c -o chkscratch-chkscratch.obj `if test -f 'chkscratch.c'; then $(CYGPATH_W) 'chkscratch.c'; else $(CYGPATH_W) '$(srcdir)/chkscratch.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/chkscratch-chkscratch.Tpo" "$(DEPDIR)/chkscratch-chkscratch.Po"; else rm -f "$(DEPDIR)/chkscratch-chkscratch.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='chkscratch.c' object='chkscratch-chkscratch.obj' libtool=no @AMDEPBACKSLASH@
+purger_chkscratch-chkscratch.obj: chkscratch.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_chkscratch_CFLAGS) $(CFLAGS) -MT purger_chkscratch-chkscratch.obj -MD -MP -MF "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo" -c -o purger_chkscratch-chkscratch.obj `if test -f 'chkscratch.c'; then $(CYGPATH_W) 'chkscratch.c'; else $(CYGPATH_W) '$(srcdir)/chkscratch.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo" "$(DEPDIR)/purger_chkscratch-chkscratch.Po"; else rm -f "$(DEPDIR)/purger_chkscratch-chkscratch.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='chkscratch.c' object='purger_chkscratch-chkscratch.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(chkscratch_CFLAGS) $(CFLAGS) -c -o chkscratch-chkscratch.obj `if test -f 'chkscratch.c'; then $(CYGPATH_W) 'chkscratch.c'; else $(CYGPATH_W) '$(srcdir)/chkscratch.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_chkscratch_CFLAGS) $(CFLAGS) -c -o purger_chkscratch-chkscratch.obj `if test -f 'chkscratch.c'; then $(CYGPATH_W) 'chkscratch.c'; else $(CYGPATH_W) '$(srcdir)/chkscratch.c'; fi`
 
-dbtest-dbtest.o: dbtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -MT dbtest-dbtest.o -MD -MP -MF "$(DEPDIR)/dbtest-dbtest.Tpo" -c -o dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/dbtest-dbtest.Tpo" "$(DEPDIR)/dbtest-dbtest.Po"; else rm -f "$(DEPDIR)/dbtest-dbtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='dbtest-dbtest.o' libtool=no @AMDEPBACKSLASH@
+purger_dbtest-dbtest.o: dbtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_dbtest_CFLAGS) $(CFLAGS) -MT purger_dbtest-dbtest.o -MD -MP -MF "$(DEPDIR)/purger_dbtest-dbtest.Tpo" -c -o purger_dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_dbtest-dbtest.Tpo" "$(DEPDIR)/purger_dbtest-dbtest.Po"; else rm -f "$(DEPDIR)/purger_dbtest-dbtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='purger_dbtest-dbtest.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -c -o dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_dbtest_CFLAGS) $(CFLAGS) -c -o purger_dbtest-dbtest.o `test -f 'dbtest.c' || echo '$(srcdir)/'`dbtest.c
 
-dbtest-dbtest.obj: dbtest.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -MT dbtest-dbtest.obj -MD -MP -MF "$(DEPDIR)/dbtest-dbtest.Tpo" -c -o dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/dbtest-dbtest.Tpo" "$(DEPDIR)/dbtest-dbtest.Po"; else rm -f "$(DEPDIR)/dbtest-dbtest.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='dbtest-dbtest.obj' libtool=no @AMDEPBACKSLASH@
+purger_dbtest-dbtest.obj: dbtest.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_dbtest_CFLAGS) $(CFLAGS) -MT purger_dbtest-dbtest.obj -MD -MP -MF "$(DEPDIR)/purger_dbtest-dbtest.Tpo" -c -o purger_dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_dbtest-dbtest.Tpo" "$(DEPDIR)/purger_dbtest-dbtest.Po"; else rm -f "$(DEPDIR)/purger_dbtest-dbtest.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dbtest.c' object='purger_dbtest-dbtest.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dbtest_CFLAGS) $(CFLAGS) -c -o dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_dbtest_CFLAGS) $(CFLAGS) -c -o purger_dbtest-dbtest.obj `if test -f 'dbtest.c'; then $(CYGPATH_W) 'dbtest.c'; else $(CYGPATH_W) '$(srcdir)/dbtest.c'; fi`
 
-deleter-deleter.o: deleter.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(deleter_CFLAGS) $(CFLAGS) -MT deleter-deleter.o -MD -MP -MF "$(DEPDIR)/deleter-deleter.Tpo" -c -o deleter-deleter.o `test -f 'deleter.c' || echo '$(srcdir)/'`deleter.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/deleter-deleter.Tpo" "$(DEPDIR)/deleter-deleter.Po"; else rm -f "$(DEPDIR)/deleter-deleter.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='deleter.c' object='deleter-deleter.o' libtool=no @AMDEPBACKSLASH@
+purger_deleter-deleter.o: deleter.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_deleter_CFLAGS) $(CFLAGS) -MT purger_deleter-deleter.o -MD -MP -MF "$(DEPDIR)/purger_deleter-deleter.Tpo" -c -o purger_deleter-deleter.o `test -f 'deleter.c' || echo '$(srcdir)/'`deleter.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_deleter-deleter.Tpo" "$(DEPDIR)/purger_deleter-deleter.Po"; else rm -f "$(DEPDIR)/purger_deleter-deleter.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='deleter.c' object='purger_deleter-deleter.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(deleter_CFLAGS) $(CFLAGS) -c -o deleter-deleter.o `test -f 'deleter.c' || echo '$(srcdir)/'`deleter.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_deleter_CFLAGS) $(CFLAGS) -c -o purger_deleter-deleter.o `test -f 'deleter.c' || echo '$(srcdir)/'`deleter.c
 
-deleter-deleter.obj: deleter.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(deleter_CFLAGS) $(CFLAGS) -MT deleter-deleter.obj -MD -MP -MF "$(DEPDIR)/deleter-deleter.Tpo" -c -o deleter-deleter.obj `if test -f 'deleter.c'; then $(CYGPATH_W) 'deleter.c'; else $(CYGPATH_W) '$(srcdir)/deleter.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/deleter-deleter.Tpo" "$(DEPDIR)/deleter-deleter.Po"; else rm -f "$(DEPDIR)/deleter-deleter.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='deleter.c' object='deleter-deleter.obj' libtool=no @AMDEPBACKSLASH@
+purger_deleter-deleter.obj: deleter.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_deleter_CFLAGS) $(CFLAGS) -MT purger_deleter-deleter.obj -MD -MP -MF "$(DEPDIR)/purger_deleter-deleter.Tpo" -c -o purger_deleter-deleter.obj `if test -f 'deleter.c'; then $(CYGPATH_W) 'deleter.c'; else $(CYGPATH_W) '$(srcdir)/deleter.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_deleter-deleter.Tpo" "$(DEPDIR)/purger_deleter-deleter.Po"; else rm -f "$(DEPDIR)/purger_deleter-deleter.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='deleter.c' object='purger_deleter-deleter.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(deleter_CFLAGS) $(CFLAGS) -c -o deleter-deleter.obj `if test -f 'deleter.c'; then $(CYGPATH_W) 'deleter.c'; else $(CYGPATH_W) '$(srcdir)/deleter.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_deleter_CFLAGS) $(CFLAGS) -c -o purger_deleter-deleter.obj `if test -f 'deleter.c'; then $(CYGPATH_W) 'deleter.c'; else $(CYGPATH_W) '$(srcdir)/deleter.c'; fi`
 
-update_expired-update_expired.o: update_expired.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(update_expired_CFLAGS) $(CFLAGS) -MT update_expired-update_expired.o -MD -MP -MF "$(DEPDIR)/update_expired-update_expired.Tpo" -c -o update_expired-update_expired.o `test -f 'update_expired.c' || echo '$(srcdir)/'`update_expired.c; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/update_expired-update_expired.Tpo" "$(DEPDIR)/update_expired-update_expired.Po"; else rm -f "$(DEPDIR)/update_expired-update_expired.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='update_expired.c' object='update_expired-update_expired.o' libtool=no @AMDEPBACKSLASH@
+purger_update_expired-update_expired.o: update_expired.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_update_expired_CFLAGS) $(CFLAGS) -MT purger_update_expired-update_expired.o -MD -MP -MF "$(DEPDIR)/purger_update_expired-update_expired.Tpo" -c -o purger_update_expired-update_expired.o `test -f 'update_expired.c' || echo '$(srcdir)/'`update_expired.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_update_expired-update_expired.Tpo" "$(DEPDIR)/purger_update_expired-update_expired.Po"; else rm -f "$(DEPDIR)/purger_update_expired-update_expired.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='update_expired.c' object='purger_update_expired-update_expired.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(update_expired_CFLAGS) $(CFLAGS) -c -o update_expired-update_expired.o `test -f 'update_expired.c' || echo '$(srcdir)/'`update_expired.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_update_expired_CFLAGS) $(CFLAGS) -c -o purger_update_expired-update_expired.o `test -f 'update_expired.c' || echo '$(srcdir)/'`update_expired.c
 
-update_expired-update_expired.obj: update_expired.c
-@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(update_expired_CFLAGS) $(CFLAGS) -MT update_expired-update_expired.obj -MD -MP -MF "$(DEPDIR)/update_expired-update_expired.Tpo" -c -o update_expired-update_expired.obj `if test -f 'update_expired.c'; then $(CYGPATH_W) 'update_expired.c'; else $(CYGPATH_W) '$(srcdir)/update_expired.c'; fi`; \
-@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/update_expired-update_expired.Tpo" "$(DEPDIR)/update_expired-update_expired.Po"; else rm -f "$(DEPDIR)/update_expired-update_expired.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='update_expired.c' object='update_expired-update_expired.obj' libtool=no @AMDEPBACKSLASH@
+purger_update_expired-update_expired.obj: update_expired.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_update_expired_CFLAGS) $(CFLAGS) -MT purger_update_expired-update_expired.obj -MD -MP -MF "$(DEPDIR)/purger_update_expired-update_expired.Tpo" -c -o purger_update_expired-update_expired.obj `if test -f 'update_expired.c'; then $(CYGPATH_W) 'update_expired.c'; else $(CYGPATH_W) '$(srcdir)/update_expired.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger_update_expired-update_expired.Tpo" "$(DEPDIR)/purger_update_expired-update_expired.Po"; else rm -f "$(DEPDIR)/purger_update_expired-update_expired.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='update_expired.c' object='purger_update_expired-update_expired.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(update_expired_CFLAGS) $(CFLAGS) -c -o update_expired-update_expired.obj `if test -f 'update_expired.c'; then $(CYGPATH_W) 'update_expired.c'; else $(CYGPATH_W) '$(srcdir)/update_expired.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_update_expired_CFLAGS) $(CFLAGS) -c -o purger_update_expired-update_expired.obj `if test -f 'update_expired.c'; then $(CYGPATH_W) 'update_expired.c'; else $(CYGPATH_W) '$(srcdir)/update_expired.c'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo

@@ -26,18 +26,27 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
+
+AUTOMAKE_OPTIONS = foreign
+
 EXTRA_DIST = pstat.h
+
 AM_LIBTOOLFLAGS = --silent
 
-bin_PROGRAMS = pstat
+bin_PROGRAMS = purger_pstat
 
-pstat_CFLAGS = \
-			   -I`pg_config --includedir` \
-               -I../../include
-pstat_LDADD = \
-			  -lpq \
-			  -lmpi \
-              ../../lib/utils/.libs/libutils.la \
-              ../../lib/config/.libs/libconfig.la \
-			  -lconfig 
+purger_pstat_SOURCES = pstat.c
 
+purger_pstat_CFLAGS = \
+	       -I`pg_config --includedir` \
+               -I$(topsrc_dir)
+
+libdir = $(top_srcdir)/lib
+
+convenience_libs = 				\
+              $(libdir)/utils/.libs/libutils.la	\
+              $(libdir)/config/.libs/libconfig.la
+
+purger_pstat_LDADD = 				\
+	      -lpq -lmpi -lconfig	\
+	      $(convenience_libs)
