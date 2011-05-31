@@ -206,10 +206,19 @@ int main( int argc, char *argv[] )
     }
 
     /*add parse_config here*/
-    parse_config_dbonly(&dbinfo);
+    if(parse_config_dbonly(&dbinfo) != EXIT_SUCCESS)
+    { 
+	fprintf(stderr,"Error parsing config file, exiting.\n");
+	fprintf(stderr,"Values parsed are: \n\
+		\thost: %s\n\
+		\tport: %d\n\
+		\tname: %s\n\
+		\tuser: %s\n",dbinfo.host, dbinfo.port,db_name,dbinfo.user);
+	exit(-1);
+    }
     
     conn = PQsetdbLogin(dbinfo.host, dbinfo.port, NULL, NULL, db_name, dbinfo.user, dbinfo.pass);
-    
+	
     if (PQstatus(conn) != CONNECTION_OK) {
       fprintf(stderr, "Connection to database %s failed: %s", db_name, 
 	      PQerrorMessage(conn));

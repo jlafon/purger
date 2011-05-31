@@ -1,6 +1,6 @@
 #!/bin/bash 
 echo "Testing email..."
-mail/mailtest
+email/mailtest
 echo "Testing LDAP..."
 ldap/ldapemail
 echo "Testing log..."

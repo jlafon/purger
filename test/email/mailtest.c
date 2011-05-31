@@ -5,7 +5,7 @@
 #include "mail.h"
 #include "../../include/lanl-ldap.h"
 
-#define CFG_FILE "purger.conf"
+//#define CFG_FILE "purger.conf"
 
 struct ldapinfo_t {
   char host[256];

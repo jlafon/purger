@@ -21,7 +21,7 @@
 
 // Config Parser
 #include "../../include/lconfig.h"
-#define CFG_FILE "purger.conf"
+//#define CFG_FILE "purger.conf"
 
 
 // Function Definitions

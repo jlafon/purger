@@ -7,7 +7,7 @@
 #include <grp.h>
 #include <getopt.h>
 
-#define CFG_FILE "db.conf"
+//#define CFG_FILE "db.conf"
 
 enum qtype {
   SIZE = 1,
