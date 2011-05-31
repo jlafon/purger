@@ -28,6 +28,8 @@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 
+MAINTAINERCLEANFILES = Makefile.in
+
 SUBDIRS = \
 		prm	 \
 		purger   \

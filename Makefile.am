@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = lib src test
 ACLOCAL_AMFLAGS = -I config
+SUBDIRS = lib src test
 EXTRA_DIST = 						\
 	README 						\
 	LICENSE 					\
@@ -19,4 +19,7 @@ EXTRA_DIST = 						\
 	etc/purger/postgres_setup/new_partition.sql	\
 	etc/purger/postgres_setup/README		
 
-
+MAINTENERCLEANFILES = 					\
+	aclocal.m4 config.guess config.h.in config.sub  \
+	configure install-sh ltconfig ltmain.sh missing \
+	mkinstalldirs stamp-h1

@@ -26,6 +26,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE   #
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
+
 AM_LIBTOOLFLAGS = --silent
+
+MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = email ldap log insert

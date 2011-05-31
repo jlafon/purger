@@ -34,29 +34,33 @@ AC_COPYRIGHT([
         ])
 
 # Put all build stuff in config
-#AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_SRCDIR([configure.ac])
+AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([config])
     
-AM_INIT_AUTOMAKE([foreign -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign])
 
+define([AC_LIBTOOL_LANG_CXX_CONFIG], [:])dnl
+define([AC_LIBTOOL_LANG_F77_CONFIG], [:])dnl
 # Minimize output    
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 AC_GNU_SOURCE
 
 AC_PROG_CC
 AC_PROG_CC_C_O
-
+AC_SUBST(version_info)
 AM_PROG_CC_C_O
 # Not necessary but doesn't hurt anything
 AC_CONFIG_HEADERS([config.h])
 #AC_USE_SYSTEM_EXTENSIONS
-AC_PROG_LIBTOOL
 AC_PROG_MAKE_SET
+AC_PROG_LIBTOOL
 AC_CHECK_HEADERS([netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
 AC_CHECK_PROG(PGCONFIG,pg_config,pg_config,false)
 if test "x$PGCONFIG" = "xfalse"; then
 	AC_MSG_ERROR([pg_config is required.])
 fi
+AC_SEARCH_LIBS([socket],[socket], , LIBS+=-L`pg_config --libdir`)
 AC_SEARCH_LIBS([PQexec],[pq], , LIBS+=-L`pg_config --libdir`)
 AC_OUTPUT([
         Makefile
