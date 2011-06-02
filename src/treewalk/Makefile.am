@@ -44,8 +44,8 @@ purger_pstat_CFLAGS = \
 libdir = $(top_srcdir)/lib
 
 convenience_libs = 				\
-              $(libdir)/utils/.libs/libutils.la	\
-              $(libdir)/config/.libs/libconfig.la
+              ../../lib/utils/.libs/libutils.la	\
+              ../../lib/config/.libs/libconfig.la
 
 purger_pstat_LDADD = 				\
 	      -lpq -lmpi -lconfig	\

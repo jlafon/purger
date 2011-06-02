@@ -26,26 +26,23 @@ and clean out old files on scratch filesystem.
 %setup -q -n lanl-purger-%{version}
 
 %build
+%configure
 %{__make}
 
 %install
-#%{__mkdir_p} %{buildroot}/etc/purger
-#%{__mkdir_p} %{buildroot}%{_sbindir}
-#%{__install} -m 0755 src/prm/prm %{buildroot}%{_sbindir}/prm
-#%{__install} -m 0755 src/treewalk/pstat %{buildroot}%{_sbindir}/pstat
-#%{__install} -m 0755 src/purger/purger %{buildroot}%{_sbindir}/purger
-#%{__install} -m 0755 src/util/update_expired %{buildroot}%{_sbindir}/update_expired
-#%{__install} -m 0644 etc/purger/purger.conf %{buildroot}/etc/purger/purger.conf
-#%{__install} -m 0644 etc/purger/postgres_setup/extra.sql %{buildroot}/etc/purger/extra.sql
-#%{__install} -m 0644 etc/purger/postgres_setup/generate_partitions.py %{buildroot}/etc/purger/generate_partitions.py
-#%{__install} -m 0644 etc/purger/postgres_setup/init.sh %{buildroot}/etc/purger/init.sh
-#%{__install} -m 0644 etc/purger/postgres_setup/init.sql %{buildroot}/etc/purger/init.sql
-#%{__install} -m 0644 etc/purger/postgres_setup/INSTALL %{buildroot}/etc/purger/INSTALL
-#%{__install} -m 0644 etc/purger/postgres_setup/new_partition.sql %{buildroot}/etc/purger/new_partition.sql
-#%{__install} -m 0644 etc/purger/postgres_setup/new_tables.sql %{buildroot}/etc/purger/new_tables.sql
-#%{__install} -m 0644 etc/purger/postgres_setup/README %{buildroot}/etc/purger/README
-#%{__install} -m 0644 etc/purger/postgres_setup/scratch.sql %{buildroot}/etc/purger/scratch.sql
 %{__make} install DESTDIR=%{buildroot}
+mkdir -p %{buildroot}/%{_sysconfdir}/purger
+mkdir -p %{buildroot}/%{_sysconfdir}/purger/postgres_setup
+install -m644 etc/purger/purger.conf %{buildroot}%{_sysconfdir}/purger/purger.conf
+install -m644 etc/purger/postgres_setup/extra.sql %{buildroot}%{_sysconfdir}/purger/postgres_setup/extra.sql
+install -m644 etc/purger/postgres_setup/generate_partitions.py %{buildroot}%{_sysconfdir}/purger/postgres_setup/generate_partitions.py
+install -m644 etc/purger/postgres_setup/init.sh %{buildroot}%{_sysconfdir}/purger/postgres_setup/init.sh
+install -m644 etc/purger/postgres_setup/init.sql %{buildroot}%{_sysconfdir}/purger/postgres_setup/init.sql
+install -m644 etc/purger/postgres_setup/INSTALL %{buildroot}%{_sysconfdir}/purger/postgres_setup/INSTALL
+install -m644 etc/purger/postgres_setup/new_partition.sql %{buildroot}%{_sysconfdir}/purger/postgres_setup/new_partition.sql
+install -m644 etc/purger/postgres_setup/new_tables.sql %{buildroot}%{_sysconfdir}/purger/postgres_setup/new_tables.sql
+install -m644 etc/purger/postgres_setup/README %{buildroot}%{_sysconfdir}/purger/postgres_setup/README
+install -m644 etc/purger/postgres_setup/scratch.sql %{buildroot}%{_sysconfdir}/purger/postgres_setup/scratch.sql
 
 %clean
 if [ %{buildroot} != "/" ]; then
@@ -58,27 +55,17 @@ fi
 
 %files
 %defattr(-,root,root,0755)
-%{_sbindir}/prm
-%{_sbindir}/pstat
-%{_sbindir}/purger
-%{_sbindir}/update_expired
-%config(noreplace) /etc/purger/purger.conf
-/etc/purger/postgres_setup/extra.sql
-/etc/purger/postgres_setup/generate_partitions.py
-/etc/purger/postgres_setup/generate_partitions.pyc
-/etc/purger/postgres_setup/generate_partitions.pyo
-/etc/purger/postgres_setup/init.sql
-/etc/purger/postgres_setup/INSTALL
-/etc/purger/postgres_setup/new_partition.sql
-/etc/purger/postgres_setup/new_tables.sql
-/etc/purger/postgres_setup/README
-/etc/purger/postgres_setup/scratch.sql
+%{_bindir}/*
+%config %{_sysconfdir}/purger/purger.conf
+%dir %{_sysconfdir}/purger/
+%dir %{_sysconfdir}/purger/postgres_setup
+%{_sysconfdir}/purger/postgres_setup
 %doc AUTHORS
 %doc COPYRIGHT
 %doc LICENSE
+
 %changelog
 * Tue May 31 2011 Jharrod LaFon <jlafon@lanl.gov>
 - Updated file locations
 * Mon Jan 17 2011 Ben McClelland <ben@lanl.gov>
 - Initial package version
-

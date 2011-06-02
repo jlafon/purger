@@ -45,12 +45,11 @@ purger_CFLAGS = 				\
 purger_LDFLAGS = 				\
 		-I`pg_config --includedir` -L`pg_config --libdir` 
 
-libdir = $(top_srcdir)/lib
 
 convenience_libs =					\
-		$(libdir)/ldap/.libs/libldap.la 	\
-		$(libdir)/config/.libs/libconfig.la 	\
-                $(libdir)/mail/.libs/libmail.la
+		../../lib/ldap/.libs/libldap.la 	\
+		../../lib/config/.libs/libconfig.la 	\
+                ../../lib/mail/.libs/libmail.la
 purger_LDADD = 				\
 		-lpq -lldap -llber 	\
 		$(convenience_libs)

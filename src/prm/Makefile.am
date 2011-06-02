@@ -33,7 +33,7 @@ AM_LIBTOOLFLAGS = --silent
 
 bin_PROGRAMS = purger_prm
 
-purger_prm_SOURCES = prm.c
+purger_prm_SOURCES = $(top_srcdir)/include/prm.h prm.c
 
 purger_prm_CFLAGS = \
 	       -I$(top_srcdir)/include	  \
@@ -46,8 +46,8 @@ purger_prm_LDFLAGS = -I`pg_config --includedir` \
 
 libdir = $(top_srcdir)/lib
 
-convenience_libs = $(libdir)/config/.libs/libconfig.la \
-		   $(libdir)/utils/.libs/libutils.la
+convenience_libs = ../../lib/config/libconfig.la \
+		   ../../lib/utils/libutils.la
 
 purger_prm_LDADD = 				\
 	      $(convenience_libs)		\

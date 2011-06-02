@@ -37,11 +37,11 @@ build_triplet = @build@
 host_triplet = @host@
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
-	$(top_srcdir)/configure AUTHORS compile config.guess \
-	config.sub config/compile config/config.guess \
-	config/config.sub config/depcomp config/install-sh \
-	config/ltmain.sh config/missing depcomp install-sh ltmain.sh \
-	missing
+	$(srcdir)/lanl-purger.spec.in $(top_srcdir)/configure AUTHORS \
+	compile config.guess config.sub config/compile \
+	config/config.guess config/config.sub config/depcomp \
+	config/install-sh config/ltmain.sh config/missing depcomp \
+	install-sh ltmain.sh missing
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -51,7 +51,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno configure.status.lineno
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
-CONFIG_CLEAN_FILES =
+CONFIG_CLEAN_FILES = lanl-purger.spec
 SOURCES =
 DIST_SOURCES =
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -167,12 +167,6 @@ AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I config
 SUBDIRS = lib src test
 EXTRA_DIST = \
-	README 						\
-	LICENSE 					\
-	AUTHORS 					\
-	include 					\
-	COPYRIGHT					\
-	autogen.sh					\
 	etc/purger/purger.conf				\
 	etc/purger/postgres_setup/extra.sql		\
 	etc/purger/postgres_setup/init.sh		\
@@ -182,7 +176,15 @@ EXTRA_DIST = \
 	etc/purger/postgres_setup/generate_partitions.py\
 	etc/purger/postgres_setup/init.sql		\
 	etc/purger/postgres_setup/new_partition.sql	\
-	etc/purger/postgres_setup/README		
+	etc/purger/postgres_setup/README		\
+	README 						\
+	COPYRIGHT					\
+	LICENSE 					\
+	AUTHORS 					\
+	include 					\
+	autogen.sh					\
+	lanl-purger.spec				\
+	lanl-purger.spec.in
 
 MAINTENERCLEANFILES = \
 	aclocal.m4 config.guess config.h.in config.sub  \
@@ -243,6 +245,8 @@ $(srcdir)/config.h.in:  $(am__configure_deps)
 
 distclean-hdr:
 	-rm -f config.h stamp-h1
+lanl-purger.spec: $(top_builddir)/config.status $(srcdir)/lanl-purger.spec.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -389,7 +393,7 @@ distclean-tags:
 distdir: $(DISTFILES)
 	$(am__remove_distdir)
 	mkdir $(distdir)
-	$(mkdir_p) $(distdir)/config $(distdir)/etc/purger $(distdir)/etc/purger/postgres_setup
+	$(mkdir_p) $(distdir)/. $(distdir)/config $(distdir)/etc/purger $(distdir)/etc/purger/postgres_setup
 	@srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`; \
 	topsrcdirstrip=`echo "$(top_srcdir)" | sed 's|.|.|g'`; \
 	list='$(DISTFILES)'; for file in $$list; do \
@@ -431,7 +435,7 @@ distdir: $(DISTFILES)
 	      || exit 1; \
 	  fi; \
 	done
-	-find $(distdir) -type d ! -perm -777 -exec chmod a+rwx {} \; -o \
+	-find $(distdir) -type d ! -perm -755 -exec chmod a+rwx,go+rx {} \; -o \
 	  ! -type d ! -perm -444 -links 1 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -400 -exec chmod a+r {} \; -o \
 	  ! -type d ! -perm -444 -exec $(SHELL) $(install_sh) -c -m a+r {} {} \; \

@@ -80,9 +80,9 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_OBJECTS = purger-purge_user.$(OBJEXT)
 purger_OBJECTS = $(am_purger_OBJECTS)
-am__DEPENDENCIES_1 = $(libdir)/ldap/.libs/libldap.la \
-	$(libdir)/config/.libs/libconfig.la \
-	$(libdir)/mail/.libs/libmail.la
+am__DEPENDENCIES_1 = ../../lib/ldap/.libs/libldap.la \
+	../../lib/config/.libs/libconfig.la \
+	../../lib/mail/.libs/libmail.la
 purger_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -176,7 +176,7 @@ host_vendor = @host_vendor@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
-libdir = $(top_srcdir)/lib
+libdir = @libdir@
 libexecdir = @libexecdir@
 localstatedir = @localstatedir@
 mandir = @mandir@
@@ -202,9 +202,9 @@ purger_LDFLAGS = \
 		-I`pg_config --includedir` -L`pg_config --libdir` 
 
 convenience_libs = \
-		$(libdir)/ldap/.libs/libldap.la 	\
-		$(libdir)/config/.libs/libconfig.la 	\
-                $(libdir)/mail/.libs/libmail.la
+		../../lib/ldap/.libs/libldap.la 	\
+		../../lib/config/.libs/libconfig.la 	\
+                ../../lib/mail/.libs/libmail.la
 
 purger_LDADD = \
 		-lpq -lldap -llber 	\

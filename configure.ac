@@ -80,6 +80,7 @@ AC_OUTPUT([
         src/purger/Makefile
         src/treewalk/Makefile
         src/util/Makefile
-        ])
+   	lanl-purger.spec
+	])
 AC_OUTPUT
 

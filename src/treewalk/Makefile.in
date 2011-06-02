@@ -80,8 +80,8 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_pstat_OBJECTS = purger_pstat-pstat.$(OBJEXT)
 purger_pstat_OBJECTS = $(am_purger_pstat_OBJECTS)
-am__DEPENDENCIES_1 = $(libdir)/utils/.libs/libutils.la \
-	$(libdir)/config/.libs/libconfig.la
+am__DEPENDENCIES_1 = ../../lib/utils/.libs/libutils.la \
+	../../lib/config/.libs/libconfig.la
 purger_pstat_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -197,8 +197,8 @@ purger_pstat_CFLAGS = \
                -I$(topsrc_dir)
 
 convenience_libs = \
-              $(libdir)/utils/.libs/libutils.la	\
-              $(libdir)/config/.libs/libconfig.la
+              ../../lib/utils/.libs/libutils.la	\
+              ../../lib/config/.libs/libconfig.la
 
 purger_pstat_LDADD = \
 	      -lpq -lmpi -lconfig	\

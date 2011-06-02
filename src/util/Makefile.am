@@ -29,7 +29,7 @@
 
 EXTRA_DIST = deleter.h
 
-libdir = $(top_srcdir)/lib
+libdir = ../../lib
 
 convenience_libs = \
 		   $(libdir)/config/.libs/libconfig.la 

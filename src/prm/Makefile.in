@@ -80,8 +80,8 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_prm_OBJECTS = purger_prm-prm.$(OBJEXT)
 purger_prm_OBJECTS = $(am_purger_prm_OBJECTS)
-am__DEPENDENCIES_1 = $(libdir)/config/.libs/libconfig.la \
-	$(libdir)/utils/.libs/libutils.la
+am__DEPENDENCIES_1 = ../../lib/config/libconfig.la \
+	../../lib/utils/libutils.la
 purger_prm_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -190,7 +190,7 @@ target_alias = @target_alias@
 version_info = @version_info@
 AUTOMAKE_OPTIONS = foreign
 AM_LIBTOOLFLAGS = --silent
-purger_prm_SOURCES = prm.c
+purger_prm_SOURCES = $(top_srcdir)/include/prm.h prm.c
 purger_prm_CFLAGS = \
 	       -I$(top_srcdir)/include	  \
 	       -I`pg_config --includedir` \
@@ -200,8 +200,8 @@ purger_prm_LDFLAGS = -I`pg_config --includedir` \
 		     -L`pg_config --libdir`	\
 		     -lpq -lmpi
 
-convenience_libs = $(libdir)/config/.libs/libconfig.la \
-		   $(libdir)/utils/.libs/libutils.la
+convenience_libs = ../../lib/config/libconfig.la \
+		   ../../lib/utils/libutils.la
 
 purger_prm_LDADD = \
 	      $(convenience_libs)		\
