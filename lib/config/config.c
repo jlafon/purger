@@ -27,67 +27,67 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
     }
   }
 
-  if(config_lookup_string(cf, "host", &host) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "port", &port) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.port", &port) == CONFIG_FALSE){
     fprintf(stderr, "port not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "user", &user) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.user", &user) == CONFIG_FALSE){
     fprintf(stderr, "user not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "passwd", &passwd) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.passwd", &passwd) == CONFIG_FALSE){
     fprintf(stderr, "passwd not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "ldaphost", &ldaphost) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldaphost", &ldaphost) == CONFIG_FALSE){
     fprintf(stderr, "ldaphost not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "ldapbase", &ldapbase) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldapbase", &ldapbase) == CONFIG_FALSE){
     fprintf(stderr, "ldapbase not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "ldapbasem", &ldapbasem) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.ldap.ldapbasem", &ldapbasem) == CONFIG_FALSE){
     fprintf(stderr, "ldapbasem not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "mailtxt", &mailtxt) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.mailtxt", &mailtxt) == CONFIG_FALSE){
     fprintf(stderr, "mailtxt not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "mailfrom", &mailfrom) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.mailfrom", &mailfrom) == CONFIG_FALSE){
     fprintf(stderr, "mailfrom not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "mailfromreal", &mailfromreal) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.mailfromreal", &mailfromreal) == CONFIG_FALSE){
     fprintf(stderr, "mailfromreal not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "maildefaultto", &maildefaultto) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.maildefaultto", &maildefaultto) == CONFIG_FALSE){
     fprintf(stderr, "maildefaultto not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "mailsubject", &mailsubject) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.mailsubject", &mailsubject) == CONFIG_FALSE){
     fprintf(stderr, "mailsubject not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
   }
-  if(config_lookup_string(cf, "mailserver", &mailserver) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.mail.mailserver", &mailserver) == CONFIG_FALSE){
     fprintf(stderr, "ldapbasem not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;
