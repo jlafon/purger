@@ -32,8 +32,9 @@ EXTRA_DIST = deleter.h
 libdir = ../../lib
 
 convenience_libs = \
-		   $(libdir)/config/.libs/libconfig.la 
-
+		   $(libdir)/config/.libs/libconfig.la \
+		   $(libdir)/ldap/.libs/libldap.la     \
+		   $(libdir)/log/.libs/liblog.la
 AM_LIBTOOLFLAGS = --silent
 
 bin_PROGRAMS = purger_chkscratch purger_update_expired purger_deleter purger_dbtest
@@ -52,7 +53,7 @@ purger_chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
 
 purger_chkscratch_LDFLAGS = -lpq -lconfig -I../../include -I`pg_config --includedir` -L`pg_config --libdir`
 
-purger_chkscratch_LDDADD = ../../lib/ldap/libldap.la
+purger_chkscratch_LDADD = $(convenience_libs)
 
 purger_update_expired_SOURCES = update_expired.c
 
