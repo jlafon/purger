@@ -31,4 +31,4 @@ AM_LIBTOOLFLAGS = --silent
 
 MAINTAINERCLEANFILES = Makefile.in
 
-SUBDIRS = email ldap log insert
+SUBDIRS = email ldap log insert config
