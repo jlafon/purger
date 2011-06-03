@@ -21,7 +21,7 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
 
   if (!config_read_file(cf, CFG_FILE)){
     if (!config_read_file(cf, CFG_FILE_ALT)){
-      fprintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
+      fprintf(stderr, "[%s] %s:%d - %s\n", CFG_FILE,config_error_file(cf), config_error_line(cf), config_error_text(cf));
       config_destroy(cf);
       return EXIT_FAILURE;
     }

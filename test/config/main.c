@@ -8,7 +8,7 @@ int main ( int argc, char *argv[] )
     mailinfo_t mailinfo;
     if(parse_config(&dbinfo,&ldapinfo,&mailinfo) != EXIT_SUCCESS)
     {
-	fprintf(stderr,"Failed to parse config file.");
+	fprintf(stderr,"Failed to parse config file.\n");
 	exit(-1);
     }
     fprintf(stdout,"===Purger Configuration Settings===\n\
@@ -29,8 +29,8 @@ int main ( int argc, char *argv[] )
 	    \tDefault To:\t%s\n\
 	    \tSubject:\t%s\n\
 	    \tServer:\t\t%s\n\
-	    \tText:\t%s\n",
-	    dbinfo.host,dbinfo.port,dbinfo.user,dbinfo.pass,
+	    \tText:\t\t%s\n",
+	    dbinfo.host,atoi(dbinfo.port),dbinfo.user,dbinfo.pass,
 	    ldapinfo.host,ldapinfo.base,ldapinfo.basem,
 	    mailinfo.from,mailinfo.fromreal,mailinfo.defaultto,mailinfo.subject,mailinfo.server,mailinfo.txt
 	   );
