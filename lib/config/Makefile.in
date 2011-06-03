@@ -46,7 +46,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
-libconfig_la_DEPENDENCIES = ../log/liblog.la
+libconfig_la_LIBADD =
 am_libconfig_la_OBJECTS = libconfig_la-config.lo
 libconfig_la_OBJECTS = $(am_libconfig_la_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -157,7 +157,7 @@ version_info = @version_info@
 noinst_LTLIBRARIES = libconfig.la
 libconfig_la_CFLAGS = -I$(top_srcdir)/include
 libconfig_la_SOURCES = $(top_srcdir)/include/lconfig.h config.c
-libconfig_la_LIBADD = ../log/liblog.la
+libconfig_la_LDFLAGS = ../log/liblog.la -lconfig
 libconfig_la_LDDADD = -lconfig
 all: all-am
 
