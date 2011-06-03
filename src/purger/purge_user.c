@@ -1,8 +1,5 @@
 #include "purger.h"
 
-int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo){
-  /* put in config parser */
-}
 
 int main(int argc, char *argv[]){
 
@@ -14,6 +11,7 @@ int main(int argc, char *argv[]){
   char       filesystem[1024];
   dbinfo_t   dbinfo;
   ldapinfo_t ldapinfo;
+  mailinfo_t mailinfo;
   time_t     mytime = time(NULL);
   int        option_index = 0;
   int        c;
@@ -46,7 +44,7 @@ int main(int argc, char *argv[]){
     return EXIT_FAILURE;
   }
   
-  if (parse_config(&dbinfo, &ldapinfo)==-1){
+  if (parse_config(&dbinfo, &ldapinfo,&mailinfo)==-1){
     PURGER_ELOG("main()", "%s returned error.", "parse_config()");
     return EXIT_FAILURE;
   }
@@ -69,7 +67,7 @@ int main(int argc, char *argv[]){
     if (process_warned_files(conn, argv[optind+1], filesystem, ins_timenow) != 0) {
       PURGER_ELOG("main()", "process_warned_files for uid %s returned non-success", argv[optind+1]);
     }
-  if (process_unwarned_files(conn, argv[optind+1], filesystem, ins_timenow, &ldapinfo) != 0) {
+  if (process_unwarned_files(conn, argv[optind+1], filesystem, ins_timenow, &ldapinfo,&mailinfo) != 0) {
     PURGER_ELOG("main()", "process_uwarned_files for uid %s returned non-success", argv[optind+1]);
   }
   
@@ -95,7 +93,7 @@ static void exit_nicely(PGconn *conn) {
   exit(EXIT_FAILURE);
 }
 
-int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo){
+int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo,mailinfo_t * mailinfo){
   /* postgrs variables */
   PGresult *res, *files;
   PQprintOpt options = {0};
@@ -188,7 +186,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
   
   /* Batch-send the e-mails */
   if(moniker[0] != '\0') {
-    if (send_mail(uid, filesystem, ldapinfo) != 0) {
+    if (send_mail(uid, filesystem, ldapinfo,mailinfo) != 0) {
       mailerr=1;
       PURGER_ELOG("process_unwarned_files()", "sending email to: %s", uid);
     }
@@ -295,7 +293,7 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
   return EXIT_SUCCESS;
 }
 
-int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo){
+int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo, mailinfo_t* mailinfo){
   char email[128];
   char moniker[128];
   char notefile[256];
@@ -326,15 +324,13 @@ int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo){
       return EXIT_SUCCESS;
     }
   
+ 
   /* send e-mail containing list filename */
   ret = sendmail(
-		 "root@turq-fsdb.lanl.gov",   /* from     */
 		 email,                       /* to       */
-		 "[PURGER-NOTIFICATION]",     /* subject  */
 		 notefile,                    /* body     */
-		 "mail.lanl.gov",             /* hostname */
-		 25                           /* port     */
-		 );
+		 25,                           /* port     */
+		 mailinfo);
   
   if (ret != 0)
     PURGER_ELOG("send_mail()", "Failed to send mail (code: %i).", ret);

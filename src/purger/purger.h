@@ -40,9 +40,9 @@
 static void usage();
 static void exit_nicely(PGconn *conn);
 int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow);
-int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo);
+int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo, mailinfo_t * mailinfo);
 int diff_date(char *date1, char *date2);
-int send_mail(char *uid, char *file_list, ldapinfo_t *ldapinfo);
+int send_mail(char *uid, char *file_list, ldapinfo_t *ldapinfo, mailinfo_t * mailinfo);
 void delete_file(char *filename, PGconn *conn, FILE *dlog);
 
 /* global variables */

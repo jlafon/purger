@@ -46,11 +46,11 @@ purger_dbtest_LDADD = $(convenience_libs)
 
 purger_dbtest_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
 
-purger_chkscratch_SOURCES = chkscratch.c
+purger_chkscratch_SOURCES = ../../include/lconfig.h ../../include/lanl-ldap.h ../../include/log.h chkscratch.c
 
 purger_chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
 
-purger_chkscratch_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_chkscratch_LDFLAGS = -lpq -lconfig -I../../include -I`pg_config --includedir` -L`pg_config --libdir`
 
 purger_update_expired_SOURCES = update_expired.c
 

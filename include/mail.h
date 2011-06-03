@@ -8,18 +8,19 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+/* Config Parser */
+#include "lconfig.h"
+
 void sendmail_write(
 		    const int  sock,
 		    const char *str,
 		    const char *arg
 		    );
 int sendmail(
-	     const char *from,
-	     const char *to,
-	     const char *subject,
-	     const char *body,
-	     const char *hostname,
-	     const int   port
+	     const char       *to,
+	     const char       *body,
+	     const int        port,
+             const mailinfo_t *mailinfo
 	     );
 
 #endif

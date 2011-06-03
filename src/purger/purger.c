@@ -9,6 +9,7 @@ int main(int argc, char *argv[]){
   char       filesystem[1024];
   dbinfo_t   dbinfo;
   ldapinfo_t ldapinfo;
+  mailinfo_t mailinfo;
   time_t     mytime = time(NULL);
   int        option_index = 0;
   int        c;
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]){
     return EXIT_FAILURE;
   }
   
-  if (parse_config(&dbinfo, &ldapinfo)==-1){
+  if (parse_config(&dbinfo, &ldapinfo, &mailinfo)==-1){
     PURGER_ELOG("main()", "%s returned error.", "parse_config()");
     return EXIT_FAILURE;
   }
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]){
 	PURGER_ELOG("main()", "process_warned_files for uid %s returned non-success", PQgetvalue(uids, i, 0));
       }
     if(!purgeonly)
-      if (process_unwarned_files(conn, PQgetvalue(uids, i, 0), filesystem, ins_timenow, &ldapinfo) != 0) {
+      if (process_unwarned_files(conn, PQgetvalue(uids, i, 0), filesystem, ins_timenow, &ldapinfo, &mailinfo) != 0) {
 	PURGER_ELOG("main()", "process_uwarned_files for uid %s returned non-success", PQgetvalue(uids, i, 0));
       }
   }
@@ -118,7 +119,7 @@ static void exit_nicely(PGconn *conn) {
   exit(EXIT_FAILURE);
 }
 
-int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo){
+int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo, mailinfo_t mailinfo){
   /* postgrs variables */
   PGresult *res, *files;
   PQprintOpt options = {0};
@@ -137,8 +138,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
   /* Time struct */
   time_t rawtime;
   
-  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND warned = False;", 
-	  uid, filesystem);
+  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store' AND warned = False;", uid, filesystem, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
     PURGER_ELOG("process_unwarned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
@@ -158,8 +158,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
     }
   }  
   
-  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%';", 
-	   uid, filesystem);
+  snprintf(files_query, 200, "SELECT filename FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store';", uid, filesystem, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
     PURGER_ELOG("process_unwarned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
@@ -173,7 +172,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
     snprintf(notefile, 256, "/var/log/purger/expired-files-root-%s.txt", filesystem);
   }
   else if (get_moniker( uid, ldapinfo->host, ldapinfo->basem, moniker ) == 1) {
-    PURGER_ELOG("send_mail()", "Error getting moniker from ldap host: %s base: %s uid: %s", ldapinfo->host, ldapinfo->basem, uid);
+    PURGER_ELOG("process_unwarned_files()", "Error getting moniker from ldap host: %s base: %s uid: %s", ldapinfo->host, ldapinfo->basem, uid);
     /* UID DOESN'T EXIST? SET ALL FILES TO WARNED?  WHERE TO PUT THE NOTIFICATION FILE? */
     snprintf(notefile, 256, "/var/log/purger/lostuids/%s-%s.txt", filesystem, uid);
     moniker[0]='\0';
@@ -211,7 +210,7 @@ int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_
   
   /* Batch-send the e-mails */
   if(moniker[0] != '\0') {
-    if (send_mail(uid, filesystem, ldapinfo) != 0) {
+    if (send_mail(uid, filesystem, ldapinfo, mailinfo) != 0) {
       mailerr=1;
       PURGER_ELOG("process_unwarned_files()", "sending email to: %s", uid);
     }
@@ -258,8 +257,7 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
   time(&rawtime);
   fprintf (dlog, "\n%s\n", ctime(&rawtime));
   
-  /*
-  snprintf(files_query, 100, "SELECT * FROM exceptions WHERE uid = %s;", uid);
+  snprintf(files_query, 1024, "SELECT * FROM exceptions WHERE uid = %s AND expiration > now();", uid);
   exceptions = PQexec(conn, files_query);
   if (PQresultStatus(exceptions) != PGRES_TUPLES_OK) {
     PURGER_ELOG("process_warned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
@@ -267,23 +265,22 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
     exit_nicely(conn);
   }
   
-  if (PQntuples(files) > 0) {
-    PURGER_LOG("process_warned_files()", "found exception for uid=%s. removing files from expired_files list.", PQntuples(files), uid);
-    snprintf(files_query, 100, "DELETE FROM expired_files WHERE uid=%s;", uid);
-    files = PQexec(conn, files_query);
-    if (PQresultStatus(files) != PGRES_TUPLES_OK) {
-      PURGER_ELOG("process_warned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
-      PQclear(files);
+  if (PQntuples(exceptions) > 0) {
+    PURGER_LOG("process_warned_files()", "found exception for uid=%s. Setting all files to unwarned", uid);
+    snprintf(files_query, 1024, "UPDATE expired_files SET warned = False WHERE uid=%s;", uid);
+    exceptions = PQexec(conn, files_query);
+    if (PQresultStatus(exceptions) != PGRES_COMMAND_OK) {
+      PURGER_ELOG("process_warned_files()", "update warned command failed: %s", PQerrorMessage(conn));
+      PQclear(exceptions);
+      PURGER_ELOG("process_warned_files()", "%s", "bailing to protect execptions.\n");
       exit_nicely(conn);
-    }
-    PQclear(exceptions);
+    } 
+ 
     fclose(dlog);
     return EXIT_SUCCESS;
   }
-  */
 
-  snprintf(files_query, 500, "SELECT * FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '7 days';", 
-	   uid, filesystem);
+  snprintf(files_query, 500, "SELECT * FROM expired_files WHERE uid = %s AND filename like '/panfs/%s/vol%%/%%/_%%' AND filename NOT like '/panfs/%s/vol%%/.panfs_store' AND warned = True AND added < CURRENT_TIMESTAMP - INTERVAL '7 days';", uid, filesystem, filesystem);
   files = PQexec(conn, files_query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK) {
     PURGER_ELOG("process_warned_files()", "SELECT * command failed: %s", PQerrorMessage(conn));
@@ -318,7 +315,7 @@ int process_warned_files(PGconn *conn, char *uid, char *filesystem, char *ins_ti
   return EXIT_SUCCESS;
 }
 
-int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo){
+int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
   char email[128];
   char moniker[128];
   char notefile[256];
@@ -339,7 +336,7 @@ int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo){
   
   /* grab e-mail from uid */
   if (strncmp(uid, "0", 2) == 0) {
-    snprintf(email, 15, "nfs@lanl.gov");
+    snprintf(email, 256, mailinfo->defaultto);
   }
   else
     if (get_email( moniker, ldapinfo->host, ldapinfo->base, email ) == 1) {
@@ -351,12 +348,10 @@ int send_mail(char *uid, char *filesystem, ldapinfo_t *ldapinfo){
   
   /* send e-mail containing list filename */
   ret = sendmail(
-		 "root@turq-fsdb.lanl.gov",   /* from     */
-		 email,                       /* to       */
-		 "[PURGER-NOTIFICATION]",     /* subject  */
-		 notefile,                    /* body     */
-		 "mail.lanl.gov",             /* hostname */
-		 25                           /* port     */
+		 email,     /* to              */
+		 notefile,  /* body            */
+		 25,        /* port            */
+		 mailinfo   /* mailinfo struct */
 		 );
   
   if (ret != 0)

@@ -7,7 +7,9 @@
 #include <grp.h>
 #include <getopt.h>
 
-//#define CFG_FILE "db.conf"
+#include "lanl-ldap.h"
+#include "lconfig.h"
+#include "log.h"
 
 enum qtype {
   SIZE = 1,
@@ -15,14 +17,6 @@ enum qtype {
   USAGE,
   GROUP
 };
-
-struct dbinfo_t {
-  char host[256];
-  char port[16];
-  char user[256];
-  char pass[256];
-};
-typedef struct dbinfo_t dbinfo_t;
 
 int printstat(const char* filesystem) {
   struct statfs st;
@@ -39,17 +33,18 @@ int printstat(const char* filesystem) {
   return ((st.f_blocks * st.f_bsize)/(1024 * 1024 * 1024));
 }
 
-int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo_t dbinfo) {
+int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo_t *dbinfo, ldapinfo_t *ldapinfo) {
   PGconn *conn;
   PGresult *snapshot_res;
   PGresult *query_res;
   char snapshot[30];
   char query[80];
+  char moniker[256];
   int results, i;
   struct passwd *pw;
   struct group *gr;
 
-  conn = PQsetdbLogin(dbinfo.host, dbinfo.port, NULL, NULL, filesystem, dbinfo.user, dbinfo.pass);
+  conn = PQsetdbLogin(dbinfo->host, dbinfo->port, NULL, NULL, filesystem, dbinfo->user, dbinfo->pass);
   if (PQstatus(conn) != CONNECTION_OK) {
     fprintf(stderr, "Connection to database failed: %s", PQerrorMessage(conn));
     PQfinish(conn);
@@ -63,10 +58,10 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
     return -1;
   }
   
-  if (strncmp(PQgetvalue(snapshot_res, 0, 0), "snapshot", 10) == 0)
-    snprintf(snapshot, 30, "snapshot2");
+  if (strncmp(PQgetvalue(snapshot_res, 0, 0), "snapshot1", 10) == 0)
+    snprintf(snapshot, 30, "snapshot1");
   else
-    snprintf(snapshot, 30, "snapshot");
+    snprintf(snapshot, 30, "snapshot2");
 
   PQclear(snapshot_res);
   
@@ -75,7 +70,7 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
   else if (query_type == NFILES)
     snprintf(query, 80, "SELECT uid,count(*) FROM %s GROUP BY uid ORDER BY count DESC;", snapshot);
   else if (query_type == USAGE)
-    snprintf(query, 80, "SELECT uid,sum(block*block_size) FROM %s GROUP BY uid ORDER BY sum DESC;", snapshot);
+    snprintf(query, 80, "SELECT uid,sum(block*512) FROM %s GROUP BY uid ORDER BY sum DESC;", snapshot);
   else if (query_type == GROUP)
     snprintf(query, 80, "SELECT gid,sum(size) FROM %s GROUP BY gid ORDER BY sum DESC;", snapshot);
 
@@ -102,6 +97,8 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
 	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+	printf("%10s %9.2f %8lu\n", moniker, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))); 
       else
 	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
     }
@@ -115,9 +112,11 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
     for (i = 0; i < results; i++) {
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
-	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0 * 10))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))/10);
+	printf("%10s %9.2f %8lu\n", pw->pw_name, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+        printf("%10s %9.2f %8lu\n", moniker, ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
       else
-	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0 * 10))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024))/10);
+	printf("%10s %9.2f %8lu\n", PQgetvalue(query_res, i, 0), ((atol(PQgetvalue(query_res, i, 1))/(1024.0 * 1024.0 * 1024.0))/(double)gb) * 100.0, (atol(PQgetvalue(query_res, i, 1))/(1024 * 1024 * 1024)));
     }
   }
   else if (query_type == NFILES) {
@@ -130,6 +129,8 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
       pw = getpwuid((uid_t)atoi(PQgetvalue(query_res, i, 0)));
       if (pw)
 	printf("%10s %8s\n", pw->pw_name, PQgetvalue(query_res, i, 1));
+      else if (get_moniker(PQgetvalue(query_res, i, 0), ldapinfo->host, ldapinfo->basem, moniker) == 0)
+        printf("%10s %8s\n", moniker, PQgetvalue(query_res, i, 1));
       else
 	printf("%10s %8s\n", PQgetvalue(query_res, i, 0), PQgetvalue(query_res, i, 1));
     }
@@ -173,6 +174,8 @@ int main(int argc, char *argv[]) {
   int option_index = 0;
   int query_type = SIZE;
   dbinfo_t dbinfo;
+  ldapinfo_t ldapinfo;
+  mailinfo_t mailinfo;
 
   while ((c = getopt_long(argc, argv, "snugh", NULL, &option_index)) != -1) {
     switch (c)
@@ -203,17 +206,20 @@ int main(int argc, char *argv[]) {
   else
     results = 0;
 
-  /*put in config parser*/
+  if (parse_config(&dbinfo, &ldapinfo, &mailinfo)==-1){
+    PURGER_ELOG("main()", "%s returned error.", "parse_config()");
+    return EXIT_FAILURE;
+  }
 
   gb = printstat("scratch1");
   printf("\n");
-  ret = printusage("scratch1", results, gb, query_type, dbinfo);
+  ret = printusage("scratch1", results, gb, query_type, &dbinfo, &ldapinfo);
 
   printf("\n");
   printf("\n");
   gb = printstat("scratch2");
   printf("\n");
-  ret = printusage("scratch2", results, gb, query_type, dbinfo);
+  ret = printusage("scratch2", results, gb, query_type, &dbinfo, &ldapinfo);
 
   //printf("\n");
   //printf("\n");
