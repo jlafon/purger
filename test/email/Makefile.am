@@ -32,7 +32,7 @@ purger_mailtest_SOURCES = ../../include/mail.h mailtest.c
 purger_mailtest_CFLAGS =  \
                 -I../../include/ \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-purger_mailtest_LDFLAGS = -I../../include/ -lldap -llber 
+purger_mailtest_LDFLAGS = -I../../include/ -lldap -llber -lconfig 
 purger_mailtest_LDADD = \
 		../../lib/ldap/.libs/libldap.a \
                 ../../lib/mail/.libs/libmail.a
