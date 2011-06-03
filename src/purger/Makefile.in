@@ -80,9 +80,9 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_OBJECTS = purger-purger.$(OBJEXT)
 purger_OBJECTS = $(am_purger_OBJECTS)
-am__DEPENDENCIES_1 = ../../lib/ldap/.libs/libldap.la \
-	../../lib/config/.libs/libconfig.la \
-	../../lib/mail/.libs/libmail.la
+am__DEPENDENCIES_1 = $(top_builddir)/lib/ldap/.libs/libldap.la \
+	$(top_builddir)/lib/config/.libs/libconfig.la \
+	$(top_builddir)/lib/mail/.libs/libmail.la
 purger_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_purger_purge_user_OBJECTS = purger_purge_user-purge_user.$(OBJEXT)
 purger_purge_user_OBJECTS = $(am_purger_purge_user_OBJECTS)
@@ -196,9 +196,9 @@ AUTOMAKE_OPTIONS = foreign
 EXTRA_DIST = purger.h
 AM_LIBTOOLFLAGS = --silent
 convenience_libs = \
-		../../lib/ldap/.libs/libldap.la 	\
-		../../lib/config/.libs/libconfig.la 	\
-                ../../lib/mail/.libs/libmail.la
+		$(top_builddir)/lib/ldap/.libs/libldap.la 	\
+		$(top_builddir)/lib/config/.libs/libconfig.la 	\
+                $(top_builddir)/lib/mail/.libs/libmail.la
 
 purger_SOURCES = purger.c 
 purger_purge_user_SOURCES = purge_user.c 
@@ -225,7 +225,7 @@ purger_CFLAGS = \
 purger_purge_user_LDFLAGS = \
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
 
-purger_user_LDFLAGS = \
+purger_LDFLAGS = \
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
 
 all: all-am

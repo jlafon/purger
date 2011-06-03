@@ -34,9 +34,9 @@ EXTRA_DIST = purger.h
 AM_LIBTOOLFLAGS = --silent
 
 convenience_libs =					\
-		../../lib/ldap/.libs/libldap.la 	\
-		../../lib/config/.libs/libconfig.la 	\
-                ../../lib/mail/.libs/libmail.la
+		$(top_builddir)/lib/ldap/.libs/libldap.la 	\
+		$(top_builddir)/lib/config/.libs/libconfig.la 	\
+                $(top_builddir)/lib/mail/.libs/libmail.la
 
 bin_PROGRAMS = purger_purge_user purger
 
@@ -68,5 +68,5 @@ purger_CFLAGS = 				\
 purger_purge_user_LDFLAGS = 				\
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
 
-purger_user_LDFLAGS = 				\
+purger_LDFLAGS = 				\
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 

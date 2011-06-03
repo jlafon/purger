@@ -51,9 +51,10 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_mailtest_OBJECTS = purger_mailtest-mailtest.$(OBJEXT)
 purger_mailtest_OBJECTS = $(am_purger_mailtest_OBJECTS)
-purger_mailtest_DEPENDENCIES = $(top_srcdir)/lib/config/libconfig.la \
-	$(top_srcdir)/lib/ldap/libldap.la \
-	$(top_srcdir)/lib/mail/libmail.la
+purger_mailtest_DEPENDENCIES =  \
+	$(top_builddir)/lib/config/.libs/libconfig.la \
+	$(top_builddir)/lib/ldap/libldap.la \
+	$(top_builddir)/lib/mail/libmail.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -196,9 +197,9 @@ purger_mailtest_CFLAGS = \
 
 purger_mailtest_LDFLAGS = -I$(top_srcdir)/include -lldap -llber -lconfig 
 purger_mailtest_LDADD = \
-		$(top_srcdir)/lib/config/libconfig.la \
-		$(top_srcdir)/lib/ldap/libldap.la \
-                $(top_srcdir)/lib/mail/libmail.la
+		$(top_builddir)/lib/config/.libs/libconfig.la \
+		$(top_builddir)/lib/ldap/libldap.la \
+                $(top_builddir)/lib/mail/libmail.la
 
 all: all-am
 

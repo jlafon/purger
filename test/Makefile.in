@@ -176,7 +176,7 @@ target_alias = @target_alias@
 version_info = @version_info@
 AM_LIBTOOLFLAGS = --silent
 MAINTAINERCLEANFILES = Makefile.in
-SUBDIRS = email ldap log insert
+SUBDIRS = email ldap log insert config
 all: all-recursive
 
 .SUFFIXES:

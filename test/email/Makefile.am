@@ -34,6 +34,6 @@ purger_mailtest_CFLAGS =  \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 purger_mailtest_LDFLAGS = -I$(top_srcdir)/include -lldap -llber -lconfig 
 purger_mailtest_LDADD = \
-		$(top_srcdir)/lib/config/libconfig.la \
-		$(top_srcdir)/lib/ldap/libldap.la \
-                $(top_srcdir)/lib/mail/libmail.la
+		$(top_builddir)/lib/config/.libs/libconfig.la \
+		$(top_builddir)/lib/ldap/libldap.la \
+                $(top_builddir)/lib/mail/libmail.la

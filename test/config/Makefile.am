@@ -29,6 +29,7 @@
 AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = purger_config_test
 purger_config_test_SOURCES = main.c
-purger_config_test_CFLAGS = -I../../include 
-purger_config_test_LDFLAGS = -lldap -llber
-purger_config_test_LDADD = $(top_srcdir)/lib/ldap/.libs/libldap.la
+purger_config_test_CFLAGS = -I$(top_srcdir)/include 
+purger_config_test_LDFLAGS = -lldap -llber -lconfig
+purger_config_test_LDADD = $(top_builddir)/lib/ldap/.libs/libldap.la \
+			   $(top_builddir)/lib/config/.libs/libconfig.la

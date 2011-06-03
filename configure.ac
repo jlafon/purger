@@ -77,7 +77,8 @@ AC_OUTPUT([
         test/ldap/Makefile
         test/log/Makefile
         test/insert/Makefile
-        src/purger/Makefile
+	test/config/Makefile
+	src/purger/Makefile
         src/treewalk/Makefile
         src/util/Makefile
    	lanl-purger.spec

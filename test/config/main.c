@@ -1,5 +1,6 @@
 #include "lconfig.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 int main ( int argc, char *argv[] ) 
 {
     dbinfo_t dbinfo;
@@ -10,7 +11,7 @@ int main ( int argc, char *argv[] )
 	fprintf(stderr,"Failed to parse config file.");
 	exit(-1);
     }
-    fprintf(stdout,"===Purger Configuration Settings===
+    fprintf(stdout,"===Purger Configuration Settings===\n\
 	    Database Settings: \n\
 	    \tHost:\t%s\n\
 	    \tPort:\t%d\n\
