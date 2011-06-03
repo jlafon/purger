@@ -51,8 +51,9 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_purger_mailtest_OBJECTS = purger_mailtest-mailtest.$(OBJEXT)
 purger_mailtest_OBJECTS = $(am_purger_mailtest_OBJECTS)
-purger_mailtest_DEPENDENCIES = ../../lib/config/.libs/libconfig.a \
-	../../lib/ldap/.libs/libldap.a ../../lib/mail/.libs/libmail.a
+purger_mailtest_DEPENDENCIES = $(top_srcdir)/lib/config/libconfig.la \
+	$(top_srcdir)/lib/ldap/libldap.la \
+	$(top_srcdir)/lib/mail/libmail.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -188,16 +189,16 @@ version_info = @version_info@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
-purger_mailtest_SOURCES = ../../include/mail.h mailtest.c
+purger_mailtest_SOURCES = mailtest.c
 purger_mailtest_CFLAGS = \
-                -I../../include/ \
+                -I$(top_srcdir)/include/ \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
-purger_mailtest_LDFLAGS = -I../../include/ -lldap -llber -lconfig 
+purger_mailtest_LDFLAGS = -I$(top_srcdir)/include -lldap -llber -lconfig 
 purger_mailtest_LDADD = \
-		../../lib/config/.libs/libconfig.a \
-		../../lib/ldap/.libs/libldap.a \
-                ../../lib/mail/.libs/libmail.a
+		$(top_srcdir)/lib/config/libconfig.la \
+		$(top_srcdir)/lib/ldap/libldap.la \
+                $(top_srcdir)/lib/mail/libmail.la
 
 all: all-am
 

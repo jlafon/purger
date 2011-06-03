@@ -28,12 +28,12 @@
 ################################################################################
 AM_LIBTOOLFLAGS = --silent
 bin_PROGRAMS = purger_mailtest
-purger_mailtest_SOURCES = ../../include/mail.h mailtest.c
+purger_mailtest_SOURCES = mailtest.c
 purger_mailtest_CFLAGS =  \
-                -I../../include/ \
+                -I$(top_srcdir)/include/ \
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
-purger_mailtest_LDFLAGS = -I../../include/ -lldap -llber -lconfig 
+purger_mailtest_LDFLAGS = -I$(top_srcdir)/include -lldap -llber -lconfig 
 purger_mailtest_LDADD = \
-		../../lib/config/.libs/libconfig.a \
-		../../lib/ldap/.libs/libldap.a \
-                ../../lib/mail/.libs/libmail.a
+		$(top_srcdir)/lib/config/libconfig.la \
+		$(top_srcdir)/lib/ldap/libldap.la \
+                $(top_srcdir)/lib/mail/libmail.la

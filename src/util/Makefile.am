@@ -31,6 +31,8 @@ EXTRA_DIST = deleter.h
 
 libdir = ../../lib
 
+includes = $(top_srcdir)/include
+
 convenience_libs = \
 		   $(libdir)/config/.libs/libconfig.la \
 		   $(libdir)/ldap/.libs/libldap.la     \
@@ -41,30 +43,30 @@ bin_PROGRAMS = purger_chkscratch purger_update_expired purger_deleter purger_dbt
 
 purger_dbtest_SOURCES = dbtest.c
 
-purger_dbtest_CFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_dbtest_CFLAGS = -I$(includes) -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
 
 purger_dbtest_LDADD = $(convenience_libs)
 
-purger_dbtest_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_dbtest_LDFLAGS = -I$(includes) -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
 
-purger_chkscratch_SOURCES = ../../include/lconfig.h ../../include/lanl-ldap.h ../../include/log.h chkscratch.c
+purger_chkscratch_SOURCES = chkscratch.c
 
-purger_chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
+purger_chkscratch_CFLAGS =  -I$(includes) -I`pg_config --includedir`
 
-purger_chkscratch_LDFLAGS = -lpq -lconfig -I../../include -I`pg_config --includedir` -L`pg_config --libdir`
+purger_chkscratch_LDFLAGS = -I$(includes) -lpq -lconfig -I../../include -I`pg_config --includedir` -L`pg_config --libdir`
 
 purger_chkscratch_LDADD = $(convenience_libs)
 
 purger_update_expired_SOURCES = update_expired.c
 
-purger_update_expired_CFLAGS = -I`pg_config --includedir`
+purger_update_expired_CFLAGS = -I$(includes) -I`pg_config --includedir`
 
-purger_update_expired_LDFLAGS = -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
+purger_update_expired_LDFLAGS = -I$(includes) -lpq -lconfig -I`pg_config --includedir` -L`pg_config --libdir`
 
 purger_update_expired_LDADD = $(convenience_libs)
 
-purger_deleter_CFLAGS = -I`pg_config --includedir`
+purger_deleter_CFLAGS = -I$(includes) -I`pg_config --includedir`
 
 purger_deleter_SOURCES = deleter.c
 
-purger_deleter_LDFLAGS = -lpq -I`pg_config --includedir` -L`pg_config --libdir`
+purger_deleter_LDFLAGS = -I$(includes) -lpq -I`pg_config --includedir` -L`pg_config --libdir`
