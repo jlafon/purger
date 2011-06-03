@@ -65,7 +65,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = purger_purge_user$(EXEEXT)
+bin_PROGRAMS = purger_purge_user$(EXEEXT) purger$(EXEEXT)
 subdir = src/purger
 DIST_COMMON = README $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -78,11 +78,14 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_purger_purge_user_OBJECTS = purger_purge_user-purge_user.$(OBJEXT)
-purger_purge_user_OBJECTS = $(am_purger_purge_user_OBJECTS)
+am_purger_OBJECTS = purger-purger.$(OBJEXT)
+purger_OBJECTS = $(am_purger_OBJECTS)
 am__DEPENDENCIES_1 = ../../lib/ldap/.libs/libldap.la \
 	../../lib/config/.libs/libconfig.la \
 	../../lib/mail/.libs/libmail.la
+purger_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_purger_purge_user_OBJECTS = purger_purge_user-purge_user.$(OBJEXT)
+purger_purge_user_OBJECTS = $(am_purger_purge_user_OBJECTS)
 purger_purge_user_DEPENDENCIES = $(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -95,8 +98,8 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(purger_purge_user_SOURCES)
-DIST_SOURCES = $(purger_purge_user_SOURCES)
+SOURCES = $(purger_SOURCES) $(purger_purge_user_SOURCES)
+DIST_SOURCES = $(purger_SOURCES) $(purger_purge_user_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -197,7 +200,12 @@ convenience_libs = \
 		../../lib/config/.libs/libconfig.la 	\
                 ../../lib/mail/.libs/libmail.la
 
+purger_SOURCES = purger.c 
 purger_purge_user_SOURCES = purge_user.c 
+purger_LDADD = \
+		-lconfig -lpq -lldap -llber		\
+		$(convenience_libs)
+
 purger_purge_user_LDADD = \
 		-lconfig -lpq -lldap -llber		\
 		$(convenience_libs)
@@ -208,7 +216,16 @@ purger_purge_user_CFLAGS = \
                 -I$(top_srcdir) 			\
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
+purger_CFLAGS = \
+		-lconfig 				\
+		-I`pg_config --includedir`		\
+                -I$(top_srcdir) 			\
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+
 purger_purge_user_LDFLAGS = \
+		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
+
+purger_user_LDFLAGS = \
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
 
 all: all-am
@@ -272,6 +289,9 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
+purger$(EXEEXT): $(purger_OBJECTS) $(purger_DEPENDENCIES) 
+	@rm -f purger$(EXEEXT)
+	$(LINK) $(purger_LDFLAGS) $(purger_OBJECTS) $(purger_LDADD) $(LIBS)
 purger_purge_user$(EXEEXT): $(purger_purge_user_OBJECTS) $(purger_purge_user_DEPENDENCIES) 
 	@rm -f purger_purge_user$(EXEEXT)
 	$(LINK) $(purger_purge_user_LDFLAGS) $(purger_purge_user_OBJECTS) $(purger_purge_user_LDADD) $(LIBS)
@@ -282,6 +302,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger-purger.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/purger_purge_user-purge_user.Po@am__quote@
 
 .c.o:
@@ -304,6 +325,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+purger-purger.o: purger.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_CFLAGS) $(CFLAGS) -MT purger-purger.o -MD -MP -MF "$(DEPDIR)/purger-purger.Tpo" -c -o purger-purger.o `test -f 'purger.c' || echo '$(srcdir)/'`purger.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger-purger.Tpo" "$(DEPDIR)/purger-purger.Po"; else rm -f "$(DEPDIR)/purger-purger.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='purger.c' object='purger-purger.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_CFLAGS) $(CFLAGS) -c -o purger-purger.o `test -f 'purger.c' || echo '$(srcdir)/'`purger.c
+
+purger-purger.obj: purger.c
+@am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_CFLAGS) $(CFLAGS) -MT purger-purger.obj -MD -MP -MF "$(DEPDIR)/purger-purger.Tpo" -c -o purger-purger.obj `if test -f 'purger.c'; then $(CYGPATH_W) 'purger.c'; else $(CYGPATH_W) '$(srcdir)/purger.c'; fi`; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/purger-purger.Tpo" "$(DEPDIR)/purger-purger.Po"; else rm -f "$(DEPDIR)/purger-purger.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='purger.c' object='purger-purger.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_CFLAGS) $(CFLAGS) -c -o purger-purger.obj `if test -f 'purger.c'; then $(CYGPATH_W) 'purger.c'; else $(CYGPATH_W) '$(srcdir)/purger.c'; fi`
 
 purger_purge_user-purge_user.o: purge_user.c
 @am__fastdepCC_TRUE@	if $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(purger_purge_user_CFLAGS) $(CFLAGS) -MT purger_purge_user-purge_user.o -MD -MP -MF "$(DEPDIR)/purger_purge_user-purge_user.Tpo" -c -o purger_purge_user-purge_user.o `test -f 'purge_user.c' || echo '$(srcdir)/'`purge_user.c; \

@@ -119,7 +119,7 @@ static void exit_nicely(PGconn *conn) {
   exit(EXIT_FAILURE);
 }
 
-int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo, mailinfo_t mailinfo){
+int process_unwarned_files(PGconn *conn, char *uid, char *filesystem, char *ins_timenow, ldapinfo_t *ldapinfo, mailinfo_t * mailinfo){
   /* postgrs variables */
   PGresult *res, *files;
   PQprintOpt options = {0};

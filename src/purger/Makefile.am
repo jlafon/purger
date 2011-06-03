@@ -38,10 +38,16 @@ convenience_libs =					\
 		../../lib/config/.libs/libconfig.la 	\
                 ../../lib/mail/.libs/libmail.la
 
-bin_PROGRAMS = purger_purge_user
+bin_PROGRAMS = purger_purge_user purger
 
+
+purger_SOURCES = purger.c 
 
 purger_purge_user_SOURCES = purge_user.c 
+
+purger_LDADD = 				\
+		-lconfig -lpq -lldap -llber		\
+		$(convenience_libs)
 
 purger_purge_user_LDADD = 				\
 		-lconfig -lpq -lldap -llber		\
@@ -53,5 +59,14 @@ purger_purge_user_CFLAGS = 				\
                 -I$(top_srcdir) 			\
 		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
+purger_CFLAGS = 				\
+		-lconfig 				\
+		-I`pg_config --includedir`		\
+                -I$(top_srcdir) 			\
+		-DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
+
 purger_purge_user_LDFLAGS = 				\
+		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
+
+purger_user_LDFLAGS = 				\
 		-lconfig -I`pg_config --includedir` -L`pg_config --libdir` 
