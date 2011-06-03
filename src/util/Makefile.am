@@ -52,6 +52,8 @@ purger_chkscratch_CFLAGS = -I../../include -I`pg_config --includedir`
 
 purger_chkscratch_LDFLAGS = -lpq -lconfig -I../../include -I`pg_config --includedir` -L`pg_config --libdir`
 
+purger_chkscratch_LDDADD = ../../lib/ldap/libldap.la
+
 purger_update_expired_SOURCES = update_expired.c
 
 purger_update_expired_CFLAGS = -I`pg_config --includedir`
