@@ -1,5 +1,12 @@
+/** 
+  * \file deleter.c
+  * \author Ben McClelland 
+  * \date 06/07/2011
+  */
 #include "deleter.h"
+#include "lconfig.h"
 
+//! Main function
 
 int main(int argc, char *argv[]){
 
@@ -18,10 +25,11 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-//  if (parse_config(&dbinfo)==-1){
-//    fprintf(stderr, "parsing config returned error.\n");
-//    return 1;
-//  }
+  if (parse_config_dbonly(&dbinfo) != EXIT_SUCCESS)
+  {
+    fprintf(stderr, "Unable to parse config file.\n");
+    exit(-1);
+  }
   
   conn = PQsetdbLogin(dbinfo.host, dbinfo.port, NULL, NULL, filesystem, dbinfo.user, dbinfo.pass);
   
@@ -51,12 +59,12 @@ int main(int argc, char *argv[]){
   
   return 0;
 }
-
+//! Exits successfully
 static void exit_nicely(PGconn *conn){
   PQfinish(conn);
   exit(1);
 }
-
+//! Function the processes files
 int process_files(PGconn *conn, PGresult *files){
   //counting variables
   int i;

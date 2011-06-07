@@ -69,4 +69,6 @@ purger_deleter_CFLAGS = -I$(includes) -I`pg_config --includedir`
 
 purger_deleter_SOURCES = deleter.c
 
+purger_deleter_LDADD = $(convenience_libs)
+
 purger_deleter_LDFLAGS = -I$(includes) -lpq -I`pg_config --includedir` -L`pg_config --libdir`

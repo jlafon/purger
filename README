@@ -39,8 +39,9 @@ libqt4 (for the GUI)
 Directions for building:
 ========================
 run `./configure`
-run `make`             Note: support `make install` is not finished yet.
+run `make`
 This will build of the libraries, utilities, and tests included with lanl-purger except for the GUI.
+
 
 Directions for building the GUI:
 ================================
@@ -51,6 +52,15 @@ run `qmake`
 run `make`
 This will build the gui component called PathFinder.
 
+Directions for building an RPM:
+===============================
+run `./configure`
+run `make distcheck`
+copy the lanl-purger-1.0.0.tar.gz to your rpmbuild SOURCES directory
+copy the lanl-purger.spec file to your rpmbuild SPECS directory
+run `rpmbuild -ba lanl-purger.spec`    # You may need --nodeps if you don't have libconfig, postgresql and ldap installed
+
+
 Project Structure
 =================
 lanlpurger
@@ -59,8 +69,8 @@ lanlpurger
   -src             	  Command line tools
   -lib            	  Shared libraries
   -test             	  Tests
-  -include          	  Common header files
-  -etc/postgres_setup     SQL code for setting up Postgres
+  -include    		  Common header files
+  -etc/purger		  Purger config directory
   -gui            	  GUI component
   -src/purger     	  Purger utility
   -src/treewalk   	  Parallel Purger

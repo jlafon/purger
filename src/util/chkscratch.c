@@ -1,3 +1,8 @@
+/**
+  * \file chckscratch.c
+  * \authors Ben McClelland, Jharrod LaFon
+  * \date 06/07/2011
+  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +23,7 @@ enum qtype {
   GROUP
 };
 
+//! Print filesystem stats
 int printstat(const char* filesystem) {
   struct statfs st;
   char path[1024];
@@ -32,7 +38,7 @@ int printstat(const char* filesystem) {
 
   return ((st.f_blocks * st.f_bsize)/(1024 * 1024 * 1024));
 }
-
+//! Print file system usage
 int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo_t *dbinfo, ldapinfo_t *ldapinfo) {
   PGconn *conn;
   PGresult *snapshot_res;
@@ -156,7 +162,7 @@ int printusage(const char* filesystem, int count, int gb, int query_type, dbinfo
   
   return 0;
 }
-
+//! Print program usage
 void usage() {
   printf("usage: checkscratch [options] [number]\n");
   printf("       -s    sum of file and directory size (default)\n");
@@ -168,7 +174,7 @@ void usage() {
   printf("       number specifies how many entries should be printed\n");
   printf("          default is to print all\n");
 }
-
+//! Main function
 int main(int argc, char *argv[]) {
   int results, ret, gb, c;
   int option_index = 0;
@@ -220,11 +226,6 @@ int main(int argc, char *argv[]) {
   gb = printstat("scratch2");
   printf("\n");
   ret = printusage("scratch2", results, gb, query_type, &dbinfo, &ldapinfo);
-
-  //printf("\n");
-  //printf("\n");
-  //gb = printstat("scratch1");
-  //ret = printusage("scratch1", results, gb, query_type, dbinfo);
 
   printf("\n");
   return ret;

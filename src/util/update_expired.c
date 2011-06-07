@@ -1,11 +1,17 @@
+/**
+  * \file update_expired.c
+  * \authors Ben McClelland, Jharrod LaFon
+  * \date 06/07/2011
+  **/
 #include <stdio.h>
 #include <string.h>
 #include <libpq-fe.h>
 #include <getopt.h>
-#include "../../include/lconfig.h"
+#include "lconfig.h"
 
 #define PATHSIZE_PLUS 1024
 
+//! Updates the database to remove expired files.
 int update(const char* filesystem, dbinfo_t dbinfo) {
   PGconn *conn;
   PGresult *snapshot_res;
@@ -59,12 +65,14 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
   return 0;
 }
 
+//! Prints usage
 void usage() {
   printf("usage: update_expired <database>\n");
   printf("       -h    usage\n");
   printf("\n");
 }
 
+//! Main function
 int main(int argc, char *argv[]) {
   int ret, c;
   int option_index = 0;
