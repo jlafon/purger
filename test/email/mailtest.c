@@ -3,8 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include "lconfig.h"
-#include "../../include/mail.h"
-#include "../../include/lanl-ldap.h"
+#include "mail.h"
+#include "lanl-ldap.h"
 
 //#define CFG_FILE "purger.conf"
 
@@ -20,17 +20,21 @@ int main(int argc, char *argv[]){
   mailinfo_t mailinfo;
   ldapinfo_t ldapinfo;
   dbinfo_t dbinfo;
-
-  parse_config(&dbinfo,&ldapinfo,&mailinfo);
+  
+  if(parse_config(&dbinfo,&ldapinfo,&mailinfo) != EXIT_SUCCESS)
+  {
+      fprintf(stderr,"Unable to parse config file.\n");
+      exit(-1);
+  }
 
   /* grab moniker from uid */
-  if (get_moniker( uid, ldapinfo.host, ldapinfo.basem, moniker ) == 1) {
+  if (get_moniker( uid, ldapinfo.host, ldapinfo.basem, moniker ) != EXIT_SUCCESS) {
     printf("Error getting moniker from ldap host: %s base: %s uid: %s\n", ldapinfo.host, ldapinfo.basem, uid);
     return EXIT_FAILURE;
   }
 
   /* grab e-mail from uid */
-  if (get_email( moniker, ldapinfo.host, ldapinfo.base, email ) == 1) {
+  if (get_email( moniker, ldapinfo.host, ldapinfo.base, email ) != EXIT_SUCCESS) {
     printf("Error getting email from ldap host: %s base: %s uid: %s\n", ldapinfo.host, ldapinfo.base, uid);
     return EXIT_FAILURE;
   }
@@ -39,14 +43,14 @@ int main(int argc, char *argv[]){
 
   /* send e-mail containing file list */
   
-
+/*
   ret = sendmail(
-		 email,              /* to       */
-		 notefile,                   /* body     */
+		 email,              
+		 notefile,          
 		 25,
-		 &mailinfo/* port     */
+		 &mailinfo
 		 );
-  
+ */ 
   if (ret != 0)
     printf("Failed to send mail (code: %i).\n", ret);
   else
