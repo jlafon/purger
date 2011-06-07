@@ -9,7 +9,7 @@ License:	LANS LLC
 Group:		System Environment/Filesystems
 Source:		lanl-purger-%{version}.tar.gz
 URL:		http://sourceforge.net/projects/lanl-purger/
-BuildRoot:	%{_tmppath}/lanl-purger-%{version}-root
+#BuildRoot:	%{_tmppath}/lanl-purger-%{version}-root
 Requires:       mpi
 BuildRequires:  libconfig
 BuildRequires:  mpi-devel
@@ -22,7 +22,9 @@ to manage parallel filesystem.  Designed to manage millions of files
 and clean out old files on scratch filesystem.
 
 %prep
-%{__rm} -rf %{buildroot}
+# This line breaks my sh script :(
+#%{__rm} -rf %{buildroot}
+
 %setup -q -n lanl-purger-%{version}
 
 %build
