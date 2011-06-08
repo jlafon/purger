@@ -8,6 +8,12 @@ set -x
 # For this to work, I must have the following line un-commented line in my ~/.rpmmacros file:
 # %_topdir $HOME/rpm
 
+# Check for Makefile
+if [ ! -e Makefile ]
+then
+	./configure
+fi
+
 # Build root
 dir=$HOME
 
@@ -36,9 +42,10 @@ mkdir rpm/RPMS &&
 
 # Run make dist
 popd && 
-make dist &&
+make distcheck &&
 
 # Copy source over
+echo "Copying ${name}.tar.gz to $src" 
 cp ${name}.tar.gz $src &&
 
 # Copy spec file over
@@ -46,5 +53,5 @@ cp $spec $rpm/SPECS &&
 pushd $rpm/SPECS &&
 
 # Beware of nodeps, building this way may need some shared libs in LD_LIBRARY_PATH 
-rpmbuild -ba --buildroot $rpm --nodeps $spec &&
+rpmbuild -ba --nodeps $spec &&
 popd

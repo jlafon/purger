@@ -9,7 +9,7 @@ License:	LANS LLC
 Group:		System Environment/Filesystems
 Source:		lanl-purger-%{version}.tar.gz
 URL:		http://sourceforge.net/projects/lanl-purger/
-#BuildRoot:	%{_tmppath}/lanl-purger-%{version}-root
+BuildRoot:	%{_tmppath}/lanl-purger-%{version}-root
 Requires:       mpi
 BuildRequires:  libconfig
 BuildRequires:  mpi-devel
