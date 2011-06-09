@@ -9,6 +9,7 @@ CREATE LANGUAGE plpgsql;
 -- This table holds a snapshot of the file system
 CREATE TABLE snapshot1(
    filename TEXT NOT NULL PRIMARY KEY,
+   parent TEXT NOT NULL,
    inode BIGINT NOT NULL,
    mode BIT(32) NOT NULL,
    nlink INT NOT NULL,
@@ -27,9 +28,10 @@ CREATE TABLE snapshot1(
    CREATE INDEX snapshot1_mtime_index ON snapshot1(mtime);
    CREATE INDEX snapshot1_ctime_index ON snapshot1(ctime);
    
--- A second identical databse, these two will swap using current_snapshot
+-- A second identical database, these two will swap using current_snapshot
 CREATE TABLE snapshot2(
    filename TEXT NOT NULL PRIMARY KEY,
+   parent TEXT NOT NULL,
    inode BIGINT NOT NULL,
    mode BIT(32) NOT NULL,
    nlink INT NOT NULL,

@@ -1,9 +1,10 @@
 /************************************************************************************
+* \file pstat.c
 * Name:  purger
 *
 * Description:  
 * 
-* Author:  Gary Grider / Alfred Torrez / Ben McClelland
+* \authors Gary Grider,Alfred Torrez,Ben McClelland,Jharrod LaFon
 *
 * History:
 * 
@@ -26,6 +27,7 @@ int *proc_status;
 PGconn *conn;
 char snapshot_name[16];
 
+//! Alarm handler
 void catch_alarm (int sig) {
   struct timeval tv;
   time_t now;
@@ -43,12 +45,14 @@ void catch_alarm (int sig) {
   alarm(WAIT_TIME);
 }
 
+//! Signal Handler
 void sig_cleanup (int sig) {
   shutdown=1;
   printf("\n\nCaught signal %i.  Writing restart and shutting down...\n", sig);
   fflush(stdout);
 }
 
+//! Signal Handler for USER1
 void sig_user1 (int sig) {
   int nproc, i;
   if (MPI_Comm_size(MPI_COMM_WORLD, &nproc) != MPI_SUCCESS) {
@@ -63,6 +67,7 @@ void sig_user1 (int sig) {
   fflush(stdout);
 }
 
+//! Converts decimal numbers to binary
 void dec2bin(long decimal, char *binary)
 {
   int  k = 0, n = 0, count = 0;
@@ -95,6 +100,7 @@ void dec2bin(long decimal, char *binary)
   binary[n-1] = 0;         // end with NULL
 }
 
+
 /***********************************************************************************************
  * Function: main 
  *
@@ -102,6 +108,7 @@ void dec2bin(long decimal, char *binary)
  * roles to processes. 
  *
  ***********************************************************************************************/
+//! Main
 int main( int argc, char *argv[] )
 {
   int rank;
@@ -235,7 +242,6 @@ int main( int argc, char *argv[] )
 	  PQclear(res);
 	  return 1;
 	}
-
 	id = atoi(PQgetvalue(res, 0, 0));
       }
     }
@@ -287,9 +293,10 @@ int main( int argc, char *argv[] )
       }
       PQclear(snapshot);
     }
+    /* Set up signal handlers */
     signal (SIGURG, sig_user1);
-    //signal (SIGUSR1, sig_user1);
     signal (SIGALRM, catch_alarm);
+    /* Set alarm */
     alarm(WAIT_TIME);
     manager(beginning_path, nproc, restart_name, id);
   }
@@ -422,7 +429,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   }
   /*set restart if continuing from checkpoint*/
   if (restart) {
-    restart_file = fopen("/scratch1/ben/restart", "r");
+    restart_file = fopen(restart_name, "r");
     char * p = fgets(line, sizeof(line), restart_file);
     if(p == NULL)
         exit(EXIT_FAILURE);
@@ -856,7 +863,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   } /* endif setup_error */
   
   if (shutdown) { /*write a restart file*/
-    restart_file = fopen("/scratch1/ben/restart", "w+");
+    restart_file = fopen("treewalk_restart", "w+");
     fprintf(restart_file,"%i\n", nreqcnt);
     for (loop=0; loop<nreqcnt; loop++)
       fprintf(restart_file,"%s\n", nqueue[loop].req);

@@ -53,7 +53,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am_purger_bensearch_OBJECTS = purger_bensearch-bensearch.$(OBJEXT)
 purger_bensearch_OBJECTS = $(am_purger_bensearch_OBJECTS)
 purger_bensearch_DEPENDENCIES =  \
-	$(top_builddir)/lib/ldap/.libs/libldap.la
+	$(top_builddir)/lib/ldap/.libs/libldap.la \
+	$(top_builddir)/lib/config/.libs/libconfig.la
 am_purger_ldapemail_test_OBJECTS =  \
 	purger_ldapemail_test-main.$(OBJEXT)
 purger_ldapemail_test_OBJECTS = $(am_purger_ldapemail_test_OBJECTS)
@@ -201,7 +202,9 @@ purger_bensearch_CFLAGS = -I$(top_srcdir)/include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 
 purger_bensearch_LDFLAGS = -lldap -llber
-purger_bensearch_LDADD = $(top_builddir)/lib/ldap/.libs/libldap.la
+purger_bensearch_LDADD = $(top_builddir)/lib/ldap/.libs/libldap.la \
+			 $(top_builddir)/lib/config/.libs/libconfig.la
+
 purger_ldapemail_test_SOURCES = main.c
 purger_ldapemail_test_CFLAGS = -I$(top_srcdir)/include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED

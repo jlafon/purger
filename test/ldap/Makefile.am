@@ -32,7 +32,8 @@ purger_bensearch_SOURCES = bensearch.c
 purger_bensearch_CFLAGS = -I$(top_srcdir)/include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED
 purger_bensearch_LDFLAGS = -lldap -llber
-purger_bensearch_LDADD = $(top_builddir)/lib/ldap/.libs/libldap.la
+purger_bensearch_LDADD = $(top_builddir)/lib/ldap/.libs/libldap.la \
+			 $(top_builddir)/lib/config/.libs/libconfig.la
 purger_ldapemail_test_SOURCES = main.c
 purger_ldapemail_test_CFLAGS = -I$(top_srcdir)/include \
                    -DWITHOPEN_LDAP -DWITHLDAP_DEPRECATED

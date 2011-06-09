@@ -39,13 +39,13 @@ purger_pstat_SOURCES = pstat.c
 
 purger_pstat_CFLAGS = \
 	       -I`pg_config --includedir` \
-               -I$(topsrc_dir)
+               -I$(top_srcdir)/include
 
-libdir = $(top_srcdir)/lib
+libdir = $(top_builddir)/lib
 
 convenience_libs = 				\
-              ../../lib/utils/.libs/libutils.la	\
-              ../../lib/config/.libs/libconfig.la
+              $(libdir)/utils/.libs/libutils.la	\
+              $(libdir)/config/.libs/libconfig.la
 
 purger_pstat_LDADD = 				\
 	      -lpq -lmpi -lconfig	\
