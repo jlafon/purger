@@ -52,6 +52,16 @@ CREATE TABLE snapshot2(
    CREATE INDEX snapshot2_mtime_index ON snapshot2(mtime);
    CREATE INDEX snapshot2_ctime_index ON snapshot2(ctime);
 
+-- Holds the performance data for treewalk
+CREATE TABLE performance(
+   id INT,
+   files INT,
+   directories INT,
+   runtime INT,
+   ranks INT,
+   packsize INT, 
+   error INT
+   );
    
 -- Holds the name of the snapshot database that should currently be used
 CREATE TABLE current_snapshot(
@@ -124,6 +134,8 @@ GRANT ALL PRIVILEGES ON expired_files TO treewalk;
 GRANT ALL PRIVILEGES ON recent_month TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot1 TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot2 TO treewalk;
+GRANT ALL PRIVILEGES ON performance to treewalk;
+ALTER TABLE performance OWNER to treewalk;
 ALTER TABLE snapshot1 OWNER TO treewalk;
 ALTER TABLE snapshot2 OWNER TO treewalk;
 
