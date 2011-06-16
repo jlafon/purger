@@ -24,6 +24,7 @@ CREATE TABLE snapshot1(
    abslink BOOLEAN,
    added TIMESTAMP DEFAULT NOW()
 );
+   CREATE INDEX snapshot1_parent_index ON snapshot1(parent);
    CREATE INDEX snapshot1_atime_index ON snapshot1(atime);
    CREATE INDEX snapshot1_mtime_index ON snapshot1(mtime);
    CREATE INDEX snapshot1_ctime_index ON snapshot1(ctime);
@@ -46,6 +47,7 @@ CREATE TABLE snapshot2(
    abslink BOOLEAN,
    added TIMESTAMP DEFAULT NOW()
 );
+   CREATE INDEX snapshot2_parent_index ON snapshot2(parent);
    CREATE INDEX snapshot2_atime_index ON snapshot2(atime);
    CREATE INDEX snapshot2_mtime_index ON snapshot2(mtime);
    CREATE INDEX snapshot2_ctime_index ON snapshot2(ctime);
@@ -98,6 +100,7 @@ CREATE TABLE conversions(
 -- Creates the basic expired_files table type
 CREATE TABLE expired_files(
    filename TEXT NOT NULL PRIMARY KEY,
+   parent TEXT NOT NULL,
    uid INT NOT NULL,
    atime TIMESTAMP NOT NULL,
    mtime TIMESTAMP NOT NULL,

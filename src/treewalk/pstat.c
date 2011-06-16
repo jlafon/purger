@@ -67,6 +67,18 @@ void sig_user1 (int sig) {
   fflush(stdout);
 }
 
+//! Parses out the parent of a path
+int split_path(char * parent,char * path, int length)
+{
+    char x = path[length-1];
+    path[length-1] = 'X';
+    char * p = strrchr(path,'/');
+    path[length-1] = x;
+    strncpy(parent,path,p-path+1);
+    parent[x] = '\0';
+    return p-path+1;
+}
+
 //! Converts decimal numbers to binary
 void dec2bin(long decimal, char *binary)
 {
@@ -234,18 +246,19 @@ int main( int argc, char *argv[] )
       return -1;
     }
     
-    if (rank == 0) {
+    /*if (rank == 0) {
       if (db_on) {
 	res = PQexec(conn, "INSERT INTO performance (error) VALUES (1) RETURNING id;");
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 	  fprintf(stderr, "INSERT command failed: %s\n", PQerrorMessage(conn));
 	  PQclear(res);
 	  return 1;
-	}
+
+      }
 	id = atoi(PQgetvalue(res, 0, 0));
       }
     }
-
+*/
     snapshot = PQexec(conn, "SELECT name FROM current_snapshot WHERE ID = 1;");
     
     if (PQresultStatus(snapshot) != PGRES_TUPLES_OK) {
@@ -360,6 +373,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   int nmaxque = QSIZE;
   int nlastmaxque = QSIZE;
   char path[PATHSIZE_PLUS];
+  char parent[PATHSIZE_PLUS];
   char abortcmd[10];
   int received_cmd = -1;
   int free_index;
@@ -751,7 +765,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
 	      gettimeofday(&tv, NULL);
 	      now = tv.tv_sec;
 	      timenow = (int)now;
-
+/*
 	      snprintf(query, 500,"UPDATE performance SET files=%i, directories=%i, runtime=%i, ranks=%i, packsize=%i, error=0 WHERE id = %i;", totalfiles, totaldirs, (timenow - starttime), nproc, PACKSIZE, id); 
 	      res = PQexec(conn, query);
 	      if (PQresultStatus(res) != PGRES_COMMAND_OK) {
@@ -760,7 +774,8 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
 	      }
 	      
 	      PQclear(res);
-	    }
+*/
+          }
 	    else
 	      fprintf(stderr,"\ntotalfiles: %i totaldirs: %i\n", totalfiles, totaldirs);
 	    
@@ -892,6 +907,7 @@ void worker(int rank)
 {
   int all_done=0;
   char path[PATHSIZE_PLUS] = "";
+  char parent[PATHSIZE_PLUS];
   char statpath[PATHSIZE_PLUS];
   MPI_Status status;
   DIR *dir;
@@ -1050,11 +1066,12 @@ void worker(int rank)
 	      bzero(abslink, 10);
 	      snprintf(abslink, 6, "false");	      
 	    }
-	    
+        /* Get parent */
+	    split_path(parent,path,PATHSIZE_PLUS); 
 	    if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
-	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s/', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s/', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
 	    else
-	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
 	    
 	    insert_result = PQexec(conn, stat_query);
 	    
