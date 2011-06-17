@@ -1,6 +1,6 @@
 #ifndef      __PSTAT_H
 #define      __PSTAT_H
-
+#include <stdlib.h>
 #include <signal.h>
 #include <dirent.h>
 #include <getopt.h>

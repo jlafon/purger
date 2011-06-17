@@ -30,7 +30,40 @@ CREATE TABLE snapshot1(
    CREATE INDEX snapshot1_atime_index ON snapshot1(atime);
    CREATE INDEX snapshot1_mtime_index ON snapshot1(mtime);
    CREATE INDEX snapshot1_ctime_index ON snapshot1(ctime);
-   
+
+-- Experimental
+-- This holds all paths that are dirs 
+CREATE TABLE pathtable(
+    id BIGSERIAL UNIQUE PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+   CREATE INDEX pathtable_id_index ON pathtable(id);
+
+-- Experimental
+-- This holds all paths (files and dirs)
+CREATE TABLE filetable(
+    pathid BIGINT NOT NULL,
+    filename TEXT NOT NULL PRIMARY KEY,
+    inode BIGINT NOT NULL,
+    mode BIT(32) NOT NULL,
+    nlink INT NOT NULL,
+    uid INT NOT NULL,
+    gid INT NOT NULL,
+    size BIGINT NOT NULL,
+    block BIGINT NOT NULL,
+    block_size INT NOT NULL,
+    atime TIMESTAMP NOT NULL,
+    mtime TIMESTAMP NOT NULL,
+    ctime TIMESTAMP NOT NULL,
+    abslink BOOLEAN,
+    added TIMESTAMP DEFAULT NOW(),
+    root BOOLEAN DEFAULT('false')
+);
+   CREATE INDEX filetable_parent_index ON filetable(pathid);
+   CREATE INDEX filetable_atime_index ON filetable(atime);
+   CREATE INDEX filetable_mtime_index ON filetable(mtime);
+   CREATE INDEX filetable_ctime_index ON filetable(ctime);
+
 -- A second identical database, these two will swap using current_snapshot
 CREATE TABLE snapshot2(
    filename TEXT NOT NULL PRIMARY KEY,
@@ -139,9 +172,13 @@ GRANT ALL PRIVILEGES ON recent_month TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot1 TO treewalk;
 GRANT ALL PRIVILEGES ON snapshot2 TO treewalk;
 GRANT ALL PRIVILEGES ON performance to treewalk;
+GRANT ALL PRIVILEGES ON filetable to treewalk;
+GRANT ALL PRIVILEGES ON pathtable to treewalk;
 ALTER TABLE performance OWNER to treewalk;
 ALTER TABLE snapshot1 OWNER TO treewalk;
 ALTER TABLE snapshot2 OWNER TO treewalk;
+ALTER TABLE filetable OWNER TO treewalk;
+ALTER TABLE pathtable OWNER TO treewalk;
 
 -- Create the function warningtest which is called by the trigger
 CREATE OR REPLACE FUNCTION warningtest() RETURNS trigger AS 

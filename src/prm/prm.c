@@ -351,39 +351,45 @@ void worker(int rank)
       }
       
       position = 0;
-      for (i=0; i<count; i++) {
-	MPI_Unpack(workbufin, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-	MPI_Unpack(workbufin, WORKSIZE, &position, &stats.atime, 1, MPI_LONG, MPI_COMM_WORLD);
-	MPI_Unpack(workbufin, WORKSIZE, &position, &stats.mtime, 1, MPI_LONG, MPI_COMM_WORLD);
-	MPI_Unpack(workbufin, WORKSIZE, &position, &stats.ctime, 1, MPI_LONG, MPI_COMM_WORLD);
-	
-	if (lstat(path,&st) == -1) {
-          fprintf(stderr,"ERROR: %s\n",path);
-          perror("worker(), lstat()");
-        }
-	
-	/* exception check */
-	
-	if ((st.st_atime == stats.atime) && (st.st_mtime == stats.mtime) && (st.st_ctime == stats.ctime)) {
-	  /* delete file */
-	  if (remove(path) == 0) {
-	    fprintf(log, "%s %ju %ju %ju %i\n", path, st.st_atime, st.st_mtime, st.st_ctime, st.st_uid);
-	    deleted++;
-	  }
-	  else
-	    rejected++;
-	}
-	else
-	  rejected++;
-	
-	snprintf(query, 500, "DELETE FROM expired_files where filename='%s';", path);
-	queryres = PQexec(conn, query);
-	if (PQresultStatus(queryres) != PGRES_COMMAND_OK) {
-	  fprintf(stderr, "DELETE * command failed: %s", PQerrorMessage(conn));
-	  PQclear(queryres);
-	  PQfinish(conn);
-	  MPI_Abort(MPI_COMM_WORLD, -1);
-	}
+      for (i=0; i<count; i++) 
+      {
+            MPI_Unpack(workbufin, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+            MPI_Unpack(workbufin, WORKSIZE, &position, &stats.atime, 1, MPI_LONG, MPI_COMM_WORLD);
+            MPI_Unpack(workbufin, WORKSIZE, &position, &stats.mtime, 1, MPI_LONG, MPI_COMM_WORLD);
+            MPI_Unpack(workbufin, WORKSIZE, &position, &stats.ctime, 1, MPI_LONG, MPI_COMM_WORLD);
+            
+            if (lstat(path,&st) == -1) 
+            {
+                  fprintf(stderr,"ERROR: %s\n",path);
+                  perror("worker(), lstat()");
+            }
+            
+            /* exception check */
+            
+            if ((st.st_atime == stats.atime) && (st.st_mtime == stats.mtime) && (st.st_ctime == stats.ctime)) 
+            
+            {
+              /* delete file */
+              if (remove(path) == 0) 
+              {
+                fprintf(log, "%s %ju %ju %ju %i\n", path, st.st_atime, st.st_mtime, st.st_ctime, st.st_uid);
+                deleted++;
+              }
+              else
+                rejected++;
+            }
+            else
+              rejected++;
+            
+            snprintf(query, 500, "DELETE FROM expired_files where filename='%s';", path);
+            queryres = PQexec(conn, query);
+            if (PQresultStatus(queryres) != PGRES_COMMAND_OK) 
+            {
+              fprintf(stderr, "DELETE * command failed: %s", PQerrorMessage(conn));
+              PQclear(queryres);
+              PQfinish(conn);
+              MPI_Abort(MPI_COMM_WORLD, -1);
+            }
       }
       
       type_cmd = RESCMD; 

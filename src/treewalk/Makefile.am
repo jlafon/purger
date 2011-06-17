@@ -39,7 +39,8 @@ purger_pstat_SOURCES = pstat.c
 
 purger_pstat_CFLAGS = \
 	       -I`pg_config --includedir` \
-               -I$(top_srcdir)/include
+               -I$(top_srcdir)/include \
+               -Wall
 
 libdir = $(top_builddir)/lib
 

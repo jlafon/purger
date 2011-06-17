@@ -231,7 +231,7 @@ int main( int argc, char *argv[] )
 	fprintf(stderr,"Error parsing config file, exiting.\n");
 	fprintf(stderr,"Values parsed are: \n\
 		\thost: %s\n\
-		\tport: %d\n\
+		\tport: %s\n\
 		\tname: %s\n\
 		\tuser: %s\n",dbinfo.host, dbinfo.port,db_name,dbinfo.user);
 	exit(-1);
@@ -295,15 +295,28 @@ int main( int argc, char *argv[] )
   }
 
    /*assign the different ranks the jobs they will do 0-manager, rest workers*/
-  if (rank == 0) {
-    if (db_on) {
-      snprintf(pgcmd, 4096, "TRUNCATE TABLE %s;", snapshot_name);
+  if (rank == 0) 
+  {
+    if (db_on) 
+    {
+      snprintf(pgcmd, 4096, "TRUNCATE TABLE filetable;");
       snapshot = PQexec(conn, pgcmd);
-      if (PQresultStatus(snapshot) != PGRES_COMMAND_OK) {
-	fprintf(stderr, "TRUNCATE TABLE command failed: %s\n", PQerrorMessage(conn));
-	PQclear(snapshot);
-	MPI_Finalize();
-	return -1;
+      if (PQresultStatus(snapshot) != PGRES_COMMAND_OK) 
+      {
+        fprintf(stderr, "TRUNCATE TABLE command failed: %s\n", PQerrorMessage(conn));
+        PQclear(snapshot);
+        MPI_Finalize();
+        return -1;
+      }
+      PQclear(snapshot);
+      snprintf(pgcmd, 4096, "TRUNCATE TABLE pathtable;");
+      snapshot = PQexec(conn, pgcmd);
+      if (PQresultStatus(snapshot) != PGRES_COMMAND_OK) 
+      {
+        fprintf(stderr, "TRUNCATE TABLE command failed: %s\n", PQerrorMessage(conn));
+        PQclear(snapshot);
+        MPI_Finalize();
+        return -1;
       }
       PQclear(snapshot);
     }
@@ -344,19 +357,27 @@ int main( int argc, char *argv[] )
         snprintf(abslink, 6, "false");	      
       }
       char stat_query[1024];
-
-      if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
-          snprintf(stat_query, 1024, 
-          "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink, root)" 
-         " VALUES ('%s/', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s,'true');", 
-          snapshot_name, beginning_path, beginning_path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-
-      PGresult  *insert_result = PQexec(conn, stat_query);
+      char experimental_query[1024];
+      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s/');", beginning_path);
+      PGresult  *insert_result = PQexec(conn, experimental_query);
       if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
       {
-          fprintf(stderr, "INSERT INTO snapshot command failed (%s) for root: %s\n", beginning_path, PQerrorMessage(conn));
+          fprintf(stderr, "[%s][%d] INSERT INTO snapshot command failed (%s) for root: %s\n", __FILE__,__LINE__,beginning_path, PQerrorMessage(conn));
+          fprintf(stderr, "%s\n", experimental_query);
+      }
+      PQclear(insert_result);
+      if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
+          snprintf(stat_query, 1024, 
+          "INSERT INTO filetable (pathid, filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink, root)" 
+         " VALUES ((SELECT id FROM pathtable WHERE name = '%s'), '%s/', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone"
+         " 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s,'true');", 
+          beginning_path, beginning_path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+
+      insert_result = PQexec(conn, stat_query);
+      if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
+      {
+          fprintf(stderr, "[%s][%d] INSERT INTO snapshot command failed (%s) for root: %s\n", __FILE__,__LINE__,beginning_path, PQerrorMessage(conn));
           fprintf(stderr, "%s\n", stat_query);
-          /*MPI_Abort(MPI_COMM_WORLD, -1);*/
       }
       PQclear(insert_result);
       fprintf(stderr,"Inserted root: %s\n", beginning_path);
@@ -416,7 +437,6 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   int nmaxque = QSIZE;
   int nlastmaxque = QSIZE;
   char path[PATHSIZE_PLUS];
-  char parent[PATHSIZE_PLUS];
   char abortcmd[10];
   int received_cmd = -1;
   int free_index;
@@ -982,10 +1002,10 @@ void worker(int rank)
   int count=0;
   int count_in=0;
   int k;
-  int root = 0;
 
   PGresult *insert_result;
   char stat_query[1024];
+  char experimental_query[1024];
   char binary[80];
   char abslink[10] = "false";
 
@@ -1124,12 +1144,10 @@ void worker(int rank)
           
         case NAMECMD:
           
-          if(status.MPI_TAG = NAMECMD_CHKROOT)
-              root = 1;
           MPI_Unpack(workbuf, WORKSIZE, &position, &count_in, 1, MPI_INT, MPI_COMM_WORLD);
           count = 0;
           position_a = 0;
-
+         
           //fprintf(stderr, "%i count_in: %i\n", rank, count_in);
           for (k = 0; k < count_in; k++) 
           {
@@ -1159,35 +1177,33 @@ void worker(int rank)
                 /* Get parent */
                  split_path(parent,path,PATHSIZE_PLUS); 
                     if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
-                      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s/', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-                    else
-                      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-                
-                insert_result = PQexec(conn, stat_query);
+                    {
+                      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s/');", path);
+                      insert_result = PQexec(conn, experimental_query);
+                      if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
+                      {
+                        fprintf(stderr, "[%s][%d] INSERT INTO pathtable command failed (%s): %s\n", __FILE__,__LINE__,path, PQerrorMessage(conn));
+                 //       fprintf(stderr, "%s\n\n", experimental_query);
+                      }
+                      PQclear(insert_result);
+                    }
+                      snprintf(stat_query, 1024, "INSERT INTO filetable (pathid, filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink)"
+                              " VALUES ((SELECT id from pathtable where name = '%s'),'%s',  %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone"
+                              " 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", 
+                             parent, path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+                    insert_result = PQexec(conn, stat_query);
                 
                 if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
                 {
-                  fprintf(stderr, "INSERT INTO snapshot command failed (%s): %s\n", path, PQerrorMessage(conn));
-                  fprintf(stderr, "%s\n", stat_query);
+                  fprintf(stderr, "[%s][%d] INSERT INTO filetable command failed (%s): %s\n", __FILE__,__LINE__,path, PQerrorMessage(conn));
+               //   fprintf(stderr, "%s\n\n", stat_query);
                   /*MPI_Abort(MPI_COMM_WORLD, -1);*/
                 }
                 PQclear(insert_result);
             
-                /* 
-                   snprintf(stat_query, 1024, "select merge(text '%s', %i, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second');", path, st.st_uid, st.st_atime, st.st_mtime, st.st_ctime);
-                
-                insert_result = PQexec(conn, stat_query);
-                
-                if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) {
-                  //fprintf(stderr, "merge command failed (%s): %s\n", path, PQerrorMessage(conn));
-                }
-                PQclear(insert_result);
-                */
            }
           if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode))) 
           {
-            //fprintf(stderr,"%i packing: %s\n", rank, path);
-            //fprintf(stderr,"%i count: %i\n", rank, count);
             MPI_Pack(&path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
             count++;
             if ((count % PACKSIZE) == 0) 
