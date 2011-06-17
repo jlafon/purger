@@ -39,7 +39,11 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
 
   fprintf(stdout, "Removing files in expired_files table that are no longer in the snapshot.\n");  
 
-  snprintf(query, 1000, "DELETE FROM expired_files WHERE expired_files.filename IN (SELECT expired_files.filename FROM expired_files LEFT OUTER JOIN %s ON (expired_files.filename = %s.filename) WHERE expired_files.atime != %s.atime OR expired_files.mtime != %s.mtime OR expired_files.ctime != %s.ctime OR %s.filename IS NULL);", snapshot, snapshot, snapshot, snapshot, snapshot, snapshot);
+  snprintf(query, 1000, "DELETE FROM expired_files WHERE expired_files.filename IN "
+          "(SELECT expired_files.filename FROM expired_files LEFT OUTER JOIN %s ON "
+          "(expired_files.filename = %s.filename) WHERE expired_files.atime != %s.atime OR " 
+          "expired_files.mtime != %s.mtime OR expired_files.ctime != %s.ctime OR %s.filename IS NULL);", 
+          snapshot, snapshot, snapshot, snapshot, snapshot, snapshot);
   query_res = PQexec(conn, query);
   if (PQresultStatus(query_res) != PGRES_COMMAND_OK) {
     fprintf(stderr, "DEELTE command failed: %s", PQerrorMessage(conn));
@@ -50,7 +54,9 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
 
   fprintf(stdout, "Merging new files from snapshot into expired_files table\n");  
 
-  snprintf(query, 1000, "SELECT merge(filename, uid, atime, mtime, ctime) FROM %s WHERE (atime <= (now() - '14 days'::interval)) AND (mtime <= (now() - '14 days'::interval)) AND (ctime <= (now() - '14 days'::interval));", snapshot);
+  snprintf(query, 1000, "SELECT merge(filename, uid, atime, mtime, ctime) FROM %s"
+          " WHERE (atime <= (now() - '14 days'::interval)) AND (mtime <= (now() - '14 days'::interval))"
+          " AND (ctime <= (now() - '14 days'::interval));", snapshot);
   query_res = PQexec(conn, query);
   if (PQresultStatus(query_res) != PGRES_TUPLES_OK) {
     fprintf(stderr, "SELECT command failed: %s", PQerrorMessage(conn));

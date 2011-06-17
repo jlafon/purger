@@ -40,7 +40,8 @@ int main(int argc, char *argv[]){
       exit_nicely(conn);
     }
   
-  sprintf(query, "SELECT filename FROM snapshot1 WHERE filename like '/panfs/scratch1/vol%%/%%/_%%' AND atime <= now() - INTERVAL '1 month' AND ctime <= now() - INTERVAL '1 month' AND mtime <= now() - INTERVAL '1 month';"); 
+  sprintf(query, "SELECT filename FROM snapshot1 WHERE filename like '/panfs/scratch1/vol%%/%%/_%%'"
+          " AND atime <= now() - INTERVAL '1 month' AND ctime <= now() - INTERVAL '1 month' AND mtime <= now() - INTERVAL '1 month';"); 
   files = PQexec(conn, query);
   if (PQresultStatus(files) != PGRES_TUPLES_OK)
     {
