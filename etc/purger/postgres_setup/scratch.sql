@@ -22,7 +22,8 @@ CREATE TABLE snapshot1(
    mtime TIMESTAMP NOT NULL,
    ctime TIMESTAMP NOT NULL,
    abslink BOOLEAN,
-   added TIMESTAMP DEFAULT NOW()
+   added TIMESTAMP DEFAULT NOW(),
+   root BOOLEAN DEFAULT('false')
 );
    CREATE INDEX snapshot1_parent_index ON snapshot1(parent);
    CREATE INDEX snapshot1_atime_index ON snapshot1(atime);
@@ -45,7 +46,8 @@ CREATE TABLE snapshot2(
    mtime TIMESTAMP NOT NULL,
    ctime TIMESTAMP NOT NULL,
    abslink BOOLEAN,
-   added TIMESTAMP DEFAULT NOW()
+   added TIMESTAMP DEFAULT NOW(),
+   root BOOLEAN DEFAULT('false')
 );
    CREATE INDEX snapshot2_parent_index ON snapshot2(parent);
    CREATE INDEX snapshot2_atime_index ON snapshot2(atime);

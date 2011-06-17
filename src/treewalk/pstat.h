@@ -38,7 +38,8 @@ enum cmd_opcode {
   OUTCMD,
   STATCMD,
   ABORTCMD,
-  WAITCMD
+  WAITCMD,
+  NAMECMD_CHKROOT
 };
 
 /*boolean value to turn on and off database access*/

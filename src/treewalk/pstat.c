@@ -294,7 +294,7 @@ int main( int argc, char *argv[] )
     }
   }
 
-  /*assign the different ranks the jobs they will do 0-manager, rest workers*/
+   /*assign the different ranks the jobs they will do 0-manager, rest workers*/
   if (rank == 0) {
     if (db_on) {
       snprintf(pgcmd, 4096, "TRUNCATE TABLE %s;", snapshot_name);
@@ -317,9 +317,51 @@ int main( int argc, char *argv[] )
   else
     worker(rank);
   
-  if (db_on) {
-    if (rank == 0) {
-      if (strncmp(snapshot_name, "snapshot1", 16) == 0) {
+  if (db_on) 
+  {
+    if (rank == 0) 
+    {
+      /* Insert root path */
+      struct stat st;
+      
+      if(lstat(beginning_path, &st) != 0)
+      {
+          perror("main(), lstat()");
+          MPI_Finalize();
+          exit(-1);
+      }
+      char binary[80];
+      char abslink[10] = "false";
+      dec2bin(st.st_mode, binary);
+      if ((S_ISLNK(st.st_mode)) && (beginning_path[0] == '/')) 
+      {
+        bzero(abslink, 10);
+        snprintf(abslink, 5, "true");
+      }
+      else 
+      {
+        bzero(abslink, 10);
+        snprintf(abslink, 6, "false");	      
+      }
+      char stat_query[1024];
+
+      if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
+          snprintf(stat_query, 1024, 
+          "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink, root)" 
+         " VALUES ('%s/', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s,'true');", 
+          snapshot_name, beginning_path, beginning_path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+
+      PGresult  *insert_result = PQexec(conn, stat_query);
+      if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
+      {
+          fprintf(stderr, "INSERT INTO snapshot command failed (%s) for root: %s\n", beginning_path, PQerrorMessage(conn));
+          fprintf(stderr, "%s\n", stat_query);
+          /*MPI_Abort(MPI_COMM_WORLD, -1);*/
+      }
+      PQclear(insert_result);
+      fprintf(stderr,"Inserted root: %s\n", beginning_path);
+        
+        if (strncmp(snapshot_name, "snapshot1", 16) == 0) {
 	snapshot = PQexec(conn, "UPDATE current_snapshot SET name = 'snapshot1' WHERE ID = 1;");
 	if (PQresultStatus(snapshot) != PGRES_COMMAND_OK) {
 	  fprintf(stderr, "UPDATE current_snapshot command failed: %s\n", PQerrorMessage(conn));
@@ -387,7 +429,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
   int totaldirs = 0;
   int totalfiles = 0;
   int totalthings = 0;
-
+  
   struct timeval tv;
   time_t now;
   int timenow=0;
@@ -420,6 +462,7 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
 
   sprintf(abortcmd,"%d",ABORTCMD);
 
+  
   //MPI_Pack_size(PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD, &packedfname);
   //fprintf(stderr,"packed: %i worksize: %i pathsize: %i packsize: %i buff: %i\n", packedfname, WORKSIZE, PATHSIZE_PLUS, PACKSIZE, WORKSIZE * (int)sizeof(char));
   /* malloc space, set up proc_status one slot for every nproc */
@@ -634,101 +677,117 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
 
 	  totalthings += count;
 	  
-	  if (count>0) {
+	  if (count>0) 
+      {
 	    if (MPI_Recv(workbuf, WORKSIZE, MPI_PACKED, send_rank, MPI_ANY_TAG, 
-			 MPI_COMM_WORLD,&status) != MPI_SUCCESS) {
+			 MPI_COMM_WORLD,&status) != MPI_SUCCESS) 
+        {
 	      fprintf(stderr, "ERROR in manager when receiving message.\n");  
 	      MPI_Abort(MPI_COMM_WORLD, -1);
 	    }
 	    position = 0;
 	  }
-	  else 
-	    break;
-	  	  
+	  else
+      {
+	      break;
+      }	  
 	  /* if there is a free stat-er proc in proc_status, send it the list */
-	  if ((free_index = get_proc_status(proc_status, nproc, 2)) != -1) {
-	    if (count < MAX_STAT) {
+	  if ((free_index = get_proc_status(proc_status, nproc, 2)) != -1) 
+      {
+	    if (count < MAX_STAT) 
+        {
 	      type_cmd = NAMECMD;
 	      position_a = 0;
 	      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
 	      MPI_Pack(&count, 1, MPI_INT, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
 
-	      for (k = 0; k < count; k++) {
-		MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-		MPI_Pack(path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
-		//fprintf(stderr,"%i packing: %s\n", MANAGER_PROC, path);
+	      for (k = 0; k < count; k++) 
+          {
+             MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+             MPI_Pack(path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
+            //fprintf(stderr,"%i packing: %s\n", MANAGER_PROC, path);
 	      }
 
 	      //fprintf(stderr,"%i sending list of %i names to stat-er(%i).\n", MANAGER_PROC, count, free_index);
-	      if (MPI_Send(workbuf_a, position_a, MPI_PACKED, free_index, 
-			   free_index, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		fprintf(stderr, "ERROR in manager sending when sending dir to reader.\n");  
-		MPI_Abort(MPI_COMM_WORLD, -1);
+	      
+          /* If the beginning_path (root path) is included in this workbuffer, we flag it */
+           if (MPI_Send(workbuf_a, position_a, MPI_PACKED, free_index, 
+			   free_index, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+          {
+                fprintf(stderr, "ERROR in manager sending when sending dir to reader.\n");  
+                MPI_Abort(MPI_COMM_WORLD, -1);
 	      }
 	      
 	      /* mark the assigned proc busy in proc_status */
 	      proc_status[free_index] = 1;
 	    }
-	    else {
+	    else 
+        {
 	      type_cmd = NAMECMD;
 	      position_a = 0;
 	      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
 	      MPI_Pack(&count, 1, MPI_INT, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
 
-	      for (k = 0; k < MAX_STAT; k++) {
-		MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-		MPI_Pack(path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
+	      for (k = 0; k < MAX_STAT; k++) 
+          {
+                MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+                MPI_Pack(path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
 	      }
-
-	      if (MPI_Send(workbuf_a, position_a, MPI_PACKED, free_index, 
-			   free_index, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		fprintf(stderr, "ERROR in manager sending when sending dir to reader.\n");  
-		MPI_Abort(MPI_COMM_WORLD, -1);
+          if (MPI_Send(workbuf_a, position_a, MPI_PACKED, free_index, 
+			   free_index, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+          {
+                fprintf(stderr, "ERROR in manager sending when sending dir to reader.\n");  
+                MPI_Abort(MPI_COMM_WORLD, -1);
 	      }
 	      
 	      /* mark the assigned proc busy in proc_status */
 	      proc_status[free_index] = 1;
 	      
-	      for (; k < count; k++) {
-		MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-		
-		/* put rest of list on nqueue */
-		sprintf(nqueue[nreqcnt].req,"%s",path);
-		nreqcnt = nreqcnt + 1;
-		if (nreqcnt > nmaxque) {
-		  nmaxque+=100;
-		  if ((nqueue = (struct name_queue *)realloc((void *)nqueue,(nmaxque + 1)*(sizeof(struct name_queue)))) == (struct name_queue *)0)
-		    MPI_Abort(MPI_COMM_WORLD, -1);
+	      for (; k < count; k++) 
+          {
+            MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+            
+            /* put rest of list on nqueue */
+            sprintf(nqueue[nreqcnt].req,"%s",path);
+            nreqcnt = nreqcnt + 1;
+            if (nreqcnt > nmaxque) 
+            {
+              nmaxque+=100;
+              if ((nqueue = (struct name_queue *)realloc((void *)nqueue,(nmaxque + 1)*(sizeof(struct name_queue)))) == (struct name_queue *)0)
+                MPI_Abort(MPI_COMM_WORLD, -1);
 
-		  for (l = nlastmaxque + 1; l < (nmaxque + 1); l++)
-		    memset(nqueue[l].req, '\0', PATHSIZE_PLUS);
-		  
-		  nlastmaxque = nmaxque;
-		}
-	      }
-	    }
-	  }	  
-	  else {
-	    for (k = 0; k < count; k++) {
+              for (l = nlastmaxque + 1; l < (nmaxque + 1); l++)
+                memset(nqueue[l].req, '\0', PATHSIZE_PLUS);
+              
+              nlastmaxque = nmaxque;
+            } /* end if */
+	      } /* end for */
+	    } /* end else */
+	  }	/* end if */ 
+	  else 
+      {
+	    for (k = 0; k < count; k++) 
+        {
 	      MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
 
 	      /* put dir on nqueue */
 	      sprintf(nqueue[nreqcnt].req,"%s",path);
 	      nreqcnt = nreqcnt + 1;
-	      if (nreqcnt > nmaxque) {
-		nmaxque+=100;
-		if ((nqueue = (struct name_queue *)realloc((void *)nqueue,(nmaxque + 1)*(sizeof(struct name_queue)))) == (struct name_queue *)0)
-		  MPI_Abort(MPI_COMM_WORLD, -1);
+	      if (nreqcnt > nmaxque) 
+          {
+            nmaxque+=100;
+            if ((nqueue = (struct name_queue *)realloc((void *)nqueue,(nmaxque + 1)*(sizeof(struct name_queue)))) == (struct name_queue *)0)
+              MPI_Abort(MPI_COMM_WORLD, -1);
 		
-		for (l = nlastmaxque + 1; l < (nmaxque + 1); l++)
-		  memset(nqueue[l].req, '\0', PATHSIZE_PLUS);
+            for (l = nlastmaxque + 1; l < (nmaxque + 1); l++)
+              memset(nqueue[l].req, '\0', PATHSIZE_PLUS);
 		
-		nlastmaxque = nmaxque;
-	      }
+            nlastmaxque = nmaxque;
+	      } /* end if */
 	    } /* end if avaiable worker */
 	  } /* end else (queue it)*/
 
-	  break;
+	  break; /* the never ending NAMECMD case */
 	  
 	  /* if this is a workreq */
 	  /* This signifies that the slave has completed task and proc_status[] can be updated to 
@@ -789,12 +848,14 @@ void manager(char *beginning_path, int nproc, char *restart_name, int id)
 	  /*reader requesting work?*/
 	  /* if there is some work on the req_queue */
 	  /* add logic here to pause the reader if its getting too far ahead*/
-	  else if ((i == 1) && (dreqcnt > 0) && (nreqcnt > MAX_NCOUNT)) {
+	  else if ((i == 1) && (dreqcnt > 0) && (nreqcnt > MAX_NCOUNT)) 
+      {
 	    type_cmd = WAITCMD;
 	    position = 0;
 	    MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
 	    if (MPI_Send (workbuf, position, MPI_PACKED, 
-			  NAMEREAD_PROC, NAMEREAD_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
+			  NAMEREAD_PROC, NAMEREAD_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+        {
 	      fprintf(stderr, "ERROR in manager sending when sending message to slave.\n");  
 	      MPI_Abort(MPI_COMM_WORLD, -1);
 	    }
@@ -921,6 +982,7 @@ void worker(int rank)
   int count=0;
   int count_in=0;
   int k;
+  int root = 0;
 
   PGresult *insert_result;
   char stat_query[1024];
@@ -931,9 +993,11 @@ void worker(int rank)
   char* workbuf = (char*) malloc(WORKSIZE * sizeof(char));
   char* workbuf_a = (char*) malloc(WORKSIZE * sizeof(char));
 
-  while (all_done == 0) {
+  while (all_done == 0) 
+  {
     /*get our next task*/
-    if (MPI_Recv(workbuf, WORKSIZE, MPI_PACKED, MPI_ANY_SOURCE, MPI_ANY_TAG,MPI_COMM_WORLD,&status) != MPI_SUCCESS) {
+    if (MPI_Recv(workbuf, WORKSIZE, MPI_PACKED, MPI_ANY_SOURCE, MPI_ANY_TAG,MPI_COMM_WORLD,&status) != MPI_SUCCESS) 
+    {
       fprintf(stderr, "ERROR in worker receiving.\n");  
       MPI_Abort(MPI_COMM_WORLD, -1);
     }
@@ -941,247 +1005,279 @@ void worker(int rank)
     position = 0;
     MPI_Unpack(workbuf, WORKSIZE, &position, &type_cmd, 1, MPI_INT, MPI_COMM_WORLD);
     
-    switch(type_cmd) {
-      /*if we get an ABORT, lets do so*/
-    case ABORTCMD:
-      abort=1;
-      break;
-      
-      /*a DIRCMD means we get a directory to work on*/
-    case DIRCMD:
-      MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-      
-      //fprintf(stderr,"dir: %s\n", path);
-      /*open the directory that was sent to us*/
-      dir = opendir(path);
-      
-      if (!dir) {
-	fprintf(stderr,"%i: %s\n", rank, path);
-        perror("pstat.c, worker(), opendir()");
-      } 
-      else {
-	position_a = 0;
-	count = 0;
-	while ((ent = readdir(dir)) != NULL) {
-          if ((strncmp(ent->d_name,".",10)) && (strncmp(ent->d_name,"..",10))) {
-	    /* use strcat to build directory path because directory name can have spaces */
-	    /*FIXME ** WARNING: hardcoded filename length in here!*/
-	    /*FIXME ** WARNING: buffer overflow capability by 1025!!!*/
-	    strncpy(statpath, path, PATHSIZE_PLUS);
-	    strncat(statpath,"/",1);
-	    strncat(statpath,ent->d_name,1024);
-	    
-	    //fprintf(stderr,"%i packing: %s\n", rank, statpath);
-	    //fprintf(stderr,"%i count: %i\n", rank, count);
-	    MPI_Pack(&statpath, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
-	    count++;
-	    //fprintf(stderr,"%i: count - %i %s\n", rank, count, statpath);
+    switch(type_cmd) 
+    {
+          /*if we get an ABORT, lets do so*/
+        case ABORTCMD:
+          abort=1;
+          break;
+        
+          /*a DIRCMD means we get a directory to work on*/
+        case DIRCMD:
+          MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+          
+          //fprintf(stderr,"dir: %s\n", path);
+          /*open the directory that was sent to us*/
+          dir = opendir(path);
+          
+          if (!dir) 
+          {
+            fprintf(stderr,"%i: %s\n", rank, path);
+            perror("pstat.c, worker(), opendir()");
+          } 
+          else 
+          {
+            position_a = 0;
+            count = 0;
+        
+            /* Read in directories */
+            while ((ent = readdir(dir)) != NULL) 
+            {
+                  if ((strncmp(ent->d_name,".",10)) && (strncmp(ent->d_name,"..",10))) 
+                  {
+                    /* use strcat to build directory path because directory name can have spaces */
+                    /*FIXME ** WARNING: hardcoded filename length in here!*/
+                    /*FIXME ** WARNING: buffer overflow capability by 1025!!!*/
+                    strncpy(statpath, path, PATHSIZE_PLUS);
+                    strncat(statpath,"/",1);
+                    strncat(statpath,ent->d_name,1024);
+                    
+                    //fprintf(stderr,"%i packing: %s\n", rank, statpath);
+                    //fprintf(stderr,"%i count: %i\n", rank, count);
+                    MPI_Pack(&statpath, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
+                    count++;
+                    //fprintf(stderr,"%i: count - %i %s\n", rank, count, statpath);
 
-	    if ((count % PACKSIZE) == 0) {
-	      type_cmd = NAMECMD;
-	      position = 0;
-	      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      
-	      //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
+                    if ((count % PACKSIZE) == 0) 
+                    {
+                      type_cmd = NAMECMD;
+                      position = 0;
+                      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+                      MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+                      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+                      
+                      //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
 
-	      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		fprintf(stderr, "ERROR in worker sending message.\n");  
-		MPI_Abort(MPI_COMM_WORLD, -1);
-	      }
-	      if (count>0) {
-		if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		  fprintf(stderr, "ERROR in worker sending message.\n");  
-		  MPI_Abort(MPI_COMM_WORLD, -1);
-		}
-	      }
-	      count = 0;
-	      position_a = 0;
-	    }
-	  }
-	} /* end while reading dir */
-	
-	if (closedir(dir) == -1) {
-	  fprintf(stderr,"%i: %s\n", rank, path);
-	  perror("pstat.c, worker(), closedir()");
-	}
-	
+                      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+                      {
+                        fprintf(stderr, "ERROR in worker sending message.\n");  
+                        MPI_Abort(MPI_COMM_WORLD, -1);
+                      }
+                      if (count>0) 
+                      {
+                        if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+                        {
+                          fprintf(stderr, "ERROR in worker sending message.\n");  
+                          MPI_Abort(MPI_COMM_WORLD, -1);
+                        }
+                      }
+                      count = 0;
+                      position_a = 0;
+                    }
+                  }
+            } /* end while reading dir */
+        
+        if (closedir(dir) == -1) 
+        {
+          fprintf(stderr,"%i: %s\n", rank, path);
+          perror("pstat.c, worker(), closedir()");
+        }
+        
       } /* if opendir worked */
-      
-      type_cmd = NAMECMD;
-      position = 0;
-      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+         
+          type_cmd = NAMECMD;
+          position = 0;
+          MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
 
-      //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
+          //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
 
-      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	fprintf(stderr, "ERROR in worker sending message.\n");  
-	MPI_Abort(MPI_COMM_WORLD, -1);
-      }
-      if (count>0) {
-	if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	  fprintf(stderr, "ERROR in worker sending message.\n");  
-	  MPI_Abort(MPI_COMM_WORLD, -1);
-	}
-      }
-     
-      /* done with the directory, send workreq to manager to get more work or finish up */
-      type_cmd = REQCMD;
-      position = 0;
-      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+          {
+            fprintf(stderr, "ERROR in worker sending message.\n");  
+            MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          if (count>0) 
+          {
+            if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+            {
+              fprintf(stderr, "ERROR in worker sending message.\n");  
+              MPI_Abort(MPI_COMM_WORLD, -1);
+            }
+          }
+         
+          /* done with the directory, send workreq to manager to get more work or finish up */
+          type_cmd = REQCMD;
+          position = 0;
+          MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
 
-      //fprintf(stderr,"%i sending REQCMD to manager\n", rank);
-      
-      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	fprintf(stderr, "ERROR in worker sending message.\n");  
-	MPI_Abort(MPI_COMM_WORLD, -1);
-      }
-      break;
-      
-    case NAMECMD:
-      MPI_Unpack(workbuf, WORKSIZE, &position, &count_in, 1, MPI_INT, MPI_COMM_WORLD);
-      count = 0;
-      position_a = 0;
+          //fprintf(stderr,"%i sending REQCMD to manager\n", rank);
+          
+          if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+          {
+            fprintf(stderr, "ERROR in worker sending message.\n");  
+            MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          break;
+          
+        case NAMECMD:
+          
+          if(status.MPI_TAG = NAMECMD_CHKROOT)
+              root = 1;
+          MPI_Unpack(workbuf, WORKSIZE, &position, &count_in, 1, MPI_INT, MPI_COMM_WORLD);
+          count = 0;
+          position_a = 0;
 
-      //fprintf(stderr, "%i count_in: %i\n", rank, count_in);
-      for (k = 0; k < count_in; k++) {
-	MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
-	/* use lstat for link checking */
-	if (lstat(path,&st) == -1) {
-	  fprintf(stderr,"%s\n",path);
-	  perror("pstat.c, worker(), lstat()");
-	} 
-	else { 
-	  /* Check if directory and not a link */
-	  if (db_on) {
-	    dec2bin(st.st_mode, binary);
-	    if ((S_ISLNK(st.st_mode)) && (path[0] == '/')) {
-	      bzero(abslink, 10);
-	      snprintf(abslink, 5, "true");
-	    }
-	    else {
-	      bzero(abslink, 10);
-	      snprintf(abslink, 6, "false");	      
-	    }
-        /* Get parent */
-        split_path(parent,path,PATHSIZE_PLUS); 
-        if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
-	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s/', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-	    else
-	      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-	    
-	    insert_result = PQexec(conn, stat_query);
-	    
-	    if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) {
-	      fprintf(stderr, "INSERT INTO snapshot command failed (%s): %s\n", path, PQerrorMessage(conn));
-	      fprintf(stderr, "%s\n", stat_query);
-	      /*MPI_Abort(MPI_COMM_WORLD, -1);*/
-	    }
-	    PQclear(insert_result);
-	    
-	    /* 
-	       snprintf(stat_query, 1024, "select merge(text '%s', %i, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second');", path, st.st_uid, st.st_atime, st.st_mtime, st.st_ctime);
-	    
-	    insert_result = PQexec(conn, stat_query);
-	    
-	    if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) {
-	      //fprintf(stderr, "merge command failed (%s): %s\n", path, PQerrorMessage(conn));
-	    }
-	    PQclear(insert_result);
-	    */
-	  }
-	  if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode))) {
-	    //fprintf(stderr,"%i packing: %s\n", rank, path);
-	    //fprintf(stderr,"%i count: %i\n", rank, count);
-	    MPI_Pack(&path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
-	    count++;
-	    if ((count % PACKSIZE) == 0) {
-	      type_cmd = DIRCMD;
-	      position = 0;
-	      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-	      
-	      //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
-	      
-	      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		fprintf(stderr, "ERROR in worker sending message.\n");  
-		MPI_Abort(MPI_COMM_WORLD, -1);
-	      }
-	      if (count>0) {
-		if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-		  fprintf(stderr, "ERROR in worker sending message.\n");  
-		  MPI_Abort(MPI_COMM_WORLD, -1);
-		}
-	      }
-	      count = 0;
-	      position_a = 0;
-	    }
-	  } 
-	  else {
-	    /*we hit a file, so do we need to do something?*/
-	  }
-	}
-      }
-      
-      
-      type_cmd = DIRCMD;
-      position = 0;
-      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      
-      //fprintf(stderr, "%i sending list of %i dirs back to manager.\n", rank, count);
-      
-      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	fprintf(stderr, "ERROR in worker sending message.\n");  
-	MPI_Abort(MPI_COMM_WORLD, -1);
-      }
-      
-      if (count>0) {
-	if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	  fprintf(stderr, "ERROR in worker sending message.\n");  
-	  MPI_Abort(MPI_COMM_WORLD, -1);
-	}
-      }
-      
-      /* done with the list, send workreq to manager to get more work or finish up */
-      type_cmd = REQCMD;
-      position = 0;
-      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      
-      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	fprintf(stderr, "ERROR in dodir sending message.\n");  
-	MPI_Abort(MPI_COMM_WORLD, -1);
-      }
-      break;
-      
-      /*if we get an EXITCMD that means that all work is done, and we just need to update the collector with 
-	the stats that we have been collecting*/
-    case EXITCMD:
-      all_done=1;
-      break;
-      
-      /* WAITCMD means the queues are filling and we should just chill a little while */
-    case WAITCMD:
-      sleep(5);
-      /* done with the wait, send workreq to manager to get more work or finish up */
-      type_cmd = REQCMD;
-      position = 0;
-      MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
-      
-      if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
-	fprintf(stderr, "ERROR in worker sending message.\n");  
-	MPI_Abort(MPI_COMM_WORLD, -1);
-      }
-      break;
-    }
+          //fprintf(stderr, "%i count_in: %i\n", rank, count_in);
+          for (k = 0; k < count_in; k++) 
+          {
+              MPI_Unpack(workbuf, WORKSIZE, &position, &path, PATHSIZE_PLUS, MPI_CHAR, MPI_COMM_WORLD);
+              /* use lstat for link checking */
+             if (lstat(path,&st) == -1) 
+             {
+                  fprintf(stderr,"%s\n",path);
+                  perror("pstat.c, worker(), lstat()");
+             } 
+             else 
+             { 
+                  /* Check if directory and not a link */
+                  if (db_on) 
+                  {
+                    dec2bin(st.st_mode, binary);
+                    if ((S_ISLNK(st.st_mode)) && (path[0] == '/')) 
+                    {
+                      bzero(abslink, 10);
+                      snprintf(abslink, 5, "true");
+                    }
+                   else 
+                   {
+                      bzero(abslink, 10);
+                      snprintf(abslink, 6, "false");	      
+                   }
+                /* Get parent */
+                 split_path(parent,path,PATHSIZE_PLUS); 
+                    if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
+                      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s/', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+                    else
+                      snprintf(stat_query, 1024, "INSERT INTO %s (filename, parent, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink) VALUES ('%s', '%s', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", snapshot_name, path, parent, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+                
+                insert_result = PQexec(conn, stat_query);
+                
+                if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
+                {
+                  fprintf(stderr, "INSERT INTO snapshot command failed (%s): %s\n", path, PQerrorMessage(conn));
+                  fprintf(stderr, "%s\n", stat_query);
+                  /*MPI_Abort(MPI_COMM_WORLD, -1);*/
+                }
+                PQclear(insert_result);
+            
+                /* 
+                   snprintf(stat_query, 1024, "select merge(text '%s', %i, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second');", path, st.st_uid, st.st_atime, st.st_mtime, st.st_ctime);
+                
+                insert_result = PQexec(conn, stat_query);
+                
+                if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) {
+                  //fprintf(stderr, "merge command failed (%s): %s\n", path, PQerrorMessage(conn));
+                }
+                PQclear(insert_result);
+                */
+           }
+          if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode))) 
+          {
+            //fprintf(stderr,"%i packing: %s\n", rank, path);
+            //fprintf(stderr,"%i count: %i\n", rank, count);
+            MPI_Pack(&path, PATHSIZE_PLUS, MPI_CHAR, workbuf_a, WORKSIZE, &position_a, MPI_COMM_WORLD);
+            count++;
+            if ((count % PACKSIZE) == 0) 
+            {
+              type_cmd = DIRCMD;
+              position = 0;
+              MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+              MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+              MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+              
+              //fprintf(stderr, "%i sending list of %i names back to manager.\n", rank, count);
+              
+              if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+              {
+                fprintf(stderr, "ERROR in worker sending message.\n");  
+                MPI_Abort(MPI_COMM_WORLD, -1);
+              }
+              if (count>0) 
+              {
+                if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) 
+                {
+                  fprintf(stderr, "ERROR in worker sending message.\n");  
+                  MPI_Abort(MPI_COMM_WORLD, -1);
+                }
+              }
+              count = 0;
+              position_a = 0;
+            }
+          } 
+          else 
+          {
+            /*we hit a file, so do we need to do something?*/
+          }
+        }
+  }
+          
+          
+          type_cmd = DIRCMD;
+          position = 0;
+          MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&count, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          
+          //fprintf(stderr, "%i sending list of %i dirs back to manager.\n", rank, count);
+          
+          if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
+        fprintf(stderr, "ERROR in worker sending message.\n");  
+        MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          
+          if (count>0) {
+        if (MPI_Send(workbuf_a, position_a, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
+          fprintf(stderr, "ERROR in worker sending message.\n");  
+          MPI_Abort(MPI_COMM_WORLD, -1);
+        }
+          }
+          
+          /* done with the list, send workreq to manager to get more work or finish up */
+          type_cmd = REQCMD;
+          position = 0;
+          MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          
+          if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
+        fprintf(stderr, "ERROR in dodir sending message.\n");  
+        MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          break;
+          
+          /*if we get an EXITCMD that means that all work is done, and we just need to update the collector with 
+        the stats that we have been collecting*/
+        case EXITCMD:
+          all_done=1;
+          break;
+          
+          /* WAITCMD means the queues are filling and we should just chill a little while */
+        case WAITCMD:
+          sleep(5);
+          /* done with the wait, send workreq to manager to get more work or finish up */
+          type_cmd = REQCMD;
+          position = 0;
+          MPI_Pack(&type_cmd, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          MPI_Pack(&rank, 1, MPI_INT, workbuf, WORKSIZE, &position, MPI_COMM_WORLD);
+          
+          if (MPI_Send(workbuf, position, MPI_PACKED, MANAGER_PROC, MANAGER_TAG, MPI_COMM_WORLD ) != MPI_SUCCESS) {
+        fprintf(stderr, "ERROR in worker sending message.\n");  
+        MPI_Abort(MPI_COMM_WORLD, -1);
+          }
+          break;
+        }
     
     if (abort == 1) break;
   }
