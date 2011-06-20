@@ -13,7 +13,7 @@
 /* Function Prototypes */
 void manager(char *, int, char *, int);
 void worker(int);
-int split_path(char * parent,char * path, int length);
+int split_path(char * path, char * parent, char * filename, int length);
 /*four our MPI communications*/
 #define MANAGER_PROC 0
 #define NAMEREAD_PROC 1

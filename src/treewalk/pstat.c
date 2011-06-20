@@ -14,7 +14,7 @@
 * 08/20/2007 adapted for use as scratch filesystem purger (code re-write)
 *
 *************************************************************************************/
-
+#include<string.h>
 #include "pstat.h"
 
 int dreqcnt=0;
@@ -68,16 +68,27 @@ void sig_user1 (int sig) {
 }
 
 //! Parses out the parent of a path
-int split_path(char * parent,char * path, int max_length)
+int split_path(char * path, char * parent, char * filename, int max_length)
 {
+    // get length of path
     int length = strnlen(path);
+    // save the last character
     char x = path[length-1];
+    // make sure the last character is anything but a slash
     path[length-1] = 'X';
+    // look for the last instance if '/'
     char * p = strrchr(path,'/');
+    // restore the character we overwrote
     path[length-1] = x;
-    strncpy(parent,path,p-path+1);
-    parent[p-path+1] = '\0';
-    return p-path+2;
+    // copy the parent's path into the buffer
+    strncpy(parent,path,p-path);
+    // copy filename into the buffer
+    p++;
+    strncpy(filename,p,&path[length]-p);
+    filename[&path[length]-p] = '\0';
+    p--;
+    parent[p-path] = '\0';
+    return p-path+1;
 }
 
 //! Converts decimal numbers to binary
@@ -325,16 +336,7 @@ int main( int argc, char *argv[] )
     signal (SIGALRM, catch_alarm);
     /* Set alarm */
     alarm(WAIT_TIME);
-    manager(beginning_path, nproc, restart_name, id);
-  }
-  else
-    worker(rank);
-  
-  if (db_on) 
-  {
-    if (rank == 0) 
-    {
-      /* Insert root path */
+    /* Insert root path */
       struct stat st;
       
       if(lstat(beginning_path, &st) != 0)
@@ -345,7 +347,7 @@ int main( int argc, char *argv[] )
       }
       char binary[80];
       char abslink[10] = "false";
-      dec2bin(st.st_mode, binary);
+      //dec2bin(st.st_mode, binary);
       if ((S_ISLNK(st.st_mode)) && (beginning_path[0] == '/')) 
       {
         bzero(abslink, 10);
@@ -358,20 +360,25 @@ int main( int argc, char *argv[] )
       }
       char stat_query[1024];
       char experimental_query[1024];
-      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s/');", beginning_path);
+      char filename[PATHSIZE_PLUS];
+      char parent[PATHSIZE_PLUS];
+      split_path(beginning_path,parent,filename,PATHSIZE_PLUS); 
+      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s');", beginning_path);
       PGresult  *insert_result = PQexec(conn, experimental_query);
       if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
       {
           fprintf(stderr, "[%s][%d] INSERT INTO snapshot command failed (%s) for root: %s\n", __FILE__,__LINE__,beginning_path, PQerrorMessage(conn));
           fprintf(stderr, "%s\n", experimental_query);
       }
+      // Children must wait for the root to be inserted.
+      MPI_Barrier(MPI_COMM_WORLD);
       PQclear(insert_result);
-      if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
+            if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
           snprintf(stat_query, 1024, 
-          "INSERT INTO filetable (pathid, filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink, root)" 
-         " VALUES ((SELECT id FROM pathtable WHERE name = '%s'), '%s/', %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone"
-         " 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s,'true');", 
-          beginning_path, beginning_path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+          "INSERT INTO root (pathid, filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink)" 
+         " VALUES ((SELECT id FROM pathtable WHERE name = '%s'), '%s', %ju, '%lu', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone"
+         " 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", 
+          beginning_path,beginning_path, st.st_ino, (unsigned long int) st.st_mode, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
 
       insert_result = PQexec(conn, stat_query);
       if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
@@ -381,7 +388,16 @@ int main( int argc, char *argv[] )
       }
       PQclear(insert_result);
       fprintf(stderr,"Inserted root: %s\n", beginning_path);
-        
+      manager(beginning_path, nproc, restart_name, id);
+  }
+  else
+    worker(rank);
+  
+  if (db_on) 
+  {
+    if (rank == 0) 
+    {
+       
         if (strncmp(snapshot_name, "snapshot1", 16) == 0) {
 	snapshot = PQexec(conn, "UPDATE current_snapshot SET name = 'snapshot1' WHERE ID = 1;");
 	if (PQresultStatus(snapshot) != PGRES_COMMAND_OK) {
@@ -990,6 +1006,7 @@ void worker(int rank)
   int all_done=0;
   char path[PATHSIZE_PLUS] = "";
   char parent[PATHSIZE_PLUS] = "";
+  char filename[PATHSIZE_PLUS] = "";
   char statpath[PATHSIZE_PLUS];
   MPI_Status status;
   DIR *dir;
@@ -1012,7 +1029,7 @@ void worker(int rank)
   /*initialize MPI send/recv buffer*/
   char* workbuf = (char*) malloc(WORKSIZE * sizeof(char));
   char* workbuf_a = (char*) malloc(WORKSIZE * sizeof(char));
-
+  MPI_Barrier(MPI_COMM_WORLD);
   while (all_done == 0) 
   {
     /*get our next task*/
@@ -1163,7 +1180,7 @@ void worker(int rank)
                   /* Check if directory and not a link */
                   if (db_on) 
                   {
-                    dec2bin(st.st_mode, binary);
+                   // dec2bin(st.st_mode, binary);
                     if ((S_ISLNK(st.st_mode)) && (path[0] == '/')) 
                     {
                       bzero(abslink, 10);
@@ -1175,29 +1192,37 @@ void worker(int rank)
                       snprintf(abslink, 6, "false");	      
                    }
                 /* Get parent */
-                 split_path(parent,path,PATHSIZE_PLUS); 
+                 split_path(path,parent,filename,PATHSIZE_PLUS); 
                     if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
                     {
-                      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s/');", path);
+                      snprintf(experimental_query, 1024, "INSERT INTO pathtable (id, name) VALUES (DEFAULT,'%s');", path);
                       insert_result = PQexec(conn, experimental_query);
                       if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
                       {
                         fprintf(stderr, "[%s][%d] INSERT INTO pathtable command failed (%s): %s\n", __FILE__,__LINE__,path, PQerrorMessage(conn));
-                 //       fprintf(stderr, "%s\n\n", experimental_query);
+                        PQfinish(conn);
+                        MPI_Abort(MPI_COMM_WORLD,-1);
+                        //       fprintf(stderr, "%s\n\n", experimental_query);
                       }
                       PQclear(insert_result);
                     }
                       snprintf(stat_query, 1024, "INSERT INTO filetable (pathid, filename, inode, mode, nlink, uid, gid, size, block, block_size, atime, mtime, ctime, abslink)"
-                              " VALUES ((SELECT id from pathtable where name = '%s'),'%s',  %ju, B'%s', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone"
+                              " VALUES ((SELECT id from pathtable where name = '%s'),'%s',  %ju, '%lu', %ju, %i, %i, %ju, %ju, %ju, timestamp without time zone 'epoch' + %ju * interval '1 second', timestamp without time zone"
                               " 'epoch' + %ju * interval '1 second', timestamp without time zone 'epoch' + %ju * interval '1 second', %s);", 
-                             parent, path, st.st_ino, binary, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
-                    insert_result = PQexec(conn, stat_query);
+                             parent, filename, st.st_ino, (unsigned long int) st.st_mode, st.st_nlink, st.st_uid, st.st_gid, st.st_size, st.st_blocks, st.st_blksize, st.st_atime, st.st_mtime, st.st_ctime, abslink);
+    
+                     int rank = -1;
+                     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//                      fprintf(stderr,"[%d] Inserting: %s Parent: %s\n",rank, filename,parent); 
+                      insert_result = PQexec(conn, stat_query);
                 
                 if (PQresultStatus(insert_result) != PGRES_COMMAND_OK) 
                 {
                   fprintf(stderr, "[%s][%d] INSERT INTO filetable command failed (%s): %s\n", __FILE__,__LINE__,path, PQerrorMessage(conn));
-               //   fprintf(stderr, "%s\n\n", stat_query);
+                  fprintf(stderr, "%s\n\n", stat_query);
                   /*MPI_Abort(MPI_COMM_WORLD, -1);*/
+                        PQfinish(conn);
+                        MPI_Abort(MPI_COMM_WORLD,-1);
                 }
                 PQclear(insert_result);
             

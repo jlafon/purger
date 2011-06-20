@@ -24,7 +24,6 @@ CREATE TABLE snapshot1(
    ctime TIMESTAMP NOT NULL,
    abslink BOOLEAN,
    added TIMESTAMP DEFAULT NOW(),
-   root BOOLEAN DEFAULT('false')
 );
    CREATE INDEX snapshot1_parent_index ON snapshot1(parent);
    CREATE INDEX snapshot1_atime_index ON snapshot1(atime);
@@ -41,11 +40,11 @@ CREATE TABLE pathtable(
 
 -- Experimental
 -- This holds all paths (files and dirs)
-CREATE TABLE filetable(
+CREATE TABLE root(
     pathid BIGINT NOT NULL,
-    filename TEXT NOT NULL PRIMARY KEY,
+    filename TEXT NOT NULL,
     inode BIGINT NOT NULL,
-    mode BIT(32) NOT NULL,
+    mode BIGINT NOT NULL,
     nlink INT NOT NULL,
     uid INT NOT NULL,
     gid INT NOT NULL,
@@ -56,8 +55,25 @@ CREATE TABLE filetable(
     mtime TIMESTAMP NOT NULL,
     ctime TIMESTAMP NOT NULL,
     abslink BOOLEAN,
-    added TIMESTAMP DEFAULT NOW(),
-    root BOOLEAN DEFAULT('false')
+    added TIMESTAMP DEFAULT NOW()
+);
+    
+CREATE TABLE filetable(
+    filename TEXT NOT NULL,
+    pathid BIGINT NOT NULL,
+    inode BIGINT NOT NULL,
+    mode BIGINT NOT NULL,
+    nlink INT NOT NULL,
+    uid INT NOT NULL,
+    gid INT NOT NULL,
+    size BIGINT NOT NULL,
+    block BIGINT NOT NULL,
+    block_size INT NOT NULL,
+    atime TIMESTAMP NOT NULL,
+    mtime TIMESTAMP NOT NULL,
+    ctime TIMESTAMP NOT NULL,
+    abslink BOOLEAN,
+    added TIMESTAMP DEFAULT NOW()
 );
    CREATE INDEX filetable_parent_index ON filetable(pathid);
    CREATE INDEX filetable_atime_index ON filetable(atime);
@@ -82,7 +98,6 @@ CREATE TABLE snapshot2(
    ctime TIMESTAMP NOT NULL,
    abslink BOOLEAN,
    added TIMESTAMP DEFAULT NOW(),
-   root BOOLEAN DEFAULT('false')
 );
    CREATE INDEX snapshot2_parent_index ON snapshot2(parent);
    CREATE INDEX snapshot2_atime_index ON snapshot2(atime);
@@ -174,11 +189,13 @@ GRANT ALL PRIVILEGES ON snapshot2 TO treewalk;
 GRANT ALL PRIVILEGES ON performance to treewalk;
 GRANT ALL PRIVILEGES ON filetable to treewalk;
 GRANT ALL PRIVILEGES ON pathtable to treewalk;
+GRANT ALL PRIVILEGES ON root to treewalk;
 ALTER TABLE performance OWNER to treewalk;
 ALTER TABLE snapshot1 OWNER TO treewalk;
 ALTER TABLE snapshot2 OWNER TO treewalk;
 ALTER TABLE filetable OWNER TO treewalk;
 ALTER TABLE pathtable OWNER TO treewalk;
+ALTER TABLE root OWNER TO treewalk;
 
 -- Create the function warningtest which is called by the trigger
 CREATE OR REPLACE FUNCTION warningtest() RETURNS trigger AS 
