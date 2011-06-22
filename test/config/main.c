@@ -13,7 +13,8 @@ int main ( int argc, char *argv[] )
     }
     fprintf(stdout,"===Purger Configuration Settings===\n\
 	    Database Settings: \n\
-	    \tHost:\t%s\n\
+	    \tNumber of snapshots: %d\n\
+        \tHost:\t%s\n\
 	    \tPort:\t%d\n\
 	    \tUser:\t%s\n\
 	    \tPass:\t%s\n\
@@ -30,7 +31,7 @@ int main ( int argc, char *argv[] )
 	    \tSubject:\t%s\n\
 	    \tServer:\t\t%s\n\
 	    \tText:\t\t%s\n",
-	    dbinfo.host,atoi(dbinfo.port),dbinfo.user,dbinfo.pass,
+	    atoi(dbinfo.number_of_snapshots),dbinfo.host,atoi(dbinfo.port),dbinfo.user,dbinfo.pass,
 	    ldapinfo.host,ldapinfo.base,ldapinfo.basem,
 	    mailinfo.from,mailinfo.fromreal,mailinfo.defaultto,mailinfo.subject,mailinfo.server,mailinfo.txt
 	   );

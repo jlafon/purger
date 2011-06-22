@@ -16,6 +16,7 @@
 
 /* Structs */
 struct dbinfo_t {
+  int number_of_snapshots;
   char host[256];
   char port[16];
   char user[256];

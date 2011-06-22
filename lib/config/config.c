@@ -2,6 +2,7 @@
 
 int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
   config_t cfg, *cf;
+  const char *number_of_snapshots = NULL;
   const char *host = NULL;
   const char *port = NULL;
   const char *user = NULL;
@@ -27,6 +28,11 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
     }
   }
 
+  if(config_lookup_string(cf, "purger.postgres.number_of_snapshots", &number_of_snapshots) == CONFIG_FALSE){
+    fprintf(stderr, "number of snapshots not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }
   if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
@@ -164,6 +170,7 @@ int parse_config(dbinfo_t *dbinfo, ldapinfo_t *ldapinfo, mailinfo_t *mailinfo){
 
 int parse_config_dbonly(dbinfo_t *dbinfo){
   config_t cfg, *cf;
+  const char *number_of_snapshots = NULL;
   const char *host = NULL;
   const char *port = NULL;
   const char *user = NULL;
@@ -178,7 +185,11 @@ int parse_config_dbonly(dbinfo_t *dbinfo){
     return EXIT_FAILURE;
   }
 
-  if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
+  if(config_lookup_string(cf, "purger.postgres.number_of_snapshots", &host) == CONFIG_FALSE){
+    fprintf(stderr, "number of snapshots not found or incorrect format\n");
+    config_destroy(cf);
+    return EXIT_FAILURE;
+  }   if(config_lookup_string(cf, "purger.postgres.host", &host) == CONFIG_FALSE){
     fprintf(stderr, "host not found or incorrect format\n");
     config_destroy(cf);
     return EXIT_FAILURE;

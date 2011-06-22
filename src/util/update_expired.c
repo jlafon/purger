@@ -12,7 +12,12 @@
 #define PATHSIZE_PLUS 1024
 
 //! Updates the database to remove expired files.
-int update(const char* filesystem, dbinfo_t dbinfo) {
+/**
+  * \param filesystem The filesystem to update
+  * \param dbinfo Database log in information
+  */
+int update(const char* filesystem, dbinfo_t dbinfo) 
+{
   PGconn *conn;
   PGresult *snapshot_res;
   PGresult *query_res;
@@ -30,6 +35,7 @@ int update(const char* filesystem, dbinfo_t dbinfo) {
   if (PQresultStatus(snapshot_res) != PGRES_TUPLES_OK) {
     fprintf(stderr, "SELECT current_snapshot command failed: %s\n", PQerrorMessage(conn));
     PQclear(snapshot_res);
+    PQfinish(conn);
     return -1;
   }
   

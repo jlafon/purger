@@ -1331,12 +1331,10 @@ void worker(int rank)
                 {
                   fprintf(stderr, "[%s][%d] INSERT INTO filetable command failed (%s): %s\n", __FILE__,__LINE__,path, PQerrorMessage(conn));
                   fprintf(stderr, "%s\n\n", stat_query);
-                  /*MPI_Abort(MPI_COMM_WORLD, -1);*/
                         PQfinish(conn);
                         MPI_Abort(MPI_COMM_WORLD,-1);
                 }
                 PQclear(insert_result);
-            
            }
           if (S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode))) 
           {
