@@ -49,5 +49,5 @@ convenience_libs = 				\
               $(libdir)/config/.libs/libconfig.la
 
 purger_pstat_LDADD = 				\
-	      -lpq -lmpi -lconfig	\
+	      -lpq -lmpi -lconfig -lncurses \
 	      $(convenience_libs)

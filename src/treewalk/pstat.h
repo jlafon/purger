@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <dirent.h>
 #include <getopt.h>
+#include <ncurses.h>
 #include "utils.h"
 #include "lconfig.h"
 
@@ -11,7 +12,13 @@
 #include <libpq-fe.h>
 
 /* Function Prototypes */
-void manager(char *, int, char *, int);
+typedef struct objects
+{
+    int files;
+    int dirs;
+} objects;
+
+objects manager(char *, int, char *, int);
 void worker(int);
 int split_path(char * path, char * parent, char * filename, int length);
 /*four our MPI communications*/
@@ -41,7 +48,6 @@ enum cmd_opcode {
   WAITCMD,
   NAMECMD_CHKROOT
 };
-
 /*boolean value to turn on and off database access*/
 int db_on = 0;
 /*boolean value to restart from checkpoint*/
