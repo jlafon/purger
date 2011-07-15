@@ -33,5 +33,6 @@ MAINTAINERCLEANFILES = Makefile.in
 SUBDIRS = \
 		prm	 \
 		purger   \
-	        treewalk \
-	        util
+        treewalk \
+        util \
+        cli

@@ -27,62 +27,25 @@
 # POSSIBILITY OF SUCH DAMAGE.                                                  #
 ################################################################################
 
-#AC_PREREQ([2.65])
-AC_INIT([lanl-purger], [1.0.0], [jlafon@lanl.gov])
-AC_COPYRIGHT([
-        [Copyright 2008-2010 Los Alamos National Security, LLC. All Rights Reserved.]
-        ])
+AUTOMAKE_OPTIONS = foreign
 
-# Put all build stuff in config
-AC_CONFIG_SRCDIR([configure.ac])
-AC_CONFIG_AUX_DIR([config])
-AC_CONFIG_MACRO_DIR([config])
-    
-AM_INIT_AUTOMAKE([foreign])
+AM_LIBTOOLFLAGS = --silent
 
-define([AC_LIBTOOL_LANG_CXX_CONFIG], [:])dnl
-define([AC_LIBTOOL_LANG_F77_CONFIG], [:])dnl
-# Minimize output    
-m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
-AC_GNU_SOURCE
+bin_PROGRAMS = purger_cli
 
-AC_PROG_CC
-AC_PROG_CC_C_O
-AC_SUBST(version_info)
-AM_PROG_CC_C_O
-# Not necessary but doesn't hurt anything
-AC_CONFIG_HEADERS([config.h])
-#AC_USE_SYSTEM_EXTENSIONS
-AC_PROG_MAKE_SET
-AC_PROG_LIBTOOL
-AC_CHECK_HEADERS([netdb.h netinet/in.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
-AC_CHECK_PROG(PGCONFIG,pg_config,pg_config,false)
-if test "x$PGCONFIG" = "xfalse"; then
-	AC_MSG_ERROR([pg_config is required.])
-fi
-AC_SEARCH_LIBS([socket],[socket], , LIBS+=-L`pg_config --libdir`)
-AC_SEARCH_LIBS([PQexec],[pq], , LIBS+=-L`pg_config --libdir`)
-AC_OUTPUT([
-        Makefile
-        lib/config/Makefile
-        lib/ldap/Makefile
-        lib/log/Makefile
-        lib/mail/Makefile
-        src/prm/Makefile
-        lib/utils/Makefile
-        src/Makefile
-        lib/Makefile
-        test/Makefile
-        test/email/Makefile
-        test/ldap/Makefile
-        test/log/Makefile
-        test/insert/Makefile
-        test/config/Makefile
-        src/purger/Makefile
-        src/treewalk/Makefile
-        src/util/Makefile
-        src/cli/Makefile
-   	lanl-purger.spec
-	])
-AC_OUTPUT
+purger_cli_SOURCES = cli.c
 
+purger_cli_CFLAGS = \
+	       -I`pg_config --includedir` \
+               -I$(top_srcdir)/include \
+               -Wall
+
+libdir = $(top_builddir)/lib
+
+convenience_libs = 				\
+              $(libdir)/utils/.libs/libutils.la	\
+              $(libdir)/config/.libs/libconfig.la
+
+purger_cli_LDADD = 				\
+	      -lreadline -lpq -lconfig -lncurses \
+	      $(convenience_libs)

@@ -37,8 +37,8 @@ void catch_alarm (int sig) {
   gettimeofday(&tv, NULL);
   now = tv.tv_sec;
   timenow = (int)now;
-  
-  printf("\33[2J\n");
+   
+  //printf("\33[2J\n");
   printf("NAME_QUEUE_SIZE    DIR_QUEUE_SIZE          RUNTIME\n");   
   printf("\r%8i %15i %22i seconds  %s",nreqcnt, dreqcnt, (timenow - starttime), lastpath);
   fflush(stdout);

@@ -6,29 +6,13 @@ ALTER DATABASE scratch OWNER TO treewalk;
 
 CREATE LANGUAGE plpgsql;
 
--- This table holds a snapshot of the file system
-CREATE TABLE snapshot1(
-   filename TEXT NOT NULL PRIMARY KEY,
-   shortname TEXT NOT NULL,
-   parent TEXT NOT NULL,
-   inode BIGINT NOT NULL,
-   mode BIT(32) NOT NULL,
-   nlink INT NOT NULL,
-   uid INT NOT NULL,
-   gid INT NOT NULL,
-   size BIGINT NOT NULL,
-   block BIGINT NOT NULL,
-   block_size INT NOT NULL,
-   atime TIMESTAMP NOT NULL,
-   mtime TIMESTAMP NOT NULL,
-   ctime TIMESTAMP NOT NULL,
-   abslink BOOLEAN,
+
+CREATE TABLE filesystems(
+   name TEXT NOT NULL PRIMARY KEY,
    added TIMESTAMP DEFAULT NOW(),
+   last_update TIMESTAMP DEFAULT NOW()
+   root TEXT NOT NULL,
 );
-   CREATE INDEX snapshot1_parent_index ON snapshot1(parent);
-   CREATE INDEX snapshot1_atime_index ON snapshot1(atime);
-   CREATE INDEX snapshot1_mtime_index ON snapshot1(mtime);
-   CREATE INDEX snapshot1_ctime_index ON snapshot1(ctime);
 
 -- Experimental
 -- This holds all paths that are dirs 
@@ -36,28 +20,8 @@ CREATE TABLE pathtable(
     id BIGSERIAL UNIQUE PRIMARY KEY,
     name TEXT NOT NULL UNIQUE
 );
-   CREATE INDEX pathtable_id_index ON pathtable(id);
+CREATE INDEX pathtable_id_index ON pathtable(id);
 
--- Experimental
--- This holds all paths (files and dirs)
-CREATE TABLE root(
-    pathid BIGINT NOT NULL,
-    filename TEXT NOT NULL,
-    inode BIGINT NOT NULL,
-    mode BIGINT NOT NULL,
-    nlink INT NOT NULL,
-    uid INT NOT NULL,
-    gid INT NOT NULL,
-    size BIGINT NOT NULL,
-    block BIGINT NOT NULL,
-    block_size INT NOT NULL,
-    atime TIMESTAMP NOT NULL,
-    mtime TIMESTAMP NOT NULL,
-    ctime TIMESTAMP NOT NULL,
-    abslink BOOLEAN,
-    added TIMESTAMP DEFAULT NOW()
-);
-    
 CREATE TABLE filetable(
     filename TEXT NOT NULL,
     pathid BIGINT NOT NULL,
@@ -75,34 +39,10 @@ CREATE TABLE filetable(
     abslink BOOLEAN,
     added TIMESTAMP DEFAULT NOW()
 );
-   CREATE INDEX filetable_parent_index ON filetable(pathid);
+   CREATE INDEX filetable_pathid_index ON filetable(pathid);
    CREATE INDEX filetable_atime_index ON filetable(atime);
    CREATE INDEX filetable_mtime_index ON filetable(mtime);
    CREATE INDEX filetable_ctime_index ON filetable(ctime);
-
--- A second identical database, these two will swap using current_snapshot
-CREATE TABLE snapshot2(
-   filename TEXT NOT NULL PRIMARY KEY,
-   shortname TEXT NOT NULL,
-   parent TEXT NOT NULL,
-   inode BIGINT NOT NULL,
-   mode BIT(32) NOT NULL,
-   nlink INT NOT NULL,
-   uid INT NOT NULL,
-   gid INT NOT NULL,
-   size BIGINT NOT NULL,
-   block BIGINT NOT NULL,
-   block_size INT NOT NULL,
-   atime TIMESTAMP NOT NULL,
-   mtime TIMESTAMP NOT NULL,
-   ctime TIMESTAMP NOT NULL,
-   abslink BOOLEAN,
-   added TIMESTAMP DEFAULT NOW(),
-);
-   CREATE INDEX snapshot2_parent_index ON snapshot2(parent);
-   CREATE INDEX snapshot2_atime_index ON snapshot2(atime);
-   CREATE INDEX snapshot2_mtime_index ON snapshot2(mtime);
-   CREATE INDEX snapshot2_ctime_index ON snapshot2(ctime);
 
 -- Holds the performance data for treewalk
 CREATE TABLE performance(
@@ -115,15 +55,6 @@ CREATE TABLE performance(
    error INT
    );
    
--- Holds the name of the snapshot database that should currently be used
-CREATE TABLE current_snapshot(
-   id INT DEFAULT(1),
-   name TEXT NOT NULL DEFAULT('snapshot2'),
-   updated TIMESTAMP DEFAULT NOW()
-);
-
--- Default this to 'snapshot1'
-INSERT INTO current_snapshot(name) values(default);
 
 -- A partitioned archive which will hold historical data taken from the snapshot
 CREATE TABLE archive(
@@ -181,18 +112,15 @@ CREATE INDEX expired_files_uid_index ON expired_files(uid);
 -- Set permissions on tables
 GRANT ALL PRIVILEGES ON archive TO treewalk;
 GRANT ALL PRIVILEGES ON conversions TO treewalk;
-GRANT ALL PRIVILEGES ON current_snapshot TO treewalk;
 GRANT ALL PRIVILEGES ON expired_files TO treewalk;
 GRANT ALL PRIVILEGES ON recent_month TO treewalk;
-GRANT ALL PRIVILEGES ON snapshot1 TO treewalk;
-GRANT ALL PRIVILEGES ON snapshot2 TO treewalk;
 GRANT ALL PRIVILEGES ON performance to treewalk;
 GRANT ALL PRIVILEGES ON filetable to treewalk;
 GRANT ALL PRIVILEGES ON pathtable to treewalk;
 GRANT ALL PRIVILEGES ON root to treewalk;
+GRANT ALL PRIVILEGES ON filesystems to treewalk;
 ALTER TABLE performance OWNER to treewalk;
-ALTER TABLE snapshot1 OWNER TO treewalk;
-ALTER TABLE snapshot2 OWNER TO treewalk;
+ALTER TABLE filesystems OWNER to treewalk;
 ALTER TABLE filetable OWNER TO treewalk;
 ALTER TABLE pathtable OWNER TO treewalk;
 ALTER TABLE root OWNER TO treewalk;
