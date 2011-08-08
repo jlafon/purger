@@ -170,7 +170,7 @@ int main( int argc, char *argv[] )
   timenow = (int)now;
   starttime = timenow;
   
-  while ((c = getopt_long(argc, argv, "d:p:r:h", long_options, &option_index)) != -1) 
+  while ((c = getopt_long(argc, argv, "d:p:r:hv", long_options, &option_index)) != -1) 
   {
     switch (c)
       {
@@ -436,9 +436,8 @@ int main( int argc, char *argv[] )
       }
       objects results = manager(beginning_path, nproc, restart_name, id);
       end = MPI_Wtime();
-      if(verbose)
           fprintf(stdout,"Elapsed time: %fs Total Files: %d Total Dirs: %d\n",end-begin,results.files, results.dirs);
-  } /* end if(rank == 0) */
+    } /* end if(rank == 0) */
   else
     worker(rank);
   
@@ -492,7 +491,7 @@ int main( int argc, char *argv[] )
       endwin();
   
   MPI_Finalize();
-  return 0;
+   return 0;
 } /* end main */
 
 
