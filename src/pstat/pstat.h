@@ -55,6 +55,7 @@ typedef struct state_st
     int incoming_token;
     int * work_offsets;
     int * request_offsets;
+    int work_request_tries;
 } state_st;
 
 int parse_args( int argc, char *argv[] , options * opts );

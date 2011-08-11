@@ -49,6 +49,7 @@ int worker( options * opts )
     s.incoming_token = BLACK;
     s.request_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
     s.work_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
+    s.work_request_tries = 0;
     /* Master rank starts out with the beginning path */
     if(rank == 0)
     {
