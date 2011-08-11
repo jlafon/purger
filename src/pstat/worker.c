@@ -61,23 +61,36 @@ int worker( options * opts )
     while(token != DONE)
     {
         /* Check for and service work requests */
-//        fprintf(logfd,"Checking for requests.\n");
-    //    fflush(logfd);
+//        fprintf(logfd,"Checking for requests...");
+  //      fflush(logfd);
         check_for_requests(qp,sptr);
+//	fprintf(logfd,"done\n");
+//	fflush(logfd);
         if(qp->count == 0)
         {
+  //          fprintf(logfd,"Requesting work...");
+    //        fflush(logfd);
             request_work(qp,sptr);
+      //      fprintf(logfd,"done\n");
+        //    fflush(logfd);
         }
         if(qp->count > 0)
         {
-            fprintf(logfd,"Processing work, queue size: %d Stats: %d\n",qp->count,qp->num_stats);
-          //  fflush(logfd);
+            
+	    fprintf(logfd,"Processing work, queue size: %d Stats: %d...",qp->count,qp->num_stats);
+            fflush(logfd);
             process_work(qp,sptr);
+          //  fprintf(logfd,"done\n");
+          //  fflush(logfd);
         }
         else
         {
-            if(check_for_term(sptr) == TERMINATE)
+//	fprintf(logfd,"Checking for termination...");
+  //      fflush(logfd);    
+        if(check_for_term(sptr) == TERMINATE)
                 token = DONE;
+//	fprintf(logfd,"done\n");
+  //      fflush(logfd);    
         }
     }
         printf("[Rank %d] Stats: %d\n",rank,qp->num_stats);
