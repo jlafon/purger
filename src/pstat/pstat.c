@@ -143,7 +143,7 @@ int request_work( work_queue * qp, state_st * st)
 
         fprintf(logfd,"Work request sent, but no response yet.\n");
         fflush(logfd);
-        if(++work_request_tries == 100)
+        if(++st->work_request_tries == 100)
         {
             fprintf(logfd,"Canceling request to %d\n",st->next_processor);
             MPI_Cancel(&st->work_request);
