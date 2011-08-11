@@ -124,6 +124,7 @@ int request_work( work_queue * qp, state_st * st)
 {
     if(!st->work_pending_request)
     {
+        st->work_request_tries = 0;
         fprintf(logfd,"Sending work request to %d...",st->next_processor);
         MPI_Send(&st->next_processor,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD);
         fprintf(logfd,"done.\n");
@@ -139,8 +140,21 @@ int request_work( work_queue * qp, state_st * st)
     }
     if(!st->work_flag)
     {
-       fprintf(logfd,"Work request sent, but no response yet.\n");
+
+        fprintf(logfd,"Work request sent, but no response yet.\n");
         fflush(logfd);
+        if(++work_request_tries == 100)
+        {
+            fprintf(logfd,"Canceling request to %d\n",st->next_processor);
+            MPI_Cancel(&st->work_request);
+            st->next_processor = (st->next_processor+1) % st->size;
+            if(st->next_processor == st->rank)
+                st->next_processor = (st->next_processor+1) % st->size;
+            st->work_pending_request = 0;
+            fprintf(logfd,"Request cancelled, trying %d\n",st->next_processor);
+            fflush(logfd);
+            st->work_pending_request = 0;
+        }
         return 0;
     }
     //fprintf(logfd,"Received response from %d\n",st->work_status.MPI_SOURCE);
