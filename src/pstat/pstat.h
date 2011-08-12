@@ -13,8 +13,7 @@ FILE * logfd;
 typedef struct options
 {
     char * beginning_path;
-    int db_on;
-    char * db_name;
+    int verbose;
 } options;
 
 typedef struct work_queue
@@ -34,6 +33,7 @@ typedef struct work_queue
 
 typedef struct state_st
 {
+    int verbose;
     int rank;
     int size;
     int have_token;

@@ -1,4 +1,5 @@
 #include "pstat.h"
+#include <assert.h>
 #include <mpi.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -10,27 +11,33 @@ int check_for_term( state_st * st )
     /* If I have the token (I am already idle) */
     if(st->have_token)
     {
+        /* The master rank generates the original WHITE token */
         if(st->rank == 0)
         {
-            fprintf(logfd,"Master generating WHITE token.\n");
-            //fflush(logfd);
+        if(st->verbose)
+            { 
+                fprintf(logfd,"Master generating WHITE token.\n");
+                fflush(logfd);
+            }
             st->incoming_token = WHITE;
             MPI_Ssend(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
             st->token = WHITE;
             st->have_token = 0;
+        /* Immediately post a receive to listen for the token when it comes back around */
             MPI_Irecv(&st->incoming_token, 1, MPI_INT, st->token_partner, TOKEN, MPI_COMM_WORLD, &st->term_request);
             st->term_pending_receive = 1;
         }
         else
         {
+        /* In this case I am not the master rank. */
+        /* Turn it black if I am in a black state, and forward it since I am idle. */
+        /* Then I turn my state white. */ 
             if(st->token == BLACK)
                 st->incoming_token = BLACK;
-//            fprintf(logfd,"Forwarding token to %d...",st->incoming_token);
             MPI_Ssend(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
- //           fprintf(logfd,"done.\n");
-   //         fflush(logfd);
             st->token = WHITE;
             st->have_token = 0;
+        /* Immediately post a receive to listen for the token when it comes back around */
             MPI_Irecv(&st->incoming_token, 1, MPI_INT, st->token_partner, TOKEN, MPI_COMM_WORLD, &st->term_request);
             st->term_pending_receive = 1;
         }
@@ -39,6 +46,7 @@ int check_for_term( state_st * st )
     /* If I don't have the token. */
     else
     {
+        /*  Check to see if I have posted a receive */
         if(!st->term_pending_receive)
         {
             st->incoming_token = -1;
@@ -46,15 +54,16 @@ int check_for_term( state_st * st )
             st->term_pending_receive = 1;
         }
         st->term_flag = 0;
+        /* Check to see if my pending receive has completed */
         MPI_Test(&st->term_request, &st->term_flag, &st->term_status);
         if(!st->term_flag)
         {
             return 0;
         }
+        /* If I get here, then I received the token */
         st->term_pending_receive = 0;
         st->have_token = 1;
-        //fprintf(logfd,"I have the token %d\n",st->incoming_token);
-        //fflush(logfd);
+        /* Check for termination */
         if(st->incoming_token == TERMINATE)
         {
             st->token = TERMINATE;
@@ -65,8 +74,11 @@ int check_for_term( state_st * st )
             st->token = WHITE;
         if(st->rank == 0 && st->incoming_token == WHITE)
         {
-            fprintf(logfd,"Master has detected termination.\n");
-            fflush(logfd);
+            if(st->verbose)
+            {
+                fprintf(logfd,"Master has detected termination.\n");
+                fflush(logfd);
+            }
             st->token = TERMINATE;
             MPI_Ssend(&st->token, 1, MPI_INT,1, TOKEN, MPI_COMM_WORLD);
             return TERMINATE;
@@ -83,13 +95,15 @@ int process_work( work_queue * qp, state_st * state )
     static char stat_temp[MAX_STRING_LEN];
     static struct dirent *current_ent; 
     static struct stat st;
-    int count = 0;
-    
+    /* Pop an item off the queue */ 
     popq(qp,temp);
+
+    /* Try and stat it, checking to see if it is a link */
     if(lstat(temp,&st) != EXIT_SUCCESS)
     {
             perror("Unable to stat file");
     }
+    /* Check to see if it is a directory.  If so, put it's children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
     {
         current_dir = opendir(temp);
@@ -97,17 +111,18 @@ int process_work( work_queue * qp, state_st * state )
             perror("Unable to open dir");
         else
         {
+        /* Read in each directory entry */
             while((current_ent = readdir(current_dir)) != NULL)
             {
-    //   		if(++count > 100)
-//		{
-//		    count = 0;
-//		    check_for_requests(qp,state);
-//		}
-
-	        if((strncmp(current_ent->d_name,".",10)) && (strncmp(current_ent->d_name,"..",10)))
+    //           if(++count > 100)
+//        {
+//            count = 0;
+//            check_for_requests(qp,state);
+//        }
+        /* We don't care about . or .. */
+            if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
                 {
-                    strncpy(stat_temp,temp,MAX_STRING_LEN-1);
+                    strcpy(stat_temp,temp);
                     strncat(stat_temp,"/",1);
                     strcat(stat_temp,current_ent->d_name);
                     pushq(qp,stat_temp);
@@ -125,11 +140,17 @@ int request_work( work_queue * qp, state_st * st)
     if(!st->work_pending_request)
     {
         st->work_request_tries = 0;
-        //fprintf(logfd,"Sending work request to %d...",st->next_processor);
-        //fflush(logfd);
-	MPI_Ssend(&st->next_processor,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD);
-        //fprintf(logfd,"done.\n");
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"Sending work request to %d...",st->next_processor);
+            fflush(logfd);
+        }
+        MPI_Ssend(&st->next_processor,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD);
+        if(st->verbose)
+        {
+            fprintf(logfd,"done.\n");
+            fflush(logfd);
+        }
         MPI_Irecv(st->work_offsets,INITIAL_QUEUE_SIZE/2,MPI_INT,st->next_processor,WORK,MPI_COMM_WORLD,&st->work_request);
         st->work_pending_request = 1;
         return 0;
@@ -142,23 +163,34 @@ int request_work( work_queue * qp, state_st * st)
     if(!st->work_flag)
     {
 
-        //fprintf(logfd,"Work request sent, but no response yet. %d attempts.\n",st->work_request_tries++);
-        //fflush(logfd);
-        
-	if(st->work_request_tries == 1000)
+        if(st->verbose)
         {
-          //  fprintf(logfd,"Canceling request to %d...",st->next_processor);
-    	   // fflush(logfd);
-	    MPI_Cancel(&st->work_request);
-	    MPI_Wait(&st->work_request,&st->work_status);
-	    //fprintf(logfd,"done\n");
-    	    //fflush(logfd);
-	    st->next_processor = (st->next_processor+1) % st->size;
+            fprintf(logfd,"Work request sent, but no response yet. %d attempts.\n",st->work_request_tries++);
+            fflush(logfd);
+        }
+        if(st->work_request_tries == 1000)
+        {
+            if(st->verbose)
+            {
+                fprintf(logfd,"Canceling request to %d...",st->next_processor);
+                fflush(logfd);
+            }
+            MPI_Cancel(&st->work_request);
+            MPI_Wait(&st->work_request,&st->work_status);
+            if(st->verbose)
+            {
+                fprintf(logfd,"done\n");
+                fflush(logfd);
+            }
+            st->next_processor = (st->next_processor+1) % st->size;
             if(st->next_processor == st->rank)
                 st->next_processor = (st->next_processor+1) % st->size;
             st->work_pending_request = 0;
-            fprintf(logfd,"Request cancelled, trying %d\n",st->next_processor);
-            //fflush(logfd);
+            if(st->verbose)
+            {
+                fprintf(logfd,"Request cancelled, trying %d\n",st->next_processor);
+                fflush(logfd);
+            }
             st->work_request_tries = 0;
         }
         return 0;
@@ -169,18 +201,24 @@ int request_work( work_queue * qp, state_st * st)
     st->work_pending_request = 0;
     if(st->work_offsets[0] == 0)
     {
-        return;
+        return 0;
     }
-    //fprintf(logfd,"Getting work from %d, %d items.\n",st->work_status.MPI_SOURCE, st->work_offsets[0]);
-    //fflush(logfd);
+    if(st->verbose)
+    {
+        fprintf(logfd,"Getting work from %d, %d items.\n",st->work_status.MPI_SOURCE, st->work_offsets[0]);
+        fflush(logfd);
+    }
     MPI_Recv(qp->base,(st->work_offsets[1]+1)*sizeof(char),MPI_BYTE,st->work_status.MPI_SOURCE,WORK,MPI_COMM_WORLD,&st->work_status);
     qp->count = st->work_offsets[0];
     int i = 0;
     for(i= 0; i < qp->count; i++)
         qp->strings[i] = qp->base + st->work_offsets[i+2];
     qp->head = qp->strings[qp->count-1] + strlen(qp->strings[qp->count-1]);
-    //fprintf(logfd,"Received items.  Queue size now %d\n",qp->count);
-    //fflush(logfd);
+    if(st->verbose)
+    {
+        fprintf(logfd,"Received items.  Queue size now %d\n",qp->count);
+        fflush(logfd);
+    }
     st->work_pending_request = 0;
     return 0;
 }
@@ -203,17 +241,26 @@ int check_for_requests( work_queue * qp, state_st * st)
     st->request_pending_receive = 0;
     if(qp->count < 10)
     {
-        //fprintf(logfd,"Received work request from %d, but have no work.\n",source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"Received work request from %d, but have no work.\n",source);
+            fflush(logfd);
+        }
         recv_buf = 0;
         MPI_Ssend(&recv_buf, 1, MPI_INT, source, WORK, MPI_COMM_WORLD);
-        //fprintf(logfd,"Response sent to %d, have no work.\n",source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"Response sent to %d, have no work.\n",source);
+            fflush(logfd);
+        }
     }
     else
     {
-        //fprintf(logfd,"Received work request from %d...\n",source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"Received work request from %d...\n",source);
+            fflush(logfd);
+        }
         if(source < st->rank || source == st->token_partner)
             st->token = BLACK;
         char * b = qp->strings[(qp->count/2)];
@@ -230,19 +277,31 @@ int check_for_requests( work_queue * qp, state_st * st)
             st->request_offsets[i] = qp->strings[j++] - b;
         /* offsets[qp->count - qp->count/2+2]  is the size of the last string */
         st->request_offsets[qp->count - qp->count/2+2] = strlen(qp->strings[j-1]);
-        //fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],source);
+            fflush(logfd);
+        }
         MPI_Ssend(st->request_offsets, INITIAL_QUEUE_SIZE/2, MPI_INT, source, WORK, MPI_COMM_WORLD);
-        //fprintf(logfd,"done.\n");
-        //fflush(logfd);
-        //fprintf(logfd,"\tSending buffer to %d...",source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"done.\n");
+            fflush(logfd);
+            fprintf(logfd,"\tSending buffer to %d...",source);
+            fflush(logfd);
+        }
         MPI_Ssend(b, (diff+1)*sizeof(char), MPI_BYTE, source, WORK, MPI_COMM_WORLD);
-        //fprintf(logfd,"done.\n");
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"done.\n");
+            fflush(logfd);
+        }
         qp->count = qp->count - st->request_offsets[0];
-        //fprintf(logfd,"sent %d items to %d.\n",st->request_offsets[0],source);
-        //fflush(logfd);
+        if(st->verbose)
+        {
+            fprintf(logfd,"sent %d items to %d.\n",st->request_offsets[0],source);
+            fflush(logfd);
+        }
     }
     return 0;
 }
@@ -256,6 +315,7 @@ int parse_args( int argc, char *argv[] , options * opts )
     {"path",    required_argument, 0, 'p'},
     {"restart",    required_argument, 0, 'r'},
     {"help",    no_argument,       0, 'h'},
+    {"verbose", no_argument,    0,    'v'},
     {0,0,0,0}
     };
     int option_index = 0;
@@ -268,10 +328,11 @@ int parse_args( int argc, char *argv[] , options * opts )
                     snprintf(opts->beginning_path, strlen(optarg)+1, "%s", optarg);
                     break;
             case 'd':
-                    opts->db_on = 1;
-                    snprintf(opts->db_name, strlen(optarg)+1, "%s", optarg);
                     break;
             case 'r':
+                    break;
+            case 'v':
+            opts->verbose = 1;
                     break;
             case 'h':
                     return -1;
@@ -279,7 +340,7 @@ int parse_args( int argc, char *argv[] , options * opts )
             default:
                     return 0; 
         }
-	}
+    }
     return 0;
 }
 /* Prints a queue */
@@ -297,12 +358,7 @@ void printq( work_queue * qp )
  */
 int pushq( work_queue * qp, char * str )
 {
-    if(qp->strings[qp->count-1] + MAX_STRING_LEN > qp->end)
-    {
-        fprintf(logfd,"Out of memory.\n");
-        fflush(logfd);
-        exit(-1);
-    }
+    assert(qp->strings[qp->count-1] + MAX_STRING_LEN < qp->end);
     qp->strings[qp->count] = qp->head; 
     /* copy the string */
     strcpy(qp->head, str);

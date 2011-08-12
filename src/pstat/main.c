@@ -19,8 +19,7 @@ int main( int argc, char *argv[] )
     options opts;
     opts.beginning_path = (char*) malloc(sizeof(char)*MAX_STRING_LEN);
     opts.beginning_path[0] = '\0';
-    opts.db_name = (char*) malloc(sizeof(char)*MAX_STRING_LEN);
-    opts.db_on = 0;
+    opts.verbose = 0;
     if(parse_args(argc,argv,&opts) < 0)
         exit(0);
     if(opts.beginning_path[0] == '\0')
