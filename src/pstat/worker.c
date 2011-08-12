@@ -9,7 +9,6 @@ int worker( options * opts )
 {
     int token = WHITE;
     int token_partner;
-    int number_stats = 0;
     state_st s;
     state_st * sptr = &s;
     work_queue queue;
@@ -50,6 +49,7 @@ int worker( options * opts )
     s.request_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
     s.work_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
     s.work_request_tries = 0;
+    s.verbose = opts->verbose;
     /* Master rank starts out with the beginning path */
     if(rank == 0)
     {
@@ -61,37 +61,60 @@ int worker( options * opts )
     while(token != DONE)
     {
         /* Check for and service work requests */
-//        fprintf(logfd,"Checking for requests...");
-  //      fflush(logfd);
-        check_for_requests(qp,sptr);
-//	fprintf(logfd,"done\n");
-//	fflush(logfd);
+	if(opts->verbose)
+        {
+		fprintf(logfd,"Checking for requests...");
+		fflush(logfd);
+        }
+	check_for_requests(qp,sptr);
+	if(opts->verbose)
+	{
+		fprintf(logfd,"done\n");
+		fflush(logfd);
+	}        
         if(qp->count == 0)
         {
-  //          fprintf(logfd,"Requesting work...");
-    //        fflush(logfd);
-            request_work(qp,sptr);
-      //      fprintf(logfd,"done\n");
-        //    fflush(logfd);
-        }
+    	    if(opts->verbose)
+	    {
+                fprintf(logfd,"Requesting work...");
+                fflush(logfd);
+            }
+	    request_work(qp,sptr);
+	    if(opts->verbose)
+	    {      
+                fprintf(logfd,"done\n");
+                fflush(logfd);
+	    }        
+	}
         if(qp->count > 0)
         {
-            
-	    fprintf(logfd,"Processing work, queue size: %d Stats: %d...",qp->count,qp->num_stats);
-            fflush(logfd);
-            process_work(qp,sptr);
-          //  fprintf(logfd,"done\n");
-          //  fflush(logfd);
+            if(opts->verbose)
+            {    
+		fprintf(logfd,"Processing work, queue size: %d Stats: %d...",qp->count,qp->num_stats);
+		fflush(logfd);
+            }    
+	    process_work(qp,sptr);
+            if(opts->verbose)
+	    {  
+	        fprintf(logfd,"done\n");
+                fflush(logfd);
+            }
         }
         else
         {
-//	fprintf(logfd,"Checking for termination...");
-  //      fflush(logfd);    
-        if(check_for_term(sptr) == TERMINATE)
+	    if(opts->verbose)
+	    {
+ 	        fprintf(logfd,"Checking for termination...");
+                fflush(logfd);    
+            }
+	if(check_for_term(sptr) == TERMINATE)
                 token = DONE;
-//	fprintf(logfd,"done\n");
-  //      fflush(logfd);    
-        }
+	    if(opts->verbose)
+	    {   	    
+	        fprintf(logfd,"done\n");
+                fflush(logfd);    
+            }
+	}
     }
         printf("[Rank %d] Stats: %d\n",rank,qp->num_stats);
     return 0;
