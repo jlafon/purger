@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <mpi.h>
-#define MAX_STRING_LEN 1024*sizeof(char)
-#define INITIAL_QUEUE_SIZE 100000
+#define MAX_STRING_LEN 2048*sizeof(char)
+#define INITIAL_QUEUE_SIZE 400000
 
 enum tags { WHITE=10,BLACK=1,DONE=2,TERMINATE=3,WORK_REQUEST=4, WORK=0xBEEF, TOKEN=0 };
 

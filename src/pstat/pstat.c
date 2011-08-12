@@ -137,6 +137,9 @@ int process_work( work_queue * qp, state_st * state )
 /* Requests work from other ranks */
 int request_work( work_queue * qp, state_st * st)
 {
+    MPI_Request temp_request;
+    int c = 0;
+    int flag = 0;
     if(!st->work_pending_request)
     {
         st->work_request_tries = 0;
@@ -145,7 +148,29 @@ int request_work( work_queue * qp, state_st * st)
             fprintf(logfd,"Sending work request to %d...",st->next_processor);
             fflush(logfd);
         }
-        MPI_Ssend(&st->next_processor,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD);
+        MPI_Isend(&st->work_offsets[0],1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD,&temp_request);
+        flag = 0;
+        c = 0;
+        while(!flag)
+        {
+            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
+            if(c++ > 100000)
+            {
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Cancelling send...\n");
+                    fflush(logfd);
+                }
+                MPI_Cancel(&temp_request);
+                MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Cancelled send.\n");
+                    fflush(logfd);
+                }
+                return 0;
+            }
+        }
         if(st->verbose)
         {
             fprintf(logfd,"done.\n");
@@ -168,7 +193,7 @@ int request_work( work_queue * qp, state_st * st)
             fprintf(logfd,"Work request sent, but no response yet. %d attempts.\n",st->work_request_tries++);
             fflush(logfd);
         }
-        if(st->work_request_tries == 1000)
+        if(st->work_request_tries == 100000)
         {
             if(st->verbose)
             {
@@ -208,11 +233,35 @@ int request_work( work_queue * qp, state_st * st)
         fprintf(logfd,"Getting work from %d, %d items.\n",st->work_status.MPI_SOURCE, st->work_offsets[0]);
         fflush(logfd);
     }
-    MPI_Recv(qp->base,(st->work_offsets[1]+1)*sizeof(char),MPI_BYTE,st->work_status.MPI_SOURCE,WORK,MPI_COMM_WORLD,&st->work_status);
+    MPI_Irecv(qp->base,(st->work_offsets[1]+1)*sizeof(char),MPI_BYTE,st->work_status.MPI_SOURCE,WORK,MPI_COMM_WORLD,&temp_request);
+    c = 0;
+    flag = 0;
+    while(!flag)
+    {
+        MPI_Test(&temp_request, &flag, &st->work_status);
+        if(c++ > 100000)
+        {
+            if(st->verbose)
+            {
+                fprintf(logfd,"Cancelling buffer receive...\n");
+                fflush(logfd);
+            }
+            MPI_Cancel(&temp_request);
+            MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
+            if(st->verbose)
+            {
+                fprintf(logfd,"Cancelled buffer receive.\n");
+                fflush(logfd);
+            }
+            return 0;
+        }
+    }
+
     qp->count = st->work_offsets[0];
     int i = 0;
     for(i= 0; i < qp->count; i++)
         qp->strings[i] = qp->base + st->work_offsets[i+2];
+    assert(qp->strings[0] == qp->base);
     qp->head = qp->strings[qp->count-1] + strlen(qp->strings[qp->count-1]);
     if(st->verbose)
     {
@@ -247,7 +296,24 @@ int check_for_requests( work_queue * qp, state_st * st)
             fflush(logfd);
         }
         recv_buf = 0;
-        MPI_Ssend(&recv_buf, 1, MPI_INT, source, WORK, MPI_COMM_WORLD);
+        MPI_Request temp_request;
+        MPI_Isend(&recv_buf, 1, MPI_INT, source, WORK, MPI_COMM_WORLD,&temp_request);
+        int c = 0;
+        int flag = 0;
+        while(!flag)
+        {
+            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
+            if(c++ > 100000)
+            {
+                MPI_Cancel(&temp_request);
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Send cancelled.\n");
+                    fflush(logfd);
+                }
+                return 0;
+            }
+        }
         if(st->verbose)
         {
             fprintf(logfd,"Response sent to %d, have no work.\n",source);
@@ -282,7 +348,31 @@ int check_for_requests( work_queue * qp, state_st * st)
             fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],source);
             fflush(logfd);
         }
-        MPI_Ssend(st->request_offsets, INITIAL_QUEUE_SIZE/2, MPI_INT, source, WORK, MPI_COMM_WORLD);
+        MPI_Request temp_request;
+        MPI_Isend(st->request_offsets, INITIAL_QUEUE_SIZE/2, MPI_INT, source, WORK, MPI_COMM_WORLD,&temp_request);
+        int c = 0;
+        int flag = 0;
+        while(!flag)
+        {
+            MPI_Test(&temp_request,&flag,MPI_STATUS_IGNORE);
+            if(c++ > 100000)
+            {
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Cancelling sending offsets.\n");
+                    fflush(logfd);
+                }
+                MPI_Cancel(&temp_request);
+                MPI_Wait(&temp_request, MPI_STATUS_IGNORE);
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Offset send cancelled.\n");
+                    fflush(logfd);
+                }
+                return 0;
+
+            }
+        }
         if(st->verbose)
         {
             fprintf(logfd,"done.\n");
@@ -290,7 +380,29 @@ int check_for_requests( work_queue * qp, state_st * st)
             fprintf(logfd,"\tSending buffer to %d...",source);
             fflush(logfd);
         }
-        MPI_Ssend(b, (diff+1)*sizeof(char), MPI_BYTE, source, WORK, MPI_COMM_WORLD);
+        MPI_Isend(b, (diff+1)*sizeof(char), MPI_BYTE, source, WORK, MPI_COMM_WORLD,&temp_request);
+        c = 0;
+        flag = 0;
+        while(!flag)
+        {
+            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
+            if(c++ > 100000)
+            {
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Cancelling buffer send...");
+                    fflush(logfd);
+                }
+                MPI_Cancel(&temp_request);
+                MPI_Wait(&temp_request, MPI_STATUS_IGNORE);
+                if(st->verbose)
+                {
+                    fprintf(logfd,"Buffer send cancelled\n");
+                    fflush(logfd);
+                }
+                return 0;
+            }
+        }
         if(st->verbose)
         {
             fprintf(logfd,"done.\n");
