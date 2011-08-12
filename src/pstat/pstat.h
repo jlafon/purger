@@ -53,10 +53,14 @@ typedef struct state_st
     int request_pending_receive;
     int term_pending_receive;
     int incoming_token;
-    int * work_offsets;
-    int * request_offsets;
+    unsigned int * work_offsets;
+    unsigned int * request_offsets;
     int work_request_tries;
 } state_st;
+
+void print_offsets(unsigned int * offsets, int count);
+void dumpq( work_queue * qp);
+void printq( work_queue * qp );
 
 int parse_args( int argc, char *argv[] , options * opts );
 

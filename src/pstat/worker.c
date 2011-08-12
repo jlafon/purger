@@ -47,8 +47,8 @@ int worker( options * opts )
     s.term_pending_receive = 0;
     qp->num_stats = 0;
     s.incoming_token = BLACK;
-    s.request_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
-    s.work_offsets = (int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(int));
+    s.request_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(unsigned int));
+    s.work_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(unsigned int));
     s.work_request_tries = 0;
     s.verbose = opts->verbose;
     

@@ -102,6 +102,14 @@ int process_work( work_queue * qp, state_st * state )
     if(lstat(temp,&st) != EXIT_SUCCESS)
     {
             perror("Unable to stat file");
+            if(state->verbose)
+            {
+                fprintf(logfd,"Couldn't stat \"%s\"\n",temp);
+                fflush(logfd);
+                dumpq(qp);
+                printq(qp);
+                exit(-1);
+            }
     }
     /* Check to see if it is a directory.  If so, put it's children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
@@ -140,6 +148,7 @@ int request_work( work_queue * qp, state_st * st)
     MPI_Request temp_request;
     int c = 0;
     int flag = 0;
+    static int temp_buffer = 0;
     if(!st->work_pending_request)
     {
         st->work_request_tries = 0;
@@ -148,7 +157,7 @@ int request_work( work_queue * qp, state_st * st)
             fprintf(logfd,"Sending work request to %d...",st->next_processor);
             fflush(logfd);
         }
-        MPI_Isend(&st->work_offsets[0],1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD,&temp_request);
+        MPI_Isend(&temp_buffer,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD,&temp_request);
         flag = 0;
         c = 0;
         while(!flag)
@@ -162,7 +171,6 @@ int request_work( work_queue * qp, state_st * st)
                     fflush(logfd);
                 }
                 MPI_Cancel(&temp_request);
-                MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
                 if(st->verbose)
                 {
                     fprintf(logfd,"Cancelled send.\n");
@@ -238,6 +246,11 @@ int request_work( work_queue * qp, state_st * st)
     flag = 0;
     while(!flag)
     {
+        if(st->verbose)
+        {
+            fprintf(logfd,"Waiting on MPI_Test, attempt %d\n",c);
+            fflush(logfd);
+        }
         MPI_Test(&temp_request, &flag, &st->work_status);
         if(c++ > 100000)
         {
@@ -277,12 +290,13 @@ int check_for_requests( work_queue * qp, state_st * st)
     static int recv_buf = 0;
     static int source;
     int i;
-
+    /* Check to see if a receive has been posted */
     if(!st->request_pending_receive)
     {
         MPI_Irecv(&recv_buf, 1, MPI_INT, MPI_ANY_SOURCE, WORK_REQUEST, MPI_COMM_WORLD, &st->request_request);
         st->request_pending_receive = 1;
     }
+    /* Test to see if the posted receive has completed */
     MPI_Test(&st->request_request, &st->request_flag, &st->request_status);
     if(!st->request_flag)
         return 0;
@@ -334,18 +348,26 @@ int check_for_requests( work_queue * qp, state_st * st)
         size_t diff = e-b;
         diff += strlen(e);
         /* offsets[0] = number of strings */
-        /* offsets[1] = size of all strings being sent */
+        /* offsets[1] = number of chars being sent */
         st->request_offsets[0] = qp->count-(qp->count/2);
         st->request_offsets[1] = diff;
-        
-        int j = qp->count / 2;
-        for(i=2; i < qp->count - qp->count/2 + 2; i++)
+        assert(diff < (INITIAL_QUEUE_SIZE/2*MAX_STRING_LEN)); 
+        int j = qp->count/2;
+        for(i=2; i < st->request_offsets[0] + 2; i++)
+        {
             st->request_offsets[i] = qp->strings[j++] - b;
+            if(st->verbose)
+            {
+                fprintf(logfd,"Base address: %p, String[%d] address: %p, String \"%s\" Offset: %u\n",b,i-2,qp->strings[j-1],qp->strings[j-1],st->request_offsets[i]);
+                fflush(logfd);
+            }
+        }
         /* offsets[qp->count - qp->count/2+2]  is the size of the last string */
-        st->request_offsets[qp->count - qp->count/2+2] = strlen(qp->strings[j-1]);
+        st->request_offsets[qp->count - qp->count/2+2] = strlen(qp->strings[qp->count-1]);
         if(st->verbose)
         {
             fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],source);
+            print_offsets(st->request_offsets,st->request_offsets[0]+3);
             fflush(logfd);
         }
         MPI_Request temp_request;
@@ -363,7 +385,6 @@ int check_for_requests( work_queue * qp, state_st * st)
                     fflush(logfd);
                 }
                 MPI_Cancel(&temp_request);
-                MPI_Wait(&temp_request, MPI_STATUS_IGNORE);
                 if(st->verbose)
                 {
                     fprintf(logfd,"Offset send cancelled.\n");
@@ -394,7 +415,6 @@ int check_for_requests( work_queue * qp, state_st * st)
                     fflush(logfd);
                 }
                 MPI_Cancel(&temp_request);
-                MPI_Wait(&temp_request, MPI_STATUS_IGNORE);
                 if(st->verbose)
                 {
                     fprintf(logfd,"Buffer send cancelled\n");
@@ -423,12 +443,12 @@ int parse_args( int argc, char *argv[] , options * opts )
 {
     static struct option long_options[] = 
     {
-    {"db",        required_argument, 0, 'd'},
-    {"path",    required_argument, 0, 'p'},
-    {"restart",    required_argument, 0, 'r'},
-    {"help",    no_argument,       0, 'h'},
-    {"verbose", no_argument,    0,    'v'},
-    {0,0,0,0}
+        {"db",        required_argument, 0, 'd'},
+        {"path",    required_argument, 0, 'p'},
+        {"restart",    required_argument, 0, 'r'},
+        {"help",    no_argument,       0, 'h'},
+        {"verbose", no_argument,    0,    'v'},
+        {0,0,0,0}
     };
     int option_index = 0;
     int c = 0;
@@ -444,7 +464,7 @@ int parse_args( int argc, char *argv[] , options * opts )
             case 'r':
                     break;
             case 'v':
-            opts->verbose = 1;
+                    opts->verbose = 1;
                     break;
             case 'h':
                     return -1;
@@ -455,12 +475,26 @@ int parse_args( int argc, char *argv[] , options * opts )
     }
     return 0;
 }
+void print_offsets(unsigned int * offsets, int count)
+{
+    int i = 0;
+    for(i = 0; i < count; i++)
+        fprintf(logfd,"\t[%d] %d\n",i,offsets[i]);
+}
+void dumpq( work_queue * qp)
+{
+   int i = 0;
+   char * p = qp->base;
+   while(p++ != (qp->strings[qp->count-1]+strlen(qp->strings[qp->count-1])))
+       if(i++ % 80 == 0) fprintf(logfd,"%c\n",*p); else fprintf(logfd,"%c",*p);
+
+}
 /* Prints a queue */
 void printq( work_queue * qp )
 {
     int i = 0;
     for(i = 0; i < qp->count; i++)
-       fprintf(logfd,"\t[%d] %s\n",i,qp->strings[i]);
+       fprintf(logfd,"\t[%p][%d] %s\n",qp->strings[i],i,qp->strings[i]);
     fprintf(logfd,"\n");
 }
 
@@ -476,13 +510,9 @@ int pushq( work_queue * qp, char * str )
     strcpy(qp->head, str);
     
     /* Make head point to the character after the string */
-    qp->head = qp->head + strlen(qp->head) + 1;
+    qp->head = qp->head + strlen(qp->head) + 2;
 
-    /* NULL terminate the string */
-    qp->head[0] = '\0';
-    
     /* Make the head point to the next available memory */
-    qp->head = qp->head + 1;
     qp->count = qp->count + 1;
     return 0;
 }
