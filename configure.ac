@@ -3,8 +3,8 @@ AC_PREREQ([2.68])
 
 AC_INIT([purger], [1.2.0], [github-hpc@lanl.gov])
 
-AC_CONFIG_SRCDIR([src/pstat/main.c])
-AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_SRCDIR([configure.ac])
+AC_CONFIG_AUX_DIR(auxdir)
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE(purger, [1.2.0])
@@ -56,6 +56,8 @@ echo
 
 AC_CONFIG_FILES([Makefile \
                  src/Makefile \
-                 src/pstat/Makefile])
+                 src/pstat/Makefile \
+                 extern/Makefile \
+                 extern/hiredis/Makefile])
 
 AC_OUTPUT
