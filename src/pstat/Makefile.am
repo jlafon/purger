@@ -3,4 +3,4 @@ pstat_SOURCES = main.c pstat.c pstat.h worker.c
 pstat_CFLAGS = -I$(top_srcdir)/common
 pstat_LDADD = $(MPI_CLDFLAGS) $(top_srcdir)/extern/hiredis/libhiredis.a
 
-INCLUDES = $(MPI_CFLAGS)
+INCLUDES = $(MPI_CFLAGS) -I$(top_srcdir)/extern/hiredis/
