@@ -1,8 +1,4 @@
 #include "pstat.h"
-
-#include "hiredis.h"
-#include "async.h"
-
 #include <assert.h>
 #include <mpi.h>
 #include <dirent.h>
@@ -143,17 +139,18 @@ int process_work( work_queue * qp, state_st * state )
         }
         closedir(current_dir);
     }
+    else if(S_ISREG(st.st_mode))
+    {
+        if(redis_context == NULL)
+            redis_context = redisConnect("127.0.0.1", 6379);
 
-/****
-    else if(is file)
-        redisContext *c = redisConnect("127.0.0.1", 6379);
-        if (c->err)
-        {
-            printf("Error: %s\n", c->errstr);
-            // handle error
-        }
+        if (redis_context->err)
+            fprintf(logfd,"Redis context error: %s\n", redis_context->errstr);
+
+        if(redisAsyncCommand(redis_context, NULL, NULL,
+                "SET d_name %s", current_ent->d_name) != REDIS_OK)
+            fprintf(logfd,"Redis command error.\n");
     }
-****/
     qp->num_stats++;
     return 0;
 }
