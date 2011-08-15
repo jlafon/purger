@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <mpi.h>
-#define MAX_STRING_LEN 1024*sizeof(char)
-#define INITIAL_QUEUE_SIZE 100000
+#define MAX_STRING_LEN 2048*sizeof(char)
+#define INITIAL_QUEUE_SIZE 400000
 
 enum tags { WHITE=10,BLACK=1,DONE=2,TERMINATE=3,WORK_REQUEST=4, WORK=0xBEEF, TOKEN=0 };
 
@@ -13,8 +13,7 @@ FILE * logfd;
 typedef struct options
 {
     char * beginning_path;
-    int db_on;
-    char * db_name;
+    int verbose;
 } options;
 
 typedef struct work_queue
@@ -34,6 +33,7 @@ typedef struct work_queue
 
 typedef struct state_st
 {
+    int verbose;
     int rank;
     int size;
     int have_token;
@@ -53,10 +53,14 @@ typedef struct state_st
     int request_pending_receive;
     int term_pending_receive;
     int incoming_token;
-    int * work_offsets;
-    int * request_offsets;
+    unsigned int * work_offsets;
+    unsigned int * request_offsets;
     int work_request_tries;
 } state_st;
+
+void print_offsets(unsigned int * offsets, int count);
+void dumpq( work_queue * qp);
+void printq( work_queue * qp );
 
 int parse_args( int argc, char *argv[] , options * opts );
 
