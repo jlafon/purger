@@ -41,9 +41,11 @@ typedef struct state_st
     int next_processor;
     int token_partner;
     MPI_Status term_status;
+    MPI_Status work_offsets_status;
     MPI_Status work_status;
     MPI_Status request_status;
     MPI_Request term_request;
+    MPI_Request work_offsets_request;
     MPI_Request work_request;
     MPI_Request request_request;
     int term_flag;
