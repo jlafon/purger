@@ -7,6 +7,7 @@
 
 int worker( options * opts )
 {
+    double start_time;
     int token = WHITE;
     int token_partner;
     state_st s;
@@ -59,6 +60,7 @@ int worker( options * opts )
         s.have_token = 1;
     }
     MPI_Barrier(MPI_COMM_WORLD);    
+    start_time = MPI_Wtime();
     /* Loop until done */
     while(token != DONE)
     {
@@ -68,7 +70,7 @@ int worker( options * opts )
             fprintf(logfd,"Checking for requests...");
             fflush(logfd);
         }
-        if(cycles++ % 10 == 0)
+//        if(cycles++ % 10 == 0)
             check_for_requests(qp,sptr);
         if(opts->verbose)
         {
@@ -93,9 +95,10 @@ int worker( options * opts )
         {
             if(opts->verbose)
             {    
-                fprintf(logfd,"Processing work, queue size: %d Stats: %d...",qp->count,qp->num_stats);
+                fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
                 fflush(logfd);
-            }    
+            }   
+            //printq(qp);
             process_work(qp,sptr);
             if(opts->verbose)
             {  
