@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <mpi.h>
+#include "hiredis.h"
+#include "async.h"
 #define MAX_STRING_LEN 2048*sizeof(char)
 #define INITIAL_QUEUE_SIZE 400000
 
@@ -59,6 +61,8 @@ typedef struct state_st
     unsigned int * request_offsets;
     int work_request_tries;
 } state_st;
+
+redisAsyncContext *redis_context;
 
 void print_offsets(unsigned int * offsets, int count);
 void dumpq( work_queue * qp);

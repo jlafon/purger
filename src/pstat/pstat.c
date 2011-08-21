@@ -139,6 +139,18 @@ int process_work( work_queue * qp, state_st * state )
         }
         closedir(current_dir);
     }
+    else if(S_ISREG(st.st_mode))
+    {
+        if(redis_context == NULL)
+            redis_context = redisConnect("127.0.0.1", 6379);
+
+        if (redis_context->err)
+            fprintf(logfd,"Redis context error: %s\n", redis_context->errstr);
+
+        if(redisAsyncCommand(redis_context, NULL, NULL,
+                "SET d_name %s", current_ent->d_name) != REDIS_OK)
+            fprintf(logfd,"Redis command error.\n");
+    }
     qp->num_stats++;
     return 0;
 }
