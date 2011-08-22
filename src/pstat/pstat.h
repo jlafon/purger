@@ -9,7 +9,7 @@
 #define MAX_STRING_LEN 2048*sizeof(char)
 #define INITIAL_QUEUE_SIZE 400000
 
-enum tags { WHITE=10,BLACK=1,DONE=2,TERMINATE=3,WORK_REQUEST=4, WORK=0xBEEF, TOKEN=0 };
+enum tags { WHITE=10,BLACK=1,DONE=2,TERMINATE=3,WORK_REQUEST=4, WORK=0xBEEF, TOKEN=0, SUCCESS=0xDEAD};
 
 FILE * logfd;
 typedef struct options
@@ -71,6 +71,7 @@ void print_offsets(unsigned int * offsets, int count);
 void dumpq( work_queue * qp);
 void printq( work_queue * qp );
 
+void cleanup_work_messages(state_st * st);
 int parse_args( int argc, char *argv[] , options * opts );
 
 /* Worker function, executed by all ranks */

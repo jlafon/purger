@@ -103,7 +103,9 @@ int worker( options * opts )
                 fprintf(logfd,"Requesting work...\n");
                 fflush(logfd);
             }
+            cleanup_work_messages(sptr);
             request_work(qp,sptr);
+            cleanup_work_messages(sptr);
             if(opts->verbose)
             {      
                 fprintf(logfd,"Done requesting work\n");
