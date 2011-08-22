@@ -14,13 +14,13 @@ int check_for_term( state_st * st )
         /* The master rank generates the original WHITE token */
         if(st->rank == 0)
         {
-        if(st->verbose)
+            if(st->verbose)
             { 
                 fprintf(logfd,"Master generating WHITE token.\n");
                 fflush(logfd);
             }
             st->incoming_token = WHITE;
-            MPI_Ssend(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
+            MPI_Send(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
             st->token = WHITE;
             st->have_token = 0;
         /* Immediately post a receive to listen for the token when it comes back around */
@@ -34,7 +34,7 @@ int check_for_term( state_st * st )
         /* Then I turn my state white. */ 
             if(st->token == BLACK)
                 st->incoming_token = BLACK;
-            MPI_Ssend(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
+            MPI_Send(&st->incoming_token, 1, MPI_INT, (st->rank+1)%st->size, TOKEN, MPI_COMM_WORLD);
             st->token = WHITE;
             st->have_token = 0;
         /* Immediately post a receive to listen for the token when it comes back around */
@@ -80,7 +80,7 @@ int check_for_term( state_st * st )
                 fflush(logfd);
             }
             st->token = TERMINATE;
-            MPI_Ssend(&st->token, 1, MPI_INT,1, TOKEN, MPI_COMM_WORLD);
+            MPI_Send(&st->token, 1, MPI_INT,1, TOKEN, MPI_COMM_WORLD);
             return TERMINATE;
         }
     }
@@ -101,15 +101,8 @@ int process_work( work_queue * qp, state_st * state )
     /* Try and stat it, checking to see if it is a link */
     if(lstat(temp,&st) != EXIT_SUCCESS)
     {
-            perror("Unable to stat file");
-            if(state->verbose)
-            {
-                fprintf(logfd,"Couldn't stat \"%s\"\n",temp);
-                fflush(logfd);
-                dumpq(qp);
-                printq(qp);
-                exit(-1);
-            }
+            fprintf(logfd,"Error: Couldn't stat \"%s\"\n",temp);
+            MPI_Abort(MPI_COMM_WORLD,-1);
     }
     /* Check to see if it is a directory.  If so, put it's children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
@@ -131,7 +124,7 @@ int process_work( work_queue * qp, state_st * state )
             if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
                 {
                     strcpy(stat_temp,temp);
-                    strncat(stat_temp,"/",1);
+                    strcat(stat_temp,"/");
                     strcat(stat_temp,current_ent->d_name);
                     pushq(qp,stat_temp);
                 }
@@ -141,7 +134,7 @@ int process_work( work_queue * qp, state_st * state )
     }
     else if(S_ISREG(st.st_mode))
     {
-        if(redis_context == NULL)
+    /*    if(redis_context == NULL)
             redis_context = redisConnect("127.0.0.1", 6379);
 
         if (redis_context->err)
@@ -150,150 +143,118 @@ int process_work( work_queue * qp, state_st * state )
         if(redisAsyncCommand(redis_context, NULL, NULL,
                 "SET d_name %s", current_ent->d_name) != REDIS_OK)
             fprintf(logfd,"Redis command error.\n");
+    */
     }
     qp->num_stats++;
     return 0;
 }
+int get_next_proc(int current, int rank, int size)
+{
+    int result = rand() % size;
+    while(result == rank)
+        result = rand() % size;
+    return result;
+}
+int wait_on_mpi_request( MPI_Request * req, MPI_Status * stat, int timeout)
+{
+    int tries = 0;
+    int flag = 0;
+    fflush(logfd);
+    while(!flag && tries++ < timeout)
+    {
+        MPI_Test(req,&flag,stat);
+    }
+    if(tries > timeout)
+    {
+        fprintf(logfd,"Cancelling...");
+        fflush(logfd);
+        MPI_Cancel(req);
+        fprintf(logfd,"Cancelled.\n");
+        fflush(logfd);
+   //     MPI_Wait(req,stat);
+        return -1;
+    }
+    return MPI_SUCCESS;
+}
+int wait_on_probe(int source, int tag,int timeout)
+{
+    int flag = 0;
+    int tries = 0;
+    MPI_Status temp;
+    while(!flag && tries++ < timeout)
+    {
+        MPI_Iprobe(source, tag, MPI_COMM_WORLD, &flag,&temp);
+    }
+    //fprintf(logfd,"count: %d flag: %d tries %d\n",temp._count,flag,tries);
+    //fflush(logfd);
+    if(flag && tries < timeout)
+        return temp._count;
+    else
+        return 0;
+}
 /* Requests work from other ranks */
 int request_work( work_queue * qp, state_st * st)
 {
-    MPI_Request temp_request;
-    int c = 0;
-    int flag = 0;
-    static int temp_buffer = 0;
+    int temp_buffer = 3;
     /* Check to see if a request has been posted */
-    if(!st->work_pending_request)
+    if(st->verbose)
     {
-        st->work_request_tries = 0;
-        if(st->verbose)
-        {
-            fprintf(logfd,"Sending work request to %d...",st->next_processor);
-            fflush(logfd);
-        }
-        /* Since there is no pending request, post one */
-        MPI_Isend(&temp_buffer,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD,&temp_request);
-        flag = 0;
-        c = 0;
-        /* Make sure the request has been sent.  Timeout if it never succeeds */
-        while(!flag)
-        {
-            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
-            if(c++ > 100000)
-            {
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Cancelling send...\n");
-                    fflush(logfd);
-                }
-                MPI_Cancel(&temp_request);
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Cancelled send.\n");
-                    fflush(logfd);
-                }
-                return 0;
-            }
-        }
-        if(st->verbose)
-        {
-            fprintf(logfd,"done.\n");
-            fflush(logfd);
-        }
-        st->work_offsets[0] = 0;
-        /* Since a work request has been posted, post a corresponding receive for the offsets */
-        MPI_Irecv(st->work_offsets,INITIAL_QUEUE_SIZE/2,MPI_INT,st->next_processor,WORK,MPI_COMM_WORLD,&st->work_offsets_request);
-        st->work_pending_request = 1;
-        return 0;
-    }
-    st->work_flag = 0;
-  
-    /* At this point, a work_request has been sent, but we haven't received a response back */
-    if(MPI_Test(&st->work_offsets_request, &st->work_flag, &st->work_offsets_status) != MPI_SUCCESS)
-    {
-        fprintf(logfd,"Error: MPI_Test.\n");
+        fprintf(logfd,"Sending work request to %d...",st->next_processor);
         fflush(logfd);
     }
-    /* If the flag is not set, we haven't received a reply yet */
-    if(!st->work_flag)
+    /* Since there is no pending request, post one */
+    MPI_Send(&temp_buffer,1,MPI_INT,st->next_processor,WORK_REQUEST,MPI_COMM_WORLD);
+    if(st->verbose)
     {
-        st->work_request_tries++;
-        if(st->verbose)
-        {
-            fprintf(logfd,"Work request sent, but no response yet. %d attempts.\n",st->work_request_tries);
-            fflush(logfd);
-        }
-        if(st->work_request_tries == 100000)
-        {
-            if(st->verbose)
-            {
-                fprintf(logfd,"Canceling request to %d...",st->next_processor);
-                fflush(logfd);
-            }
-            MPI_Cancel(&st->work_offsets_request);
-            MPI_Wait(&st->work_offsets_request,&st->work_offsets_status);
-            if(st->verbose)
-            {
-                fprintf(logfd,"done\n");
-                fflush(logfd);
-            }
-            st->next_processor = (st->next_processor+1) % st->size;
-            if(st->next_processor == st->rank)
-                st->next_processor = (st->next_processor+1) % st->size;
-            st->work_pending_request = 0;
-            if(st->verbose)
-            {
-                fprintf(logfd,"Request cancelled, trying %d\n",st->next_processor);
-                fflush(logfd);
-            }
-            st->work_request_tries = 0;
-        }
+        fprintf(logfd,"done.\n");
+        fflush(logfd);
+    }
+    st->work_offsets[0] = 0;
+    /* Since a work request has been posted, post a corresponding receive for the offsets */
+    if(st->verbose)
+    {
+        fprintf(logfd,"Getting response from %d...",st->next_processor);
+        fflush(logfd);
+    }
+    MPI_Request temp_recv_request;
+    st->work_offsets[0] = 0;
+    int size = wait_on_probe(st->next_processor, WORK, 100000);
+    if(size == 0)
+    {
+        st->next_processor = get_next_proc(st->next_processor, st->rank, st->size);
         return 0;
     }
-    st->next_processor = (st->next_processor+1) % st->size;
-    if(st->next_processor == st->rank)
-        st->next_processor = (st->next_processor+1) % st->size;
-    st->work_pending_request = 0;
+    else if(size == 1)
+    {
+        int buf;
+        MPI_Recv(&buf, 1, MPI_INT, st->next_processor, WORK, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        st->next_processor = get_next_proc(st->next_processor, st->rank, st->size);
+        return 0;
+    }
+    fprintf(logfd,"Received message with %d elements.\n",size);
+    fflush(logfd);
+    MPI_Recv(st->work_offsets,size,MPI_INT,st->next_processor,WORK,MPI_COMM_WORLD,&st->work_offsets_status);
+    int source = st->next_processor;
+    st->next_processor = get_next_proc(st->next_processor, st->rank, st->size);
     int chars = st->work_offsets[1];
     int items = st->work_offsets[0];
-    int source = st->work_offsets_status.MPI_SOURCE;
     if(items == 0)
     {
         return 0;
     }
-    if(st->verbose)
-    {
+    //if(st->verbose)
+    //{
         fprintf(logfd,"Getting work from %d, %d items.\n",source, items);
         fflush(logfd);
-    }
-    MPI_Irecv(qp->base,(chars+1)*sizeof(char),MPI_BYTE,source,WORK,MPI_COMM_WORLD,&temp_request);
-    c = 0;
-    flag = 0;
-    while(!flag)
-    {
-        if(st->verbose)
-        {
-            fprintf(logfd,"Waiting on MPI_Test, attempt %d\n",c);
-            fflush(logfd);
-        }
-        MPI_Test(&temp_request, &flag, &st->work_status);
-        if(c++ > 100000)
-        {
-            if(st->verbose)
-            {
-                fprintf(logfd,"Cancelling buffer receive...\n");
-                fflush(logfd);
-            }
-            MPI_Cancel(&temp_request);
-            MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
-            if(st->verbose)
-            {
-                fprintf(logfd,"Cancelled buffer receive.\n");
-                fflush(logfd);
-            }
-            return 0;
-        }
-    }
-
+    //}
+    
+   // MPI_Request temp_request;
+    size = wait_on_probe(source,WORK,1000000);
+    if(size == 0)
+        return 0;
+    fprintf(logfd,"Message pending with %d size\n",size);
+    fflush(logfd);
+    MPI_Recv(qp->base,(chars+1)*sizeof(char),MPI_BYTE,source,WORK,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     qp->count = items;
     int i = 0;
     for(i= 0; i < qp->count; i++)
@@ -312,163 +273,182 @@ int request_work( work_queue * qp, state_st * st)
         fprintf(logfd,"Received items.  Queue size now %d\n",qp->count);
         fflush(logfd);
     }
-    printq(qp);
-    st->work_pending_request = 0;
+    //printq(qp);
+    return 0;
+}
+void send_no_work( int dest, state_st * st )
+{
+    int no_work = 0;
+    if(st->verbose)
+    {
+        fprintf(logfd,"Received work request from %d, but have no work.\n",dest);
+        fflush(logfd);
+    }
+    MPI_Request temp;
+    MPI_Isend(&no_work, 1, MPI_INT, dest, WORK, MPI_COMM_WORLD, &temp);
+    wait_on_mpi_request(&temp, MPI_STATUS_IGNORE,10000);
+    if(st->verbose)
+    {
+        fprintf(logfd,"Response sent to %d, have no work.\n",dest);
+        fflush(logfd);
+    }
+}
+/* Distributes a random amount of the local work queue to the n requestors */
+void send_work_to_many( work_queue * qp, state_st * st, int * requestors, int rcount)
+{
+    assert(rcount > 0);
+    /* Random number between rcount+1 and qp->count */
+    int total_amount = rand() % (qp->count-(rcount+1)) + rcount+1;
+    if(st->verbose)
+    {
+        fprintf(logfd,"Queue size: %d, Total_amount: %d\n",qp->count,total_amount);
+        fflush(logfd);
+    }
+    int i = 0;
+    /* Get size of chunk */
+    int increment = total_amount / rcount;
+    for(i = 0; i < rcount; i ++)
+    {
+        total_amount -= increment;
+        if(total_amount < increment)
+            increment += total_amount;
+        if(send_work( qp, st, requestors[i], increment) < 0)
+        {
+            i++;
+            if(i == rcount)
+                return;
+            else if(i == rcount - 1)
+                send_work(qp, st, requestors[i], increment + total_amount);
+            else
+                send_work(qp, st, requestors[i], increment + increment);
+        }
+    }
+}
+int send_work( work_queue * qp, state_st * st, int dest, int count )
+{
+    if(dest < st->rank || dest == st->token_partner)
+        st->token = BLACK;
+    char * b = qp->strings[qp->count-1-count];
+    char * e = qp->strings[qp->count-1];
+    size_t diff = e-b;
+    diff += strlen(e);
+    /* offsets[0] = number of strings */
+    /* offsets[1] = number of chars being sent */
+    st->request_offsets[0] = count;
+    st->request_offsets[1] = diff;
+    assert(diff < (INITIAL_QUEUE_SIZE*MAX_STRING_LEN)); 
+    int j = qp->count-count-1;
+    int i = 0;
+    for(i=0; i < st->request_offsets[0]; i++)
+    {
+        st->request_offsets[i+2] = qp->strings[j++] - b;
+        if(st->verbose)
+        {
+            fprintf(logfd,"[j=%d] Base address: %p, String[%d] address: %p, String \"%s\" Offset: %u\n",j,b,i,qp->strings[j-1],qp->strings[j-1],st->request_offsets[i+2]);
+            fflush(logfd);
+        }
+    }
+    /* offsets[qp->count - qp->count/2+2]  is the size of the last string */
+    st->request_offsets[count+2] = strlen(qp->strings[qp->count-1]);
+    if(st->verbose)
+    {
+        fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],dest);
+        //print_offsets(st->request_offsets,st->request_offsets[0]+2);
+        fflush(logfd);
+    }
+    MPI_Request temp_request;
+    MPI_Issend(st->request_offsets, st->request_offsets[0]+2, MPI_INT, dest, WORK, MPI_COMM_WORLD,&temp_request);
+    if(wait_on_mpi_request(&temp_request, MPI_STATUS_IGNORE,10000000) != MPI_SUCCESS)
+    {
+        fprintf(logfd,"Cancelled offset send\n");
+        fflush(logfd);
+        return -1;
+    }
+    //MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
+    if(st->verbose)
+    {
+        fprintf(logfd,"done.\n");
+        fflush(logfd);
+        fprintf(logfd,"\tSending buffer to %d...",dest);
+        fflush(logfd);
+    }
+    MPI_Request temp_send_request;
+    MPI_Issend(b, (diff+1)*sizeof(char), MPI_BYTE, dest, WORK, MPI_COMM_WORLD,&temp_send_request);
+    if(wait_on_mpi_request(&temp_send_request, MPI_STATUS_IGNORE,10000000) != MPI_SUCCESS)
+    {
+        fprintf(logfd,"Cancelled offset send\n");
+        fflush(logfd);
+        return -1;
+    }
+
+   if(st->verbose)
+    {
+        fprintf(logfd,"done.\n");
+        fflush(logfd);
+    }
+    qp->count = qp->count - st->request_offsets[0];
+    if(st->verbose)
+    {
+        fprintf(logfd,"sent %d items to %d.\n",st->request_offsets[0],dest);
+        fflush(logfd);
+    }
     return 0;
 }
 /* Checks for outstanding work requests */
 int check_for_requests( work_queue * qp, state_st * st)
 {
-    static int recv_buf = 0;
-    static int no_work = 0;
-    static int source;
-    int i;
-    /* Check to see if a receive has been posted */
+    int * requestors = (int *) calloc(st->size,sizeof(int));
+    int i = 0;
+    int rcount = 0;
+    /* This loop is only excuted once.  It is used to initiate receives. 
+     * When a received is completed, we repost it immediately to capture
+     * the next request */
     if(!st->request_pending_receive)
     {
-        MPI_Irecv(&recv_buf, 1, MPI_INT, MPI_ANY_SOURCE, WORK_REQUEST, MPI_COMM_WORLD, &st->request_request);
-        st->request_pending_receive = 1;
-    }
-    /* Test to see if the posted receive has completed */
-    MPI_Test(&st->request_request, &st->request_flag, &st->request_status);
-    if(!st->request_flag)
-        return 0;
-    source = st->request_status.MPI_SOURCE;
-    st->request_pending_receive = 0;
-    if(qp->count < 10)
-    {
-        if(st->verbose)
+        for(i = 0; i < st->size; i++)
         {
-            fprintf(logfd,"Received work request from %d, but have no work.\n",source);
-            fflush(logfd);
-        }
-        MPI_Request temp_request;
-        MPI_Isend(&no_work, 1, MPI_INT, source, WORK, MPI_COMM_WORLD,&temp_request);
-        int c = 0;
-        int flag = 0;
-        while(!flag)
-        {
-            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
-            if(c++ > 100000)
+            if(i != st->rank)
             {
-                MPI_Cancel(&temp_request);
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Send cancelled.\n");
-                    fflush(logfd);
-                }
-                return 0;
+                MPI_Recv_init(&st->request_recv_buf[i], 1, MPI_INT, i, WORK_REQUEST, MPI_COMM_WORLD, &st->request_request[i]);
+                MPI_Start(&st->request_request[i]);
             }
         }
-        if(st->verbose)
+        st->request_pending_receive = 1;
+    }
+
+    /* Test to see if any posted receive has completed */
+    for(i = 0; i < st->size; i++)
+        if(i != st->rank)
         {
-            fprintf(logfd,"Response sent to %d, have no work.\n",source);
-            fflush(logfd);
+            st->request_flag[i] = 0;
+            if(MPI_Test(&st->request_request[i], &st->request_flag[i], &st->request_status[i]) != MPI_SUCCESS)
+                exit(1);
+            if(st->request_flag[i])
+            {
+                requestors[rcount++] = i;
+                st->request_flag[i] = 0;
+            }
         }
+    /* If we didn't received any work, no need to continue */
+    if(rcount == 0)
+        return 0;
+    if(qp->count <= rcount+1)
+    {
+        for(i = 0; i < rcount; i++)
+            send_no_work( requestors[i], st );
     }
     else
     {
         if(st->verbose)
         {
-            fprintf(logfd,"Received work request from %d...\n",source);
+            fprintf(logfd,"Got work requests from %d ranks.\n",rcount);
             fflush(logfd);
         }
-        if(source < st->rank || source == st->token_partner)
-            st->token = BLACK;
-        char * b = qp->strings[(qp->count/2)];
-        char * e = qp->strings[qp->count-1];
-        size_t diff = e-b;
-        diff += strlen(e);
-        /* offsets[0] = number of strings */
-        /* offsets[1] = number of chars being sent */
-        st->request_offsets[0] = qp->count-(qp->count/2);
-        st->request_offsets[1] = diff;
-        assert(diff < (INITIAL_QUEUE_SIZE/2*MAX_STRING_LEN)); 
-        int j = qp->count/2;
-        for(i=2; i < st->request_offsets[0] + 2; i++)
-        {
-            st->request_offsets[i] = qp->strings[j++] - b;
-            if(st->verbose)
-            {
-                fprintf(logfd,"Base address: %p, String[%d] address: %p, String \"%s\" Offset: %u\n",b,i-2,qp->strings[j-1],qp->strings[j-1],st->request_offsets[i]);
-                fflush(logfd);
-            }
-        }
-        /* offsets[qp->count - qp->count/2+2]  is the size of the last string */
-        st->request_offsets[qp->count - qp->count/2+2] = strlen(qp->strings[qp->count-1]);
-        if(st->verbose)
-        {
-            fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],source);
-            print_offsets(st->request_offsets,st->request_offsets[0]+3);
-            fflush(logfd);
-        }
-        MPI_Request temp_request;
-        MPI_Isend(st->request_offsets, INITIAL_QUEUE_SIZE/2, MPI_INT, source, WORK, MPI_COMM_WORLD,&temp_request);
-        int c = 0;
-        int timeout = 10000*st->request_offsets[0];
-        int flag = 0;
-        while(!flag)
-        {
-            MPI_Test(&temp_request,&flag,MPI_STATUS_IGNORE);
-            if(c++ > timeout)
-            {
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Cancelling sending offsets.c = %d timeout = %d\n",c,timeout);
-                    fflush(logfd);
-                }
-                MPI_Cancel(&temp_request);
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Offset send cancelled.\n");
-                    fflush(logfd);
-                }
-                return 0;
-
-            }
-        }
-        if(st->verbose)
-        {
-            fprintf(logfd,"done.\n");
-            fflush(logfd);
-            fprintf(logfd,"\tSending buffer to %d...",source);
-            fflush(logfd);
-        }
-        MPI_Isend(b, (diff+1)*sizeof(char), MPI_BYTE, source, WORK, MPI_COMM_WORLD,&temp_request);
-        c = 0;
-        timeout = 100000*st->request_offsets[0];
-        flag = 0;
-        while(!flag)
-        {
-            MPI_Test(&temp_request, &flag, MPI_STATUS_IGNORE);
-            if(c++ > timeout)
-            {
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Cancelling buffer send...");
-                    fflush(logfd);
-                }
-                MPI_Cancel(&temp_request);
-                if(st->verbose)
-                {
-                    fprintf(logfd,"Buffer send cancelled\n");
-                    fflush(logfd);
-                }
-                return 0;
-            }
-        }
-        if(st->verbose)
-        {
-            fprintf(logfd,"done.\n");
-            fflush(logfd);
-        }
-        qp->count = qp->count - st->request_offsets[0];
-        if(st->verbose)
-        {
-            fprintf(logfd,"sent %d items to %d.\n",st->request_offsets[0],source);
-            fflush(logfd);
-        }
+        send_work_to_many( qp, st, requestors, rcount);
     }
+    for(i = 0; i < rcount; i++)
+        MPI_Start(&st->request_request[requestors[i]]);
+    free(requestors);
     return 0;
 }
 
@@ -520,7 +500,7 @@ void dumpq( work_queue * qp)
    int i = 0;
    char * p = qp->base;
    while(p++ != (qp->strings[qp->count-1]+strlen(qp->strings[qp->count-1])))
-       if(i++ % 80 == 0) fprintf(logfd,"%c\n",*p); else fprintf(logfd,"%c",*p);
+       if(i++ % 120 == 0) fprintf(logfd,"%c\n",*p); else fprintf(logfd,"%c",*p);
 
 }
 /* Prints a queue */
@@ -538,16 +518,20 @@ void printq( work_queue * qp )
  */
 int pushq( work_queue * qp, char * str )
 {
-    assert(qp->strings[qp->count-1] + MAX_STRING_LEN < qp->end);
+    //fprintf(logfd,"Count: %d, Start: %p, End: %p MAX_STRING_LEN: %d, Diff: %lu\n",qp->count,qp->base,qp->end,MAX_STRING_LEN,qp->end-qp->base);
+    assert(strlen(str) > 0); 
+    if(qp->count > 1)
+        assert(qp->strings[qp->count-1] + MAX_STRING_LEN < qp->end);
     qp->strings[qp->count] = qp->head; 
     /* copy the string */
     strcpy(qp->head, str);
-    
+    assert(strlen(qp->head) < MAX_STRING_LEN);
     /* Make head point to the character after the string */
-    qp->head = qp->head + strlen(qp->head) + 2;
-
+    qp->head = qp->head + strlen(qp->head) + 1;
+    
     /* Make the head point to the next available memory */
     qp->count = qp->count + 1;
+    fprintf(logfd,"Push: %s\tLength: %lu\tBase: %p\tString: %p\tCount :%d\tDiff: %lu\n",qp->head,strlen(qp->head),qp->base,qp->head, qp->count,qp->strings[qp->count-1] - qp->strings[qp->count-2]);
     return 0;
 }
 

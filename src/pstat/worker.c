@@ -10,24 +10,34 @@ int worker( options * opts )
     double start_time;
     int token = WHITE;
     int token_partner;
+    
+    /* Holds all worker state */
     state_st s;
     state_st * sptr = &s;
+
+    /* Holds work elements */
     work_queue queue;
+    
+    /* Memory for work queue */
     queue.base = (char*) malloc(sizeof(char) * MAX_STRING_LEN * INITIAL_QUEUE_SIZE);
+    
+    /* A pointer to each string in the queue */
     queue.strings = (char **) malloc(sizeof(char*) * INITIAL_QUEUE_SIZE);
+    
     work_queue * qp = &queue;
-    qp->strings[0] = qp->base;
+    
     queue.head = queue.base;
     queue.end = queue.base + (MAX_STRING_LEN*INITIAL_QUEUE_SIZE);
     queue.count = 0;
     int rank = -1;
     int size = -1;
     int next_processor;
-    int cycles = 0;
+    //int cycles = 0;
+    
+    /* Get MPI info */
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm token_comm;
-    MPI_Comm_dup(MPI_COMM_WORLD,&token_comm); 
+    srand(rank);
     s.rank = rank;
     s.size = size;
     s.token = WHITE;
@@ -36,20 +46,30 @@ int worker( options * opts )
     s.next_processor = (rank+1) % size;
     s.token_partner = (rank-1)%size;
     if(token_partner < 0) token_partner = size-1;
+   
+    /* Logging */
     char logf[32];
     snprintf(logf,32,"rank%d",rank);
     logfd = fopen(logf,"w+");
+
+    /* Initial state */
     s.have_token = 0;
     s.term_flag = 0;
     s.work_flag = 0;
-    s.request_flag = 0;
     s.work_pending_request = 0;
     s.request_pending_receive = 0;
     s.term_pending_receive = 0;
     qp->num_stats = 0;
     s.incoming_token = BLACK;
-    s.request_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(unsigned int));
-    s.work_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE/2,sizeof(unsigned int));
+    s.request_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE,sizeof(unsigned int));
+    s.work_offsets = (unsigned int*) calloc(INITIAL_QUEUE_SIZE,sizeof(unsigned int));
+    s.request_status = (MPI_Status *) malloc(sizeof(MPI_Status)*size);
+    int i = 0;
+    s.request_flag = (int *) calloc(size,sizeof(int));
+    s.request_recv_buf = (int *) calloc(size,sizeof(int));
+    s.request_request = (MPI_Request*) malloc(sizeof(MPI_Request)*size);
+    for(i = 0; i < size; i++)
+        s.request_request[i] = MPI_REQUEST_NULL;
     s.work_request_tries = 0;
     s.verbose = opts->verbose;
     
@@ -59,7 +79,7 @@ int worker( options * opts )
         pushq(qp, opts->beginning_path);
         s.have_token = 1;
     }
-    MPI_Barrier(MPI_COMM_WORLD);    
+    printq(qp);
     start_time = MPI_Wtime();
     /* Loop until done */
     while(token != DONE)
@@ -70,8 +90,7 @@ int worker( options * opts )
             fprintf(logfd,"Checking for requests...");
             fflush(logfd);
         }
-//        if(cycles++ % 10 == 0)
-            check_for_requests(qp,sptr);
+        check_for_requests(qp,sptr);
         if(opts->verbose)
         {
             fprintf(logfd,"done\n");
@@ -93,18 +112,12 @@ int worker( options * opts )
         }
         if(qp->count > 0)
         {
-            if(opts->verbose)
-            {    
                 fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
                 fflush(logfd);
-            }   
-            //printq(qp);
-            process_work(qp,sptr);
-            if(opts->verbose)
-            {  
+                //printq(qp);
+                process_work(qp,sptr);
                 fprintf(logfd,"done\n");
                 fflush(logfd);
-            }
         }
         else
         {

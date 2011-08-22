@@ -30,7 +30,7 @@ int main( int argc, char *argv[] )
     MPI_Init(&argc,&argv);
     worker( &opts );
     MPI_Finalize();
-    redisAsyncDisconnect(redis_context);
+//    redisAsyncDisconnect(redis_context);
     return 0;
 }
 

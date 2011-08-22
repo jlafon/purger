@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <mpi.h>
-#include "hiredis.h"
-#include "async.h"
+//#include "hiredis.h"
+//#include "async.h"
 #define MAX_STRING_LEN 2048*sizeof(char)
 #define INITIAL_QUEUE_SIZE 400000
 
@@ -45,25 +45,28 @@ typedef struct state_st
     MPI_Status term_status;
     MPI_Status work_offsets_status;
     MPI_Status work_status;
-    MPI_Status request_status;
+    MPI_Status * request_status;
     MPI_Request term_request;
     MPI_Request work_offsets_request;
     MPI_Request work_request;
-    MPI_Request request_request;
+    MPI_Request * request_request;
     int term_flag;
     int work_flag;
-    int request_flag;
+    int * request_flag;
     int work_pending_request;
     int request_pending_receive;
     int term_pending_receive;
     int incoming_token;
     unsigned int * work_offsets;
     unsigned int * request_offsets;
+    int * request_recv_buf;
     int work_request_tries;
 } state_st;
 
-redisAsyncContext *redis_context;
-
+//redisAsyncContext *redis_context;
+void send_work_to_many( work_queue * qp, state_st * st, int * requestors, int rcount);
+void send_no_work( int dest, state_st * st );
+int send_work( work_queue * qp, state_st * st, int dest, int count );
 void print_offsets(unsigned int * offsets, int count);
 void dumpq( work_queue * qp);
 void printq( work_queue * qp );
