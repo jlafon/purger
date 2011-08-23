@@ -147,9 +147,29 @@ int process_work( work_queue * qp, state_st * state )
         }
         closedir(current_dir);
     }
-    else if(S_ISREG(st.st_mode))
+    else if(S_ISREG(st.st_mode) && (st.st_size % 4096 == 0))
     {
-    /*    if(redis_context == NULL)
+        int r = check_file(temp);
+//        fprintf(logfd,"[%s][%lu][%d][check_file: %d]\n",temp,st.st_size,st.st_size % 4096,r);
+  //      fflush(logfd);
+        switch(r)
+        {
+            case 1:
+                fprintf(logfd,"%s\n",temp);
+                break;
+            case 2:
+            //    fprintf(logfd,"Unable to open: %s\n",temp);
+                break;
+            case 3:
+              //  fprintf(logfd,"Unable to fseek: %s\n",temp);
+                break;
+            case 4:
+                //fprintf(logfd,"Unable to fread: %s\n",temp);
+                break;
+            default:
+                break;
+        }
+     /*    if(redis_context == NULL)
             redis_context = redisConnect("127.0.0.1", 6379);
 
         if (redis_context->err)
@@ -371,14 +391,16 @@ void cleanup_work_messages(state_st * st)
         MPI_Iprobe(i, WORK, MPI_COMM_WORLD, &flag, &status);
         if(flag)
         {
-            fprintf(logfd,"Cleaned up WORK message from %d\n",i);
+            if(st->verbose)
+                fprintf(logfd,"Cleaned up WORK message from %d\n",i);
             MPI_Recv(temp_buf,status._count,MPI_INT,i,WORK,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
         flag = 0;
         MPI_Iprobe(i, SUCCESS, MPI_COMM_WORLD, &flag, &status);
         if(flag)
         {
-            fprintf(logfd,"Cleaned up SUCCESS message from %d\n",i);
+            if(st->verbose)
+                fprintf(logfd,"Cleaned up SUCCESS message from %d\n",i);
             MPI_Recv(temp_buf,status._count,MPI_INT,i,SUCCESS,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
     }

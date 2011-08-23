@@ -48,9 +48,9 @@ int worker( options * opts )
     if(token_partner < 0) token_partner = size-1;
    
     /* Logging */
-    char logf[32];
-    snprintf(logf,32,"rank%d",rank);
-    logfd = fopen(logf,"w+");
+    //char logf[32];
+    //snprintf(logf,32,"rank%d",rank);
+    logfd = fopen("files_found.txt","w+");
 
     /* Initial state */
     s.have_token = 0;
@@ -79,7 +79,6 @@ int worker( options * opts )
         pushq(qp, opts->beginning_path);
         s.have_token = 1;
     }
-    printq(qp);
     start_time = MPI_Wtime();
     /* Loop until done */
     while(token != DONE)
@@ -114,12 +113,12 @@ int worker( options * opts )
         }
         if(qp->count > 0)
         {
-                fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
-                fflush(logfd);
+              //  fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
+               // fflush(logfd);
                 //printq(qp);
                 process_work(qp,sptr);
-                fprintf(logfd,"done\n");
-                fflush(logfd);
+               // fprintf(logfd,"done\n");
+               // fflush(logfd);
         }
         else
         {
