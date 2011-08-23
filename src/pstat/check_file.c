@@ -20,11 +20,5 @@ int check_file(char * filename)
         ;
     if(x == i)
         return 0;
-  //  for(i = 0; i < 4096; i++)
-   // {
-     //   fprintf(stdout,"[i:%d][buf[i]:%c][buf[i]:%x]\n",i,buf[i],buf[i]);
-       // if(buf[i] != 0)
-         //   return 0;
-   // }
     return 1;
 }
