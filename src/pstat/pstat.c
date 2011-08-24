@@ -1,3 +1,8 @@
+/*! \file pstat.c
+ *  \authors Jharrod LaFon, Jon Bringhurst
+ *  \brief Helper functions for parallel file operations.
+ */
+
 #include "pstat.h"
 #include <assert.h>
 #include <mpi.h>
@@ -5,7 +10,8 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 
-/* Checks for incoming tokens, determines termination conditions.
+/*! \brief Checks for incoming tokens, determines termination conditions.
+ * 
  * When the master rank is idle, it generates a token that is initially white.
  * When a node is idle, and can't get work for one loop iteration then it
  * checks for termination.  It checks to see if the token has been passed to it,
@@ -96,7 +102,8 @@ int check_for_term( state_st * st )
     return 0;
 }
 
-/* Processes work queue elements
+/*! \brief Processes work queue elements
+ * 
  * Takes one element from the work queue, and performs an lstat.
  * If the item is a directory, then it reads in it's children 
  * and puts them in the work queue.
@@ -128,19 +135,12 @@ int process_work( work_queue * qp, state_st * state )
         /* Read in each directory entry */
             while((current_ent = readdir(current_dir)) != NULL)
             {
-    //           if(++count > 100)
-//        {
-//            count = 0;
-//            check_for_requests(qp,state);
-//        }
         /* We don't care about . or .. */
             if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
                 {
                     strcpy(stat_temp,temp);
                     strcat(stat_temp,"/");
                     strcat(stat_temp,current_ent->d_name);
-                    //fprintf(logfd,"Pushing %s\n",stat_temp);
-                    //fflush(logfd);
                     pushq(qp,&stat_temp[0]);
                 }
             }
@@ -150,8 +150,6 @@ int process_work( work_queue * qp, state_st * state )
     else if(S_ISREG(st.st_mode) && (st.st_size % 4096 == 0))
     {
         int r = check_file(temp);
-//        fprintf(logfd,"[%s][%lu][%d][check_file: %d]\n",temp,st.st_size,st.st_size % 4096,r);
-  //      fflush(logfd);
         switch(r)
         {
             case 1:
@@ -169,21 +167,12 @@ int process_work( work_queue * qp, state_st * state )
             default:
                 break;
         }
-     /*    if(redis_context == NULL)
-            redis_context = redisConnect("127.0.0.1", 6379);
-
-        if (redis_context->err)
-            fprintf(logfd,"Redis context error: %s\n", redis_context->errstr);
-
-        if(redisAsyncCommand(redis_context, NULL, NULL,
-                "SET d_name %s", current_ent->d_name) != REDIS_OK)
-            fprintf(logfd,"Redis command error.\n");
-    */
     }
     qp->num_stats++;
     return 0;
 }
-/* Generates a random rank
+/*! \brief Generates a random rank
+ *
  * This returns a random rank (not yourself)
  */
 int get_next_proc(int current, int rank, int size)
@@ -194,7 +183,8 @@ int get_next_proc(int current, int rank, int size)
     return result;
 }
 
-/* Waits on a pending request, with a timeout.
+/*! \brief Waits on a pending request, with a timeout.
+ * 
  * This function spin locks on an MPI request
  * up until a timeout.  If you wish to have this
  * request canceled after timing out, it will do that too.
@@ -221,7 +211,8 @@ int wait_on_mpi_request( MPI_Request * req, MPI_Status * stat, int timeout, int 
     }
     return MPI_SUCCESS;
 }
-/* Waits on an incoming message.
+/*! \brief Waits on an incoming message.
+ * 
  * This function will spin lock waiting on a message to arrive from the
  * given source, with the given tag.  It does *not* receive the message.
  * If a message is pending, it will return it's size.  Otherwise
@@ -236,14 +227,13 @@ int wait_on_probe(int source, int tag,int timeout)
     {
         MPI_Iprobe(source, tag, MPI_COMM_WORLD, &flag,&temp);
     }
-    //fprintf(logfd,"count: %d flag: %d tries %d\n",temp._count,flag,tries);
-    //fflush(logfd);
     if(flag && tries < timeout)
         return temp._count;
     else
         return 0;
 }
-/* Requests work from other ranks 
+/*! \brief Requests work from other ranks 
+ * 
  * Somewhat complicated, but essentially it requests work from a random 
  * rank and gives up after a short timeout.  If it is successful in getting
  * work, the work is received directly into the work queue.
@@ -268,7 +258,6 @@ int request_work( work_queue * qp, state_st * st)
         fprintf(logfd,"Getting response from %d...",st->next_processor);
         fflush(logfd);
     }
-    //MPI_Request temp_recv_request;
     st->work_offsets[0] = 0;
     
     /* Wait for an answer... */
@@ -318,8 +307,6 @@ int request_work( work_queue * qp, state_st * st)
         fprintf(logfd,"Getting work from %d, %d items.\n",source, items);
         fflush(logfd);
     }
-    
-   // MPI_Request temp_request;
     
     /* Wait and see if they sent the work over */
     size = wait_on_probe(source,WORK,1000000);
@@ -371,7 +358,8 @@ int request_work( work_queue * qp, state_st * st)
     return 0;
 }
 
-/* Cleans up unwanted incoming messages 
+/*! \brief Cleans up unwanted incoming messages 
+ * 
  * This function is called before and after requesting work.  This is necessary because
  * messages must be received in order.  These messages that we don't want are either messages
  * requesting work (the senders will timeout on them) or they are offers to send work (those 
@@ -428,7 +416,7 @@ void probe_messages(state_st * st)
         fflush(logfd);
     }
 }
-/* Sends a no work reply to someone requesting work. */
+/*! \brief Sends a no work reply to someone requesting work. */
 void send_no_work( int dest, state_st * st )
 {
     int no_work = 0;
@@ -446,7 +434,7 @@ void send_no_work( int dest, state_st * st )
         fflush(logfd);
     }
 }
-/* Distributes a random amount of the local work queue to the n requestors */
+/*! \brief Distributes a random amount of the local work queue to the n requestors */
 void send_work_to_many( work_queue * qp, state_st * st, int * requestors, int rcount)
 {
     assert(rcount > 0);
@@ -467,18 +455,9 @@ void send_work_to_many( work_queue * qp, state_st * st, int * requestors, int rc
             increment += total_amount;
         
         send_work( qp, st, requestors[i], increment);
-        /*if(send_work( qp, st, requestors[i], increment) < 0)
-        {
-            i++;
-            if(i == rcount)
-                return;
-            else if(i == rcount - 1)
-                send_work(qp, st, requestors[i], increment + total_amount);
-            else
-                send_work(qp, st, requestors[i], increment + increment);
-        }*/
     }
 }
+/* \brief Sends work to a requestor */
 int send_work( work_queue * qp, state_st * st, int dest, int count )
 {
     /* For termination detection */
@@ -513,7 +492,6 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
     if(st->verbose)
     {
         fprintf(logfd,"\tSending offsets for %d items to %d...",st->request_offsets[0],dest);
-        //print_offsets(st->request_offsets,st->request_offsets[0]+2);
         fflush(logfd);
     }
     MPI_Request temp_request;
@@ -524,7 +502,6 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
         fflush(logfd);
         return -1;
     }
-    //MPI_Wait(&temp_request,MPI_STATUS_IGNORE);
     if(st->verbose)
     {
         fprintf(logfd,"done.\n");
@@ -556,10 +533,9 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
     }
     return 0;
 }
-/* Checks for outstanding work requests */
+/*! \brief Checks for outstanding work requests */
 int check_for_requests( work_queue * qp, state_st * st)
 {
-    //probe_messages(st);
     int * requestors = (int *) calloc(st->size,sizeof(int));
     int i = 0;
     int rcount = 0;
@@ -615,7 +591,7 @@ int check_for_requests( work_queue * qp, state_st * st)
     return 0;
 }
 
-/* Parses command line arguments */
+/*! \brief Parses command line arguments */
 int parse_args( int argc, char *argv[] , options * opts )
 {
     static struct option long_options[] = 
@@ -677,14 +653,13 @@ void printq( work_queue * qp )
     fprintf(logfd,"\n");
 }
 
-/* Pushes a path onto the work queue
+/*! \brief Pushes a path onto the work queue
  * Updates head to point to the next available empty memory
  * Updates the count 
  */
 int pushq( work_queue * qp, char * str )
 {
     
-    //fprintf(logfd,"Count: %d, Start: %p, End: %p MAX_STRING_LEN: %d, Diff: %lu\n",qp->count,qp->base,qp->end,MAX_STRING_LEN,qp->end-qp->base);
     assert(strlen(str) > 0); 
     if(qp->count > 1)
         assert(qp->strings[qp->count-1] + MAX_STRING_LEN < qp->end);
@@ -697,19 +672,16 @@ int pushq( work_queue * qp, char * str )
     
     /* Make the head point to the next available memory */
     qp->count = qp->count + 1;
-   // fprintf(logfd,"Push: %s\tStr: %s\tLength: %lu\tBase: %p\tString: %p\tCount :%d\tDiff: %lu\n",qp->strings[qp->count-1],str,strlen(qp->head),qp->base,qp->head, qp->count,qp->strings[qp->count-1] - qp->base);
     return 0;
 }
 
-/* Removes an item from the queue
+/*! \brief Removes an item from the queue
  * Updates head to point to the next free memory
  * Updates next to point to the last string in the queue
  * Copies the string being popped into str
  */
 int popq( work_queue * qp, char * str )
 {
-    //fprintf(logfd,"Popping [%s]\n",qp->strings[qp->count-1]);
-    //fflush(logfd);
     if(qp->count == 0)
         return 0;
     /* Copy last element into str */
