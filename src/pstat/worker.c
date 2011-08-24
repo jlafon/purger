@@ -48,9 +48,9 @@ int worker( options * opts )
     if(token_partner < 0) token_partner = size-1;
    
     /* Logging */
-    //char logf[32];
-    //snprintf(logf,32,"rank%d",rank);
-    logfd = fopen("files_found.txt","w+");
+    char logf[32];
+    snprintf(logf,32,"rank%d",rank);
+    logfd = fopen(logf,"w+");
 
     /* Initial state */
     s.have_token = 0;
@@ -102,9 +102,9 @@ int worker( options * opts )
                 fprintf(logfd,"Requesting work...\n");
                 fflush(logfd);
             }
-            cleanup_work_messages(sptr);
-            request_work(qp,sptr);
-            cleanup_work_messages(sptr);
+            //cleanup_work_messages(sptr);
+            if(request_work(qp,sptr) < 0)
+                token = DONE;
             if(opts->verbose)
             {      
                 fprintf(logfd,"Done requesting work\n");
@@ -113,14 +113,14 @@ int worker( options * opts )
         }
         if(qp->count > 0)
         {
-              //  fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
-               // fflush(logfd);
+                fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
+              //   fflush(logfd);
                 //printq(qp);
                 process_work(qp,sptr);
                // fprintf(logfd,"done\n");
                // fflush(logfd);
         }
-        else
+        else if(token != DONE)
         {
             if(opts->verbose)
             {
@@ -136,6 +136,21 @@ int worker( options * opts )
             }
         }
     }
+    int j = 0;
+    for(j = 0; j < sptr->size; j++)
+     for(i = 0; i < sptr->size; i++)
+        if(i != sptr->rank)
+        {
+            sptr->request_flag[i] = 0;
+            if(MPI_Test(&sptr->request_request[i], &sptr->request_flag[i], &sptr->request_status[i]) != MPI_SUCCESS)
+                exit(1);
+            if(sptr->request_flag[i])
+            {
+                send_no_work(i,sptr);
+                MPI_Start(&sptr->request_request[i]);
+            }
+        }
     printf("[Rank %d] Stats: %d\n",rank,qp->num_stats);
+    fclose(logfd);
     return 0;
 }
