@@ -8,7 +8,7 @@ int check_file(char * filename)
     int buf[4096];
     FILE * fd = fopen(filename, "r");
     if(fd == NULL)
-        return 2 && fclose(fd);
+        return 2;
     if(fseek(fd,-4096,SEEK_END) != 0)
         return 3 && fclose(fd);
     if(fread(buf,1,4096,fd) != 4096)
