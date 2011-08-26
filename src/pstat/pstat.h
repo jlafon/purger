@@ -3,35 +3,31 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <mpi.h>
+#include "queue.h"
 //#include "hiredis.h"
 //#include "async.h"
-#define MAX_STRING_LEN 2048*sizeof(char)
-#define INITIAL_QUEUE_SIZE 400000
-
+FILE * logfd;
+#ifdef DEBUG
+#ifndef LOG
+int LOG(char * logmsg, ...)
+{
+    va_list args;
+    va_start(args,logmsg);
+    return fprintf(logfd,logmsg,args);
+}
+#endif
+#else
+#define LOG(msg,...)
+#endif
 enum tags { WHITE=10,BLACK=1,DONE=2,TERMINATE=-1,WORK_REQUEST=4, WORK=0xBEEF, TOKEN=0, SUCCESS=0xDEAD};
 
-FILE * logfd;
 typedef struct options
 {
     char * beginning_path;
     int verbose;
 } options;
-
-typedef struct work_queue
-{
-    /* Base of memory pool */
-    char * base;
-    /* End of memory pool */
-    char * end;
-    /* Location of next string */
-    char * next;
-    /* Location of next free byte */
-    char * head;
-    char ** strings;
-    int count;
-    int num_stats;
-} work_queue;
 
 typedef struct state_st
 {
@@ -76,12 +72,6 @@ int parse_args( int argc, char *argv[] , options * opts );
 
 /* Worker function, executed by all ranks */
 int worker( options * opts );
-
-/* Pushes a new string onto the queue */
-int pushq( work_queue * qp, char * str );
-
-/* Pops a string from the queue */
-int popq( work_queue * qp, char * str );
 
 int check_for_requests( work_queue * qp , state_st * st);
 

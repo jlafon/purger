@@ -1,7 +1,7 @@
-/* @file pstat.c
- * @authors Jharrod LaFon
- * @date August 2011
- * @brief Parallel filesystem exploration.
+/*! \file pstat.c
+ *  \authors Jharrod LaFon
+ *  \date August 2011
+ *  \brief Parallel filesystem exploration.
  */
 
 #include <stdio.h>
@@ -11,8 +11,9 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include "queue.h"
+#include "worker.h"
 #include "pstat.h"
-
 /* Main */
 int main( int argc, char *argv[] )
 {
