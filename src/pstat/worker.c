@@ -113,12 +113,7 @@ int worker( options * opts )
         }
         if(qp->count > 0)
         {
-                fprintf(logfd,"Processing work, Stats/s: %f, queue size: %d Stats: %d...",qp->num_stats/(MPI_Wtime()-start_time),qp->count,qp->num_stats);
-              //   fflush(logfd);
-                //printq(qp);
                 process_work(qp,sptr);
-               // fprintf(logfd,"done\n");
-               // fflush(logfd);
         }
         else if(token != DONE)
         {

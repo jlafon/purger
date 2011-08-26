@@ -150,27 +150,9 @@ int process_work( work_queue * qp, state_st * state )
         }
         closedir(current_dir);
     }
-    else if(S_ISREG(st.st_mode) && (st.st_size % 4096 == 0))
-    {
-        int r = check_file(temp);
-        switch(r)
-        {
-            case 1:
-                fprintf(logfd,"%s\n",temp);
-                break;
-            case 2:
-            //    fprintf(logfd,"Unable to open: %s\n",temp);
-                break;
-            case 3:
-              //  fprintf(logfd,"Unable to fseek: %s\n",temp);
-                break;
-            case 4:
-                //fprintf(logfd,"Unable to fread: %s\n",temp);
-                break;
-            default:
-                break;
-        }
-    }
+    //else if(S_ISREG(st.st_mode) && (st.st_size % 4096 == 0))
+    else if(S_ISREG(st.st_mode))
+    fprintf(logfd,"%s\n",temp);
     return 0;
 }
 /*! \brief Generates a random rank
@@ -195,7 +177,6 @@ int wait_on_mpi_request( MPI_Request * req, MPI_Status * stat, int timeout, int 
 {
     int tries = 0;
     int flag = 0;
-    fflush(logfd);
     while(!flag && tries++ < timeout)
     {
         MPI_Test(req,&flag,stat);
@@ -420,7 +401,6 @@ void cleanup_work_messages(state_st * st)
             MPI_Recv(temp_buf,status._count,MPI_INT,i,SUCCESS,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         }
     }
-    fflush(logfd);
 }
 /* For debugging */
 void probe_messages(state_st * st)
@@ -495,7 +475,7 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
         st->token = BLACK;
 
     /* Base address of the buffer to be sent */
-    char * b = qp->strings[qp->count-1-count];
+    char * b = qp->strings[qp->count-count];
     /* Address of the beginning of the last string to be sent */
     char * e = qp->strings[qp->count-1];
     /* Distance between them */
@@ -508,7 +488,7 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
     st->request_offsets[0] = count;
     st->request_offsets[1] = diff;
     assert(diff < (INITIAL_QUEUE_SIZE*MAX_STRING_LEN)); 
-    int j = qp->count-count-1;
+    int j = qp->count-count;
     int i = 0;
     for(i=0; i < st->request_offsets[0]; i++)
     {
@@ -541,7 +521,7 @@ int send_work( work_queue * qp, state_st * st, int dest, int count )
         fprintf(logfd,"done.\n");
         fflush(logfd);
     }
-    qp->count = qp->count - count-1;
+    qp->count = qp->count - count;
     if(st->verbose)
     {
         fprintf(logfd,"sent %d items to %d.\n",st->request_offsets[0],dest);
@@ -675,7 +655,7 @@ void printq( work_queue * qp )
  */
 int pushq( work_queue * qp, char * str )
 {
-//    fprintf(logfd,"Pushed: %s\n",str); 
+    //fprintf(logfd,"Pushed: %s\n",str); 
     assert(strlen(str) > 0); 
     if(qp->count > 1)
         assert(qp->strings[qp->count-1] + MAX_STRING_LEN < qp->end);
@@ -704,5 +684,6 @@ int popq( work_queue * qp, char * str )
     strcpy(str,qp->strings[qp->count-1]);
     qp->head = qp->strings[qp->count-1];
     qp->count = qp->count - 1;
+   // fprintf(logfd,"Popped: %s\n",str);
     return 0;
 }
