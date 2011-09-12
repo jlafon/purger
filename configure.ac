@@ -1,0 +1,48 @@
+AC_PREREQ([2.68])
+
+AC_INIT([dstat], [0.0.1], [github-hpc@lanl.gov])
+AC_CONFIG_SRCDIR([src])
+AC_CONFIG_HEADERS([config.h])
+AM_INIT_AUTOMAKE(dstat, [0.0.1])
+
+# Keep m4 in tree.
+AC_CONFIG_MACRO_DIR([m4])
+
+# Checks for programs.
+AC_PROG_CC
+
+# Checks for libraries.
+#PKG_CHECK_MODULES([DEPS], [libcircle >= 0.0.1])
+
+# Libtool
+LT_INIT
+AC_SUBST(LIBTOOL_DEPS)
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+
+# Checks for library functions.
+AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
+
+echo
+echo "========================================================"
+echo "==          dstat: final build configuration          =="
+echo "========================================================"
+echo "External Library Support:"
+echo "  libcircle ...................................... TODO"
+echo
+echo "Build Options:"
+echo "  Logging level .................................. TODO"
+echo "========================================================"
+echo
+
+AC_CONFIG_FILES([ \
+    src/Makefile            \
+    plugins/Makefile        \
+    plugins/redis/Makefile  \
+    plugins/stdout/Makefile \
+])
+
+AC_OUTPUT
