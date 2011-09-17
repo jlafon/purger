@@ -1,4 +1,13 @@
 bin_PROGRAMS = dstat
-dstat_SOURCES = dstat.c
+dstat_SOURCES = sprintstatf.c hash.c dstat.c
+dstat_LDADD = \
+    -lcrypto                               \
+    -llibcircle                            \
+    $(MPI_CLDFLAGS)                        \
+    $(top_srcdir)/src/hiredis/libhiredis.a
 
-INCLUDES = -I$(top_srcdir)/src
+SUBDIRS = hiredis
+INCLUDES = \
+    $(MPI_CFLAGS)               \
+    -I$(top_srcdir)/src         \
+    -I$(top_srcdir)/src/hiredis

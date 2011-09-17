@@ -11,9 +11,6 @@ AC_CONFIG_MACRO_DIR([m4])
 # Checks for programs.
 AC_PROG_CC
 
-# Checks for libraries.
-#PKG_CHECK_MODULES([DEPS], [libcircle >= 0.0.1])
-
 # Libtool
 LT_INIT
 AC_SUBST(LIBTOOL_DEPS)
@@ -39,10 +36,11 @@ echo "========================================================"
 echo
 
 AC_CONFIG_FILES([ \
-    src/Makefile            \
-    plugins/Makefile        \
-    plugins/redis/Makefile  \
-    plugins/stdout/Makefile \
+    Makefile             \
+    src/Makefile         \
+    src/hiredis/Makefile \
+    doc/Makefile         \
+    doc/man/Makefile
 ])
 
 AC_OUTPUT
