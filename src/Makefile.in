@@ -57,7 +57,7 @@ am__DEPENDENCIES_1 =
 dstat_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(top_srcdir)/src/hiredis/libhiredis.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
-depcomp = $(SHELL) $(top_srcdir)/depcomp
+depcomp = $(SHELL) $(top_srcdir)/auxdir/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \

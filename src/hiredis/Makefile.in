@@ -56,7 +56,7 @@ am_libhiredis_a_OBJECTS = libhiredis_a-async.$(OBJEXT) \
 	libhiredis_a-dict.$(OBJEXT) libhiredis_a-net.$(OBJEXT)
 libhiredis_a_OBJECTS = $(am_libhiredis_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
-depcomp = $(SHELL) $(top_srcdir)/depcomp
+depcomp = $(SHELL) $(top_srcdir)/auxdir/depcomp
 am__depfiles_maybe = depfiles
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
