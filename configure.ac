@@ -18,7 +18,8 @@ AC_SUBST(LIBTOOL_DEPS)
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
 
-# Checks for typedefs, structures, and compiler characteristics.
+# Check for libcircle
+PKG_CHECK_MODULES([LIBCIRCLE], libcircle)
 
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
