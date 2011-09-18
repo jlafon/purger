@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <time.h>
 
-#include "dstat.h"
+#include "treewalk.h"
 #include "log.h"
 #include "sprintstatf.h"
 #include "hash.h"
@@ -75,30 +75,30 @@ process_objects(CIRCLE_handle *handle)
         closedir(current_dir);
     }
     else if(S_ISREG(st.st_mode)) {
-        dstat_redis_run_cmd("MULTI", temp);
+        treewalk_redis_run_cmd("MULTI", temp);
 
         char filekey[512];
-        dstat_redis_keygen(filekey, temp);
+        treewalk_redis_keygen(filekey, temp);
 
         /* Create and hset with basic attributes. */
-        dstat_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
-        dstat_redis_run_cmd(redis_cmd_buf, temp);
+        treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
+        treewalk_redis_run_cmd(redis_cmd_buf, temp);
 
         /* The mtime of the file as a zadd. */
-        dstat_redis_run_zadd(filekey, (long)st.st_mtime, "mtime", temp);
+        treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime", temp);
 
-        /* The start time of this dstat run as a zadd. */
-        dstat_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
+        /* The start time of this treewalk run as a zadd. */
+        treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
 
         /* Run all of the cmds. */
-        dstat_redis_run_cmd("EXEC", temp);
+        treewalk_redis_run_cmd("EXEC", temp);
     }
 
     free(redis_cmd_buf);
 }
 
 int
-dstat_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
+treewalk_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
 {
     int cnt = 0;
     char *buf = (char *)malloc(2048 * sizeof(char));
@@ -107,14 +107,14 @@ dstat_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, filekey);
 
-    dstat_redis_run_cmd(buf, filename);
+    treewalk_redis_run_cmd(buf, filename);
     free(buf);
 
     return cnt;
 }
 
 int
-dstat_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char *filekey)
+treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char *filekey)
 {
     int fmt_cnt = 0;
     int buf_cnt = 0;
@@ -157,7 +157,7 @@ dstat_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char *fi
 }
 
 void
-dstat_redis_run_cmd(char *cmd, char *filename)
+treewalk_redis_run_cmd(char *cmd, char *filename)
 {
     LOG(LOG_DBG, "RedisCmd = \"%s\"", cmd);
 
@@ -176,7 +176,7 @@ dstat_redis_run_cmd(char *cmd, char *filename)
 }
 
 int
-dstat_redis_keygen(char *buf, char *filename)
+treewalk_redis_keygen(char *buf, char *filename)
 {
     unsigned char filename_hash[32];
 
@@ -187,7 +187,7 @@ dstat_redis_keygen(char *buf, char *filename)
     cnt += sprintf(buf, "file:");
 
     /* Generate and add the key */
-    dstat_filename_hash(filename_hash, (unsigned char *)filename);
+    treewalk_filename_hash(filename_hash, (unsigned char *)filename);
     for(hash_idx = 0; hash_idx < 32; hash_idx++)
         cnt += sprintf(buf + cnt, "%02x", filename_hash[hash_idx]);
 
@@ -299,9 +299,9 @@ main (int argc, char **argv)
 
     time(&time_finished);
 /***
-    LOG(LOG_INFO, "dstat run started at: %l", time_started);
-    LOG(LOG_INFO, "dstat run completed at: %l", time_finished);
-    LOG(LOG_INFO, "dstat total time (seconds) for this run: %l",
+    LOG(LOG_INFO, "treewalk run started at: %l", time_started);
+    LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
+    LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
         ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
 ***/
     exit(EXIT_SUCCESS);

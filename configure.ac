@@ -38,10 +38,12 @@ echo "========================================================"
 echo
 
 AC_CONFIG_FILES([ \
-    Makefile             \
-    src/Makefile         \
-    src/hiredis/Makefile \
-    doc/Makefile         \
+    Makefile              \
+    src/Makefile          \
+    src/hiredis/Makefile  \
+    src/treewalk/Makefile \
+    src/reaper/Makefile   \
+    doc/Makefile          \
     doc/man/Makefile
 ])
 

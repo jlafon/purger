@@ -2,7 +2,7 @@
 #include "hash.h"
 
 void
-dstat_filename_hash(unsigned char* md, const unsigned char* input)
+treewalk_filename_hash(unsigned char* md, const unsigned char* input)
 {
     SHA256_CTX ctx;
     SHA256_Init(&ctx);

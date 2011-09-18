@@ -11524,7 +11524,7 @@ echo "  Logging level .................................. TODO"
 echo "========================================================"
 echo
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/hiredis/Makefile doc/Makefile doc/man/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/hiredis/Makefile src/treewalk/Makefile src/reaper/Makefile doc/Makefile doc/man/Makefile"
 
 
 cat >confcache <<\_ACEOF
@@ -12539,6 +12539,8 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "src/hiredis/Makefile") CONFIG_FILES="$CONFIG_FILES src/hiredis/Makefile" ;;
+    "src/treewalk/Makefile") CONFIG_FILES="$CONFIG_FILES src/treewalk/Makefile" ;;
+    "src/reaper/Makefile") CONFIG_FILES="$CONFIG_FILES src/reaper/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/man/Makefile") CONFIG_FILES="$CONFIG_FILES doc/man/Makefile" ;;
 
