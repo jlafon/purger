@@ -19,7 +19,7 @@ AC_SUBST(LIBTOOL_DEPS)
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
 
 # Check for libcircle
-PKG_CHECK_MODULES([LIBCIRCLE], libcircle)
+PKG_CHECK_MODULES([libcircle], libcircle)
 
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK

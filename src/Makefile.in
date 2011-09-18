@@ -53,7 +53,9 @@ PROGRAMS = $(bin_PROGRAMS)
 am_dstat_OBJECTS = sprintstatf.$(OBJEXT) hash.$(OBJEXT) \
 	dstat.$(OBJEXT)
 dstat_OBJECTS = $(am_dstat_OBJECTS)
-dstat_DEPENDENCIES = $(top_srcdir)/src/hiredis/libhiredis.a
+am__DEPENDENCIES_1 =
+dstat_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(top_srcdir)/src/hiredis/libhiredis.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -166,6 +168,9 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 RANLIB = @RANLIB@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
@@ -205,6 +210,8 @@ htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
+libcircle_CFLAGS = @libcircle_CFLAGS@
+libcircle_LIBS = @libcircle_LIBS@
 libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
@@ -227,13 +234,14 @@ top_srcdir = @top_srcdir@
 dstat_SOURCES = sprintstatf.c hash.c dstat.c
 dstat_LDADD = \
     -lcrypto                               \
-    -llibcircle                            \
+    $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
     $(top_srcdir)/src/hiredis/libhiredis.a
 
 SUBDIRS = hiredis
 INCLUDES = \
     $(MPI_CFLAGS)               \
+    $(libcircle_CFLAGS)         \
     -I$(top_srcdir)/src         \
     -I$(top_srcdir)/src/hiredis
 
