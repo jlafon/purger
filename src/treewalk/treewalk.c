@@ -105,7 +105,7 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
 
     cnt += sprintf(buf, "ZADD %s ", zset);
     cnt += sprintf(buf + cnt, "%ld ", val);
-    cnt += sprintf(buf + cnt, filekey);
+    cnt += sprintf(buf + cnt, "%s", filekey);
 
     treewalk_redis_run_cmd(buf, filename);
     free(buf);
@@ -141,7 +141,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "HMSET ");
 
     /* Add in the file key */
-    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, filekey);
+    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "%s", filekey);
 
     /* Add the filename itself to the redis set command */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", filename);
