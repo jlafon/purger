@@ -50,9 +50,11 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-reaper_SOURCES = reaper.c
-reaper_OBJECTS = reaper.$(OBJEXT)
-reaper_LDADD = $(LDADD)
+am_reaper_OBJECTS = reaper.$(OBJEXT)
+reaper_OBJECTS = $(am_reaper_OBJECTS)
+am__DEPENDENCIES_1 =
+reaper_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(top_srcdir)/src/hiredis/libhiredis.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/auxdir/depcomp
 am__depfiles_maybe = depfiles
@@ -66,8 +68,8 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = reaper.c
-DIST_SOURCES = reaper.c
+SOURCES = $(reaper_SOURCES)
+DIST_SOURCES = $(reaper_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -190,8 +192,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-treewalk_SOURCES = reaper.c
-treewalk_LDADD = \
+reaper_SOURCES = reaper.c
+reaper_LDADD = \
     -lcrypto                               \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \

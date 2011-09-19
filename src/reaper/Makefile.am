@@ -1,6 +1,6 @@
 bin_PROGRAMS = reaper
-treewalk_SOURCES = reaper.c
-treewalk_LDADD = \
+reaper_SOURCES = reaper.c
+reaper_LDADD = \
     -lcrypto                               \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
