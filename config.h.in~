@@ -33,7 +33,7 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define the purger logging level */
+/* Define the libcircle logging level */
 #undef LIBCIRCLE_LOGLEVEL
 
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing

@@ -25,15 +25,25 @@ PKG_CHECK_MODULES([libcircle], libcircle)
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 
+# Check for logging options
+X_AC_PURGER_LOGGING
+
+# Check for MPI
+LX_FIND_MPI
+test "x$have_C_mpi" = xyes || \
+    AC_MSG_ERROR([You should check to see if MPI is setup properly.])
+AM_CONDITIONAL(HAVE_MPI, [test "x$have_C_mpi" = xyes])
+
 echo
 echo "========================================================"
 echo "==         purger: final build configuration          =="
 echo "========================================================"
 echo "External Library Support:"
-echo "  libcircle ...................................... TODO"
+echo "  libcircle ...................................... ????"
+echo "  MPI ............................................ $have_C_mpi"
 echo
 echo "Build Options:"
-echo "  Logging level .................................. TODO"
+echo "  Logging level .................................. $loglevel"
 echo "========================================================"
 echo
 

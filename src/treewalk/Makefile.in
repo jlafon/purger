@@ -41,7 +41,8 @@ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
 	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/lx_find_loglevel.m4 \
+	$(top_srcdir)/m4/lx_find_mpi.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -54,7 +55,7 @@ am_treewalk_OBJECTS = sprintstatf.$(OBJEXT) hash.$(OBJEXT) \
 	treewalk.$(OBJEXT)
 treewalk_OBJECTS = $(am_treewalk_OBJECTS)
 am__DEPENDENCIES_1 =
-treewalk_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+treewalk_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(top_srcdir)/src/hiredis/libhiredis.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/auxdir/depcomp
@@ -116,6 +117,9 @@ LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
+MPICC = @MPICC@
+MPI_CFLAGS = @MPI_CFLAGS@
+MPI_CLDFLAGS = @MPI_CLDFLAGS@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@

@@ -3,7 +3,6 @@
 
 #include "reaper.h"
 #include "log.h"
-#include "hash.h"
 
 #include <hiredis.h>
 #include <async.h>
@@ -32,23 +31,22 @@ reaper_redis_run_cmd(char *cmd, char *filename)
     }
 }
 
-int
-reaper_redis_keygen(char *buf, char *filename)
+void
+reaper_redis_zrangebyscore(char *zset, int from, int to)
 {
-    unsigned char filename_hash[32];
+    redisReply *reply;
 
-    int hash_idx = 0;
-    int cnt = 0;
+    reply = redisCommand(REDIS, "ZRANGEBYSCORE %s %d %d", zset, from, to);
 
-    /* Add the key header */
-    cnt += sprintf(buf, "file:");
+    if(reply->type == REDIS_REPLY_ARRAY)
+    {
+        LOG(LOG_DBG, "We have an array.");
 
-    /* Generate and add the key */
-    reaper_filename_hash(filename_hash, (unsigned char *)filename);
-    for(hash_idx = 0; hash_idx < 32; hash_idx++)
-        cnt += sprintf(buf + cnt, "%02x", filename_hash[hash_idx]);
-
-    return cnt;
+    }
+    else
+    {
+        LOG(LOG_DBG, "Reply was something wheird.");
+    }
 }
 
 void
@@ -68,6 +66,10 @@ main (int argc, char **argv)
 
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
+
+    /* Enable logging. */
+    dbgstream = stderr;
+    debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
     while((c = getopt(argc, argv, "h:p:")) != -1)
@@ -134,6 +136,8 @@ main (int argc, char **argv)
     }
 
     time(&time_started);
+
+    reaper_redis_zrangebyscore("mtime", 0, 999999999);
 
     /* TODO: stuff */
 

@@ -213,6 +213,10 @@ main (int argc, char **argv)
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
 
+    /* Enable logging. */
+    dbgstream = stderr;
+    debug_level = PURGER_LOGLEVEL;
+
     opterr = 0;
     while((c = getopt(argc, argv, "d:h:p:")) != -1)
     {
