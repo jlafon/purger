@@ -11,16 +11,49 @@
 
 redisContext *REDIS;
 
+long long NUMBER_FILES_REMAINING = 0;
+
 time_t time_started;
 time_t time_finished;
 
 void
-reaper_redis_zrangebyscore(char *zset, double from, double to)
+process_files(CIRCLE_handle *handle)
+{
+/***
+    WATCH warnedtime
+    files = ZRANGE warnedtime start stop
+    MULTI
+    ZREM rangebyrank warnedtime start stop 
+    EXEC
+****/
+}
+
+long long
+reaper_redis_zcard(char *zset)
 {
     redisReply *reply;
     int numReplies = 0;
 
-    reply = redisCommand(REDIS, "ZRANGEBYSCORE %s %d %d", zset, from, to);
+    reply = redisCommand(REDIS, "ZCARD %s", zset);
+
+    if(reply->type == REDIS_REPLY_INTEGER)
+    {
+        return reply->integer;
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to count the number in a zset.");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void
+reaper_redis_zrangebyscore(char *zset, long long from, long long to)
+{
+    redisReply *reply;
+    int numReplies = 0;
+
+    reply = redisCommand(REDIS, "ZRANGEBYSCORE %s %lld %lld", zset, from, to);
 
     if(reply->type == REDIS_REPLY_ARRAY)
     {
@@ -132,9 +165,14 @@ main (int argc, char **argv)
 
     time(&time_started);
 
-    reaper_redis_zrangebyscore("mtime", 0, 9999999999);
+    NUMBER_FILES_REMAINING = reaper_redis_zcard("mtime");
+    LOG(LOG_DBG, "The number of files we have to process: %lld.", NUMBER_FILES_REMAINING);
 
-    /* TODO: stuff */
+    CIRCLE_init(argc, argv);
+    CIRCLE_cb_create(&process_files);
+    CIRCLE_cb_process(&process_files);
+    CIRCLE_begin();
+    CIRCLE_finalize();
 
     time(&time_finished);
 /***
