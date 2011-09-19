@@ -1,13 +1,13 @@
 AC_PREREQ([2.68])
 
-AC_INIT([dstat], [0.0.1], [github-hpc@lanl.gov])
+AC_INIT([purger], [0.0.1], [github-hpc@lanl.gov])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
 AC_CONFIG_AUX_DIR(auxdir)
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE(dstat, [0.0.1])
+AM_INIT_AUTOMAKE(purger, [0.0.1])
 
 # Checks for programs.
 AC_PROG_CC
@@ -27,7 +27,7 @@ AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 
 echo
 echo "========================================================"
-echo "==          dstat: final build configuration          =="
+echo "==         purger: final build configuration          =="
 echo "========================================================"
 echo "External Library Support:"
 echo "  libcircle ...................................... TODO"
