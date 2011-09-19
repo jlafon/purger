@@ -1,5 +1,5 @@
 bin_PROGRAMS = reaper
-reaper_SOURCES = reaper.c
+reaper_SOURCES = hash.c reaper.c
 reaper_LDADD = \
     -lcrypto                               \
     $(libcircle_LIBS)                      \
