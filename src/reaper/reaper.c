@@ -15,28 +15,10 @@ time_t time_started;
 time_t time_finished;
 
 void
-reaper_redis_run_cmd(char *cmd, char *filename)
-{
-    LOG(LOG_DBG, "RedisCmd = \"%s\"", cmd);
-
-    if(redisCommand(REDIS, cmd) != NULL)
-    {
-        LOG(LOG_DBG, "Sent %s to redis", filename);
-    }
-    else
-    {
-        LOG(LOG_DBG, "Failed to SET %s", filename);
-        if (REDIS->err)
-        {
-            LOG(LOG_ERR, "Redis error: %s", REDIS->errstr);
-        }
-    }
-}
-
-void
-reaper_redis_zrangebyscore(char *zset, int from, int to)
+reaper_redis_zrangebyscore(char *zset, double from, double to)
 {
     redisReply *reply;
+    int numReplies = 0;
 
     reply = redisCommand(REDIS, "ZRANGEBYSCORE %s %d %d", zset, from, to);
 
@@ -44,6 +26,17 @@ reaper_redis_zrangebyscore(char *zset, int from, int to)
     {
         LOG(LOG_DBG, "We have an array.");
 
+        for(numReplies = reply->elements - 1; numReplies >= 0; numReplies--)
+        {
+            if(reply->element[numReplies]->type == REDIS_REPLY_STRING)
+            {
+                LOG(LOG_DBG, "Replied with: %s", reply->element[numReplies]->str);
+            }
+            else
+            {
+                LOG(LOG_DBG, "WTF");
+            }
+        }
     }
     else
     {
@@ -139,7 +132,7 @@ main (int argc, char **argv)
 
     time(&time_started);
 
-    reaper_redis_zrangebyscore("mtime", 0, 999999999);
+    reaper_redis_zrangebyscore("mtime", 0, 9999999999);
 
     /* TODO: stuff */
 
