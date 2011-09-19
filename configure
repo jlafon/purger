@@ -11540,7 +11540,7 @@ fi
     fi
 
 cat >>confdefs.h <<_ACEOF
-#define LIBCIRCLE_LOGLEVEL $loglevel
+#define PURGER_LOGLEVEL $loglevel
 _ACEOF
 
   else

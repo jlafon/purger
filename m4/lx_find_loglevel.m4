@@ -13,7 +13,7 @@ AC_DEFUN([X_AC_PURGER_LOGGING], [
     if test $loglevel -gt 5; then
       AC_MSG_ERROR([Invalid log level $loglevel])
     fi
-    AC_DEFINE_UNQUOTED(LIBCIRCLE_LOGLEVEL, [$loglevel], [Define the purger logging level])
+    AC_DEFINE_UNQUOTED(PURGER_LOGLEVEL, [$loglevel], [Define the purger logging level])
   else
     loglevel="0"
   fi

@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "config.h"
+
 #include "reaper.h"
 #include "log.h"
 
