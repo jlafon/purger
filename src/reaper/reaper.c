@@ -52,14 +52,14 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
         exit(EXIT_FAILURE);
     }
 
-    redisReply *zremReply = redisCommand(REDIS, "ZREM rangebyrank %s %lld %lld", zset, start, end);
-    if(zremReply->type == REDIS_REPLY_INTEGER)
+    redisReply *zremReply = redisCommand(REDIS, "ZREMRANGEBYRANK %s %lld %lld", zset, start, end);
+    if(zremReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Zrem returned a integer of: %lld", zremReply->integer);
+        LOG(LOG_DBG, "Zremrangebyrank returned a status of: %s", zremReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to zrem %s.", zset);
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s.", zset);
         exit(EXIT_FAILURE);
     }
 
