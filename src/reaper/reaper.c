@@ -20,11 +20,36 @@ void
 process_files(CIRCLE_handle *handle)
 {
 /***
-    WATCH warnedtime
-    files = ZRANGE warnedtime start stop
-    MULTI
-    ZREM rangebyrank warnedtime start stop 
-    EXEC
+    1) First, atomically pop a few files from the mtime zset.
+
+        WATCH mtime
+        filekeys = ZRANGE mtime 0 100
+        MULTI
+        ZREM rangebyrank mtime 0 100
+        EXEC
+
+    2) Then, enqueue those files into libcircle.
+
+        for each filekeys as k:
+            handle->enqueue(key)
+
+    3) Now, lets grab a file.
+
+        old_file_stat_info = hmget handle->dequeue()
+
+    4) And stat it.
+
+        new_file_stat_info = stat(old_file_stat_info)
+
+    5) Then, check to see if it's still a file we should delete.
+
+        if(mtime + 6 days < now) {
+            unlink(file)
+        } else {
+            if(debug) {
+                Check to see if the ZREM from the atomic pop worked.
+            }
+        }
 ****/
 }
 
