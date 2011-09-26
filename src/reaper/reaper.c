@@ -20,13 +20,13 @@ void
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
-    if(watchReply->type == REDIS_REPLY_INTEGER)
+    if(watchReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Watch returned %lld", watchReply->integer);
+        LOG(LOG_DBG, "Watch returned: %s", watchReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to watch %s.", zset);
+        LOG(LOG_ERR, "Redis didn't return a status when trying to watch %s.", zset);
         exit(EXIT_FAILURE);
     }
 
@@ -42,13 +42,13 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
 
     redisReply *multiReply = redisCommand(REDIS, "MULTI");
-    if(multiReply->type == REDIS_REPLY_INTEGER)
+    if(multiReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Multi returned a integer of: %lld", multiReply->integer);
+        LOG(LOG_DBG, "Multi returned a status of: %s", multiReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to multi %s.", zset);
+        LOG(LOG_ERR, "Redis didn't return a status when trying to multi %s.", zset);
         exit(EXIT_FAILURE);
     }
 
@@ -64,13 +64,13 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
 
     redisReply *execReply = redisCommand(REDIS, "EXEC");
-    if(execReply->type == REDIS_REPLY_INTEGER)
+    if(execReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Exec returned a integer of: %lld", execReply->integer);
+        LOG(LOG_DBG, "Exec returned an array");
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to exec %s.", zset);
+        LOG(LOG_ERR, "Redis didn't return an array trying to exec %s.", zset);
         exit(EXIT_FAILURE);
     }
 }
