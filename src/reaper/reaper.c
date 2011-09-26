@@ -17,17 +17,73 @@ time_t time_started;
 time_t time_finished;
 
 void
+reaper_pop_zset(char **results, char *zset, long long start, long long end)
+{
+    redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
+    if(watchReply->type == REDIS_REPLY_INTEGER)
+    {
+        LOG(LOG_DBG, "Watch returned %lld", watchReply->integer);
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to watch %s.", zset);
+        exit(EXIT_FAILURE);
+    }
+
+    redisReply *zrangeReply = redisCommand(REDIS, "ZRANGE %s %lld %lld", zset, start, end);
+    if(zrangeReply->type == REDIS_REPLY_ARRAY)
+    {
+        LOG(LOG_DBG, "Zrange returned an array");
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an array when trying to zrange %s.", zset);
+        exit(EXIT_FAILURE);
+    }
+
+    redisReply *multiReply = redisCommand(REDIS, "MULTI");
+    if(multiReply->type == REDIS_REPLY_INTEGER)
+    {
+        LOG(LOG_DBG, "Multi returned a integer of: %lld", multiReply->integer);
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to multi %s.", zset);
+        exit(EXIT_FAILURE);
+    }
+
+    redisReply *zremReply = redisCommand(REDIS, "ZREM rangebyrank %s %lld %lld", zset, start, end);
+    if(zremReply->type == REDIS_REPLY_INTEGER)
+    {
+        LOG(LOG_DBG, "Zrem returned a integer of: %lld", zremReply->integer);
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to zrem %s.", zset);
+        exit(EXIT_FAILURE);
+    }
+
+    redisReply *execReply = redisCommand(REDIS, "EXEC");
+    if(execReply->type == REDIS_REPLY_INTEGER)
+    {
+        LOG(LOG_DBG, "Exec returned a integer of: %lld", execReply->integer);
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an integer when trying to exec %s.", zset);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void
 process_files(CIRCLE_handle *handle)
 {
+    char *del_keys[50];
+
+    /* Atomically pop a few keys from the mtime zset. */
+    reaper_pop_zset(del_keys, "mtime", 0, 49);
+
 /***
-    1) First, atomically pop a few files from the mtime zset.
-
-        WATCH mtime
-        filekeys = ZRANGE mtime 0 100
-        MULTI
-        ZREM rangebyrank mtime 0 100
-        EXEC
-
     2) Then, enqueue those files into libcircle.
 
         for each filekeys as k:
