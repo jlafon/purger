@@ -31,7 +31,7 @@ process_files(CIRCLE_handle *handle)
     2) Then, enqueue those files into libcircle.
 
         for each filekeys as k:
-            handle->enqueue(key)
+            handle->enqueue(k)
 
     3) Now, lets grab a file.
 
@@ -43,7 +43,8 @@ process_files(CIRCLE_handle *handle)
 
     5) Then, check to see if it's still a file we should delete.
 
-        if(mtime + 6 days < now) {
+        if((new_file_stat_info->mtime + 6 days) < now) {
+            Be paranoid here.
             unlink(file)
         } else {
             if(debug) {
