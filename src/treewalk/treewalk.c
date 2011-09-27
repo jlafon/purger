@@ -92,9 +92,21 @@ process_objects(CIRCLE_handle *handle)
 
         /* Run all of the cmds. */
         treewalk_redis_run_cmd("EXEC", temp);
+
+        /* add user to warn list */
+   //     treewalk_redis_run_publish(&st);
     }
 
     free(redis_cmd_buf);
+}
+void
+treewalk_redis_run_publish(struct stat *st)
+{
+    int ret = 0;
+    char *buf = (char*)malloc(2048 * sizeof(char));
+    sprintf(buf, "PUBLISH warnlist %d",st->st_uid);
+    //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
+    treewalk_redis_run_cmd(buf,buf);
 }
 
 int
@@ -156,6 +168,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     return buf_cnt;
 }
 
+
 void
 treewalk_redis_run_cmd(char *cmd, char *filename)
 {
@@ -214,8 +227,8 @@ main (int argc, char **argv)
     int redis_port_flag = 0;
 
     /* Enable logging. */
-    dbgstream = stderr;
-    debug_level = PURGER_LOGLEVEL;
+   // dbgstream = stderr;
+   // debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
     while((c = getopt(argc, argv, "d:h:p:")) != -1)
@@ -302,12 +315,12 @@ main (int argc, char **argv)
     CIRCLE_finalize();
 
     time(&time_finished);
-/***
-    LOG(LOG_INFO, "treewalk run started at: %l", time_started);
-    LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
-    LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
-        ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
-***/
+
+    //LOG(LOG_INFO, "treewalk run started at: %l", time_started);
+    //LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
+    //LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
+    //    ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
+
     exit(EXIT_SUCCESS);
 }
 
