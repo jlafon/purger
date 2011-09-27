@@ -12,8 +12,6 @@
 
 redisContext *REDIS;
 
-long long NUMBER_FILES_REMAINING = 0;
-
 time_t time_started;
 time_t time_finished;
 
@@ -129,6 +127,21 @@ process_files(CIRCLE_handle *handle)
     for(i = 0; i < batch_size; i++)
     {
         free(del_keys[i]);
+    }
+
+    char *key = (char *)malloc(CIRCLE_MAX_STRING_LEN);
+    handle->dequeue(key);
+
+    redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime name", key);
+    if(hmgetReply->type == REDIS_REPLY_ARRAY)
+    {
+        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
+        LOG(LOG_DBG, "mtime for %s is %s", &hmgetReply->element[1], &hmgetReply->element[0]);
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
+        exit(EXIT_FAILURE);
     }
 
 /***
@@ -290,8 +303,7 @@ main (int argc, char **argv)
 
     time(&time_started);
 
-    NUMBER_FILES_REMAINING = reaper_redis_zcard("mtime");
-    LOG(LOG_DBG, "The number of files we have to process: %lld.", NUMBER_FILES_REMAINING);
+//    NUMBER_FILES_REMAINING = reaper_redis_zcard("mtime");
 
     PURGER_global_rank = CIRCLE_init(argc, argv);
     CIRCLE_cb_process(&process_files);
