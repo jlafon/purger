@@ -178,8 +178,8 @@ main (int argc, char **argv)
     int redis_port_flag = 0;
 
     /* Enable logging. */
-    dbgstream = stderr;
-    debug_level = PURGER_LOGLEVEL;
+    //dbgstream = stderr;
+    //debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
     while((c = getopt(argc, argv, "h:p:")) != -1)
