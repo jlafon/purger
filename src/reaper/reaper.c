@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
+#include <ctype.h>
 
 #include "config.h"
 
@@ -104,7 +105,7 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     redisReply *execReply = redisCommand(REDIS, "EXEC");
     if(execReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Exec returned an array of size: ", execReply->elements);
+        LOG(LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
 
         if(execReply->elements == -1)
         {
@@ -146,8 +147,10 @@ process_files(CIRCLE_handle *handle)
             }
             else
             {
-                char *filename = hmgetReply->element[1]->str;
-                char *mtime_str = hmgetReply->element[0]->str;
+                char *filename = hmgetReply->element[1]->str + 1;
+                filename[strlen(filename)-1] = '\0';
+                char *mtime_str = hmgetReply->element[0]->str + 1;
+                mtime_str[strlen(mtime_str)-1] = '\0';
 
                 LOG(LOG_DBG, "mtime for %s is %s", filename, mtime_str);
 
@@ -156,7 +159,7 @@ process_files(CIRCLE_handle *handle)
                  * Lets grab the current file information in case it was changed since we last saw it.
                  */
                  struct stat new_stat_buf;
-                 if(lstat(filename, &new_stat_buf) < 0)
+                 if(lstat(filename, &new_stat_buf) != 0)
                  {
                      LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
                  }
@@ -174,8 +177,8 @@ process_files(CIRCLE_handle *handle)
                         /*
                          * Now, check to see if this file is still an old one that should be unlinked.
                          */
-                        LOG(LOG_DBG, "OLD mtime: %ld", old_mtime);
-                        LOG(LOG_DBG, "NEW mtime: %ld", (long int)new_stat_buf.st_mtime);
+                        LOG(LOG_DBG, "OLD mtime (from redis): %ld", old_mtime);
+                        LOG(LOG_DBG, "NEW mtime (from lstat): %ld", (long int)new_stat_buf.st_mtime);
                         LOG(LOG_DBG, "CURRENT time: %ld", (long int)time(NULL)); 
 
                         //if((new_file_stat_info->mtime + 6 days) < now) {
