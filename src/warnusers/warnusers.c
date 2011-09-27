@@ -23,58 +23,75 @@ void
 add_objects(CIRCLE_handle *handle)
 {
     char buf[256];
-    sprintf(buf,"%d",warnusers_redis_run_spop());
+    if(warnusers_redis_run_spop(buf)< 0)
+    {
+        LOG(LOG_WARN,"No elements in set.");
+        int status = warnusers_redis_run_get("treewalk");
+        if(status == 0)
+        {
+            LOG(LOG_WARN,"Treewalk no longer running, and the set is empty.  Exiting warnusers.");
+            exit(0);
+        }
+        else if (status == 1)
+        {
+            LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements.");
+            while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
+                ;
+            if(warnusers_redis_run_spop(buf)< 0)
+            {
+                LOG(LOG_WARN,"Warnusers giving up.  No items in the set.");
+                exit(0);
+            }
+        }
+    }
     handle->enqueue(buf);
 }
-
-void
-process_objects(CIRCLE_handle *handle)
+void warnusers_get_uids(CIRCLE_handle *handle)
 {
-    if(CIRCLE_global_rank == 0)
+    char uid[256];
+    int status = warnusers_redis_run_get("treewalk");
+    switch(status)
     {
-        int count = warnusers_redis_run_scard("warnlist");
-        LOG(LOG_DBG,"Cardinality of warnlist is %d\n",count);
-        if(count <= 0)
-        {
-            int status = warnusers_redis_run_get("treewalk");
-            if(status == 0)
-            {
-                LOG(LOG_DBG,"Treewalk no longer running, and set is empty.");
-            }
-            else if(status == 1)
-            {
-                LOG(LOG_DBG,"Treewalk is still running, but set is empty.");
-            }
-            else
-            {
-                LOG(LOG_ERR,"Treewalk key not set.  Unexpected state.");
-            }
-            return;
-        }
-        else
-        {
+        case 0:
+            LOG(LOG_DBG,"Treewalk no longer running, and set is empty.");
+            break;
+        case 1:
+            if(warnusers_redis_run_scard("warnlist") < 0)
+                LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish");
+            
+            /* Spin lock */
+            while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
+                ;
             int i = 0;
-            char uid[256];
-            for(i = 0; i < count; i++)
+            for(i=0; i < warnusers_redis_run_scard("warnlist"); i++)
             {
                 if(warnusers_redis_run_spop(uid) == -1)
                 {
-                    LOG(LOG_ERR,"SPOP returned -1, but there should have been elements in the set.");
-                    break;
+                    LOG(LOG_ERR,"Something went badly wrong with the uid set.");
+                    exit(0);
                 }
-                if(handle->enqueue(uid) == -1)
-                {
-                    LOG(LOG_WARN,"Unable to add item to libcircle queue, placing item back in the warnlist set");
-                    warnusers_redis_run_sadd(uid);
-                    return;
-                }
+                handle->enqueue(uid);
             }
-        }
+            break;
+        default:
+            LOG(LOG_ERR,"Treewalk key not set.  Unexpected state.");
+            break;
+    }
+}
+void
+process_objects(CIRCLE_handle *handle)
+{
+    char uid[256];
+    LOG(LOG_DBG,"Rank %d in process_objects",CIRCLE_global_rank);
+    if(CIRCLE_global_rank == 0)
+    {
+        warnusers_get_uids(handle);
     }
     else
     {
         char temp[CIRCLE_MAX_STRING_LEN];
         /* Pop an item off the queue */ 
+        LOG(LOG_DBG, "Popping, queue has %d elements", CIRCLE_queue_count());
         handle->dequeue(temp);
         LOG(LOG_DBG, "Popped [%s]", temp);
     }
@@ -121,7 +138,7 @@ warnusers_redis_run_scard(char * set)
     }
     else if(getReply->type == REDIS_REPLY_INTEGER)
     {
-        LOG(LOG_DBG,"GET returned an int.");
+        LOG(LOG_DBG,"GET returned an int: %d.",getReply->integer);
         return getReply->integer;
     }
     else
@@ -253,7 +270,7 @@ main (int argc, char **argv)
 
     time(&time_started);
     CIRCLE_init(argc, argv);
-    CIRCLE_cb_create(&add_objects);
+    //CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
