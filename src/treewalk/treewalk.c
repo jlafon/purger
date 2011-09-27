@@ -94,17 +94,17 @@ process_objects(CIRCLE_handle *handle)
         treewalk_redis_run_cmd("EXEC", temp);
 
         /* add user to warn list */
-   //     treewalk_redis_run_publish(&st);
+        treewalk_redis_run_sadd(&st);
     }
 
     free(redis_cmd_buf);
 }
 void
-treewalk_redis_run_publish(struct stat *st)
+treewalk_redis_run_sadd(struct stat *st)
 {
     int ret = 0;
     char *buf = (char*)malloc(2048 * sizeof(char));
-    sprintf(buf, "PUBLISH warnlist %d",st->st_uid);
+    sprintf(buf, "SADD warnlist %d",st->st_uid);
     //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
     treewalk_redis_run_cmd(buf,buf);
 }
