@@ -1,13 +1,16 @@
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "config.h"
 
 #include "reaper.h"
-#include "log.h"
+#include "../common/log.h"
 
 #include <hiredis.h>
 #include <async.h>
+
+#define REAPER_BATCH_SIZE 10
 
 redisContext *REDIS;
 
@@ -15,6 +18,10 @@ long long NUMBER_FILES_REMAINING = 0;
 
 time_t time_started;
 time_t time_finished;
+
+FILE *PURGER_dbgstream;
+int  PURGER_global_rank;
+int  PURGER_debug_level;
 
 void
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
@@ -30,10 +37,20 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
         exit(EXIT_FAILURE);
     }
 
-    redisReply *zrangeReply = redisCommand(REDIS, "ZRANGE %s %lld %lld", zset, start, end);
+    redisReply *zrangeReply = redisCommand(REDIS, "ZRANGE %s %lld %lld", zset, start, end - 1);
     if(zrangeReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Zrange returned an array");
+        LOG(LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
+
+        char *tmp_results = \
+            (char *)malloc(CIRCLE_MAX_STRING_LEN * zrangeReply->elements);
+        int idx = 0, tmp_idx = 0;
+
+        while(zrangeReply->element[idx++])
+        {
+            LOG(LOG_DBG, "Got zrange ele of: %s", zrangeReply->element[idx - 1]->str);
+            strcpy(&tmp_results[tmp_idx++], zrangeReply->element[idx - 1]->str);
+        }
     }
     else
     {
@@ -67,6 +84,11 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     if(execReply->type == REDIS_REPLY_ARRAY)
     {
         LOG(LOG_DBG, "Exec returned an array");
+/*
+        if(success) {
+            results = tmp_results;
+        }
+*/
     }
     else
     {
@@ -78,10 +100,10 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
 void
 process_files(CIRCLE_handle *handle)
 {
-    char *del_keys[50];
+    char *del_keys[REAPER_BATCH_SIZE];
 
     /* Atomically pop a few keys from the mtime zset. */
-    reaper_pop_zset(del_keys, "mtime", 0, 49);
+    reaper_pop_zset(del_keys, "mtime", 0, REAPER_BATCH_SIZE);
 
 /***
     2) Then, enqueue those files into libcircle.
@@ -178,8 +200,8 @@ main (int argc, char **argv)
     int redis_port_flag = 0;
 
     /* Enable logging. */
-    //dbgstream = stderr;
-    //debug_level = PURGER_LOGLEVEL;
+    PURGER_dbgstream = stderr;
+    PURGER_debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
     while((c = getopt(argc, argv, "h:p:")) != -1)
@@ -250,8 +272,7 @@ main (int argc, char **argv)
     NUMBER_FILES_REMAINING = reaper_redis_zcard("mtime");
     LOG(LOG_DBG, "The number of files we have to process: %lld.", NUMBER_FILES_REMAINING);
 
-    CIRCLE_init(argc, argv);
-    CIRCLE_cb_create(&process_files);
+    PURGER_global_rank = CIRCLE_init(argc, argv);
     CIRCLE_cb_process(&process_files);
     CIRCLE_begin();
     CIRCLE_finalize();
