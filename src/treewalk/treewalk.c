@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <signal.h>
 
 #include "treewalk.h"
 #include "log.h"
@@ -307,13 +308,11 @@ main (int argc, char **argv)
     }
 
     time(&time_started);
-
     CIRCLE_init(argc, argv);
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
-
     time(&time_finished);
 
     //LOG(LOG_INFO, "treewalk run started at: %l", time_started);
