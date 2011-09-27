@@ -10,8 +10,6 @@
 #include <hiredis.h>
 #include <async.h>
 
-#define REAPER_BATCH_SIZE 10
-
 redisContext *REDIS;
 
 long long NUMBER_FILES_REMAINING = 0;
@@ -23,7 +21,7 @@ FILE *PURGER_dbgstream;
 int  PURGER_global_rank;
 int  PURGER_debug_level;
 
-void
+int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
@@ -42,14 +40,10 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     {
         LOG(LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
 
-        char *tmp_results = \
-            (char *)malloc(CIRCLE_MAX_STRING_LEN * zrangeReply->elements);
-
         int idx;
         for(idx = 0; idx < zrangeReply->elements; idx++)
         {
-            LOG(LOG_DBG, "Got zrange ele of: %s", zrangeReply->element[idx]->str);
-            strcpy(&tmp_results[idx], zrangeReply->element[idx]->str);
+            strcpy(*(results+idx), zrangeReply->element[idx]->str);
         }
     }
     else
@@ -83,12 +77,18 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     redisReply *execReply = redisCommand(REDIS, "EXEC");
     if(execReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Exec returned an array");
-/*
-        if(success) {
-            results = tmp_results;
+        LOG(LOG_DBG, "Exec returned an array of size: ", execReply->elements);
+
+        if(execReply->elements == -1)
+        {
+            LOG(LOG_DBG, "Normal pop from the zset clashed.");
+            return 0;
         }
-*/
+        else
+        {
+            /* Success */
+            return 1;
+        }
     }
     else
     {
@@ -100,17 +100,35 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
 void
 process_files(CIRCLE_handle *handle)
 {
-    char *del_keys[REAPER_BATCH_SIZE];
+    int batch_size = 10;
+    char *del_keys[batch_size];
+    int i;
+
+    for(i = 0; i < batch_size; i++)
+    {
+        del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
+    }
 
     /* Atomically pop a few keys from the mtime zset. */
-    reaper_pop_zset(del_keys, "mtime", 0, REAPER_BATCH_SIZE);
+    if(reaper_pop_zset(&del_keys, "mtime", 0, batch_size))
+    {
+        for(i = 0; i < batch_size; i++)
+        {
+            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
+            handle->enqueue(del_keys[i]);
+        }
+    }
+    else
+    {
+        LOG(LOG_DBG, "Atomic pop failed");
+    }
+
+    for(i = 0; i < batch_size; i++)
+    {
+        free(del_keys[i]);
+    }
 
 /***
-    2) Then, enqueue those files into libcircle.
-
-        for each filekeys as k:
-            handle->enqueue(k)
-
     3) Now, lets grab a file.
 
         old_file_stat_info = hmget handle->dequeue()
