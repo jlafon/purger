@@ -24,6 +24,8 @@ int  PURGER_debug_level;
 int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
+    int num_poped = 0;
+
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
     if(watchReply->type == REDIS_REPLY_STATUS)
     {
@@ -40,10 +42,9 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     {
         LOG(LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
 
-        int idx;
-        for(idx = 0; idx < zrangeReply->elements; idx++)
+        for(num_poped = 0; num_poped < zrangeReply->elements; num_poped++)
         {
-            strcpy(*(results+idx), zrangeReply->element[idx]->str);
+            strcpy(*(results+num_poped), zrangeReply->element[num_poped]->str);
         }
     }
     else
@@ -82,12 +83,12 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
         if(execReply->elements == -1)
         {
             LOG(LOG_DBG, "Normal pop from the zset clashed.");
-            return 0;
+            return -1;
         }
         else
         {
             /* Success */
-            return 1;
+            return num_poped;
         }
     }
     else
@@ -102,6 +103,8 @@ process_files(CIRCLE_handle *handle)
 {
     int batch_size = 10;
     char *del_keys[batch_size];
+
+    int num_poped;
     int i;
 
     for(i = 0; i < batch_size; i++)
@@ -110,9 +113,9 @@ process_files(CIRCLE_handle *handle)
     }
 
     /* Atomically pop a few keys from the mtime zset. */
-    if(reaper_pop_zset(&del_keys, "mtime", 0, batch_size))
+    if(num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size))
     {
-        for(i = 0; i < batch_size; i++)
+        for(i = 0; i < num_poped; i++)
         {
             LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
             handle->enqueue(del_keys[i]);
