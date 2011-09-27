@@ -1,6 +1,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <limits.h>
+#include <ctype.h>
 
 #include "config.h"
 
@@ -18,6 +23,30 @@ time_t time_finished;
 FILE *PURGER_dbgstream;
 int  PURGER_global_rank;
 int  PURGER_debug_level;
+
+static unsigned long int
+reaper_strtoul(const char *nptr, int *ret_code)
+{
+    unsigned long int value;
+
+    /* assume all is well */
+    *ret_code = 1;
+
+    /* check for strtoul errors */
+    errno = 0;
+    value = strtoul(nptr, NULL, 10);
+
+    if ((ERANGE == errno && (ULONG_MAX == value || 0 == value)) ||
+        (0 != errno && 0 == value)) {
+        *ret_code = -1;
+    }
+    if (nptr == NULL) {
+        *ret_code = -2;
+    }
+
+    /* caller must always check the return code */
+    return value;
+}
 
 int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
@@ -76,11 +105,11 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     redisReply *execReply = redisCommand(REDIS, "EXEC");
     if(execReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Exec returned an array of size: ", execReply->elements);
+        LOG(LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
 
         if(execReply->elements == -1)
         {
-            LOG(LOG_DBG, "Normal pop from the zset clashed.");
+            LOG(LOG_DBG, "Normal pop from the zset clashed. Try it again later.");
             return -1;
         }
         else
@@ -103,38 +132,65 @@ process_files(CIRCLE_handle *handle)
     char *key = (char *)malloc(CIRCLE_MAX_STRING_LEN);
     handle->dequeue(key);
 
-    if(strlen(key) > 0 && key != NULL)
+    if(key != NULL && strlen(key) > 0)
     {
         redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
         if(hmgetReply->type == REDIS_REPLY_ARRAY)
         {
             LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
 
-            if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || hmgetReply->element[0]->type != REDIS_REPLY_STRING)
+            if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || \
+                    hmgetReply->element[0]->type != REDIS_REPLY_STRING || \
+                    hmgetReply->elements != 2)
             {
-                LOG(LOG_DBG, "Hmget elements were not the expected string type (bad key? \"%s\")", key);
+                LOG(LOG_DBG, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
             }
             else
             {
-                LOG(LOG_DBG, "mtime for %s is %s", hmgetReply->element[1]->str, hmgetReply->element[0]->str);
+                char *filename = hmgetReply->element[1]->str + 1;
+                filename[strlen(filename)-1] = '\0';
+                char *mtime_str = hmgetReply->element[0]->str + 1;
+                mtime_str[strlen(mtime_str)-1] = '\0';
+
+                LOG(LOG_DBG, "mtime for %s is %s", filename, mtime_str);
 
                 /*
                  * It looks like we have a potential one to delete here, lets check it out.
                  * Lets grab the current file information in case it was changed since we last saw it.
                  */
-                 // new_mtime_info = stat(filename)
+                 struct stat new_stat_buf;
+                 if(lstat(filename, &new_stat_buf) != 0)
+                 {
+                     LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
+                 }
+                 else
+                 {
+                     int convert_status = 0;
+                     long int old_mtime = reaper_strtoul(mtime_str, &convert_status);
 
-                /*
-                 * Now, check to see if this file is still an old one that should be unlinked.
-                 */
-                //if((new_file_stat_info->mtime + 6 days) < now) {
-                //    Be paranoid here.
-                //    WARNING: Don't uncomment this without asking JonB... unlink(file)
-                //} else {
-                //    if(debug) {
-                //        Check to see if the ZREM from the atomic pop worked.
-                //    }
-                //}
+                     if(convert_status <= 0)
+                     {
+                         LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
+                     }
+                     else
+                     {
+                        /*
+                         * Now, check to see if this file is still an old one that should be unlinked.
+                         */
+                        LOG(LOG_DBG, "OLD mtime (from redis): %ld", old_mtime);
+                        LOG(LOG_DBG, "NEW mtime (from lstat): %ld", (long int)new_stat_buf.st_mtime);
+                        LOG(LOG_DBG, "CURRENT time: %ld", (long int)time(NULL)); 
+
+                        //if((new_file_stat_info->mtime + 6 days) < now) {
+                        //    Be paranoid here.
+                        //    WARNING: Don't uncomment this without asking JonB... unlink(file)
+                        //} else {
+                        //    if(debug) {
+                        //        Check to see if the ZREM from the atomic pop worked.
+                        //    }
+                        //}
+                    }
+                }
             }
         }
         else
@@ -178,6 +234,8 @@ process_files(CIRCLE_handle *handle)
             free(del_keys[i]);
         }
     }
+
+    free(key);
 }
 
 long long
