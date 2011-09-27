@@ -155,10 +155,10 @@ process_files(CIRCLE_handle *handle)
                  * It looks like we have a potential one to delete here, lets check it out.
                  * Lets grab the current file information in case it was changed since we last saw it.
                  */
-                 struct stat new_stat_info;
-                 if(0 != lstat(filename, &new_stat_info))
+                 struct stat new_stat_buf;
+                 if(lstat(filename, &new_stat_buf) < 0)
                  {
-                     LOG(LOG_DBG, "The stat of the potential file failed (nothing to worry about): %s", filename);
+                     LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
                  }
                  else
                  {
@@ -174,6 +174,10 @@ process_files(CIRCLE_handle *handle)
                         /*
                          * Now, check to see if this file is still an old one that should be unlinked.
                          */
+                        LOG(LOG_DBG, "OLD mtime: %ld", old_mtime);
+                        LOG(LOG_DBG, "NEW mtime: %ld", (long int)new_stat_buf.st_mtime);
+                        LOG(LOG_DBG, "CURRENT time: %ld", (long int)time(NULL)); 
+
                         //if((new_file_stat_info->mtime + 6 days) < now) {
                         //    Be paranoid here.
                         //    WARNING: Don't uncomment this without asking JonB... unlink(file)
