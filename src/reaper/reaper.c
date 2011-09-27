@@ -99,50 +99,70 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
 void
 process_files(CIRCLE_handle *handle)
 {
-    int batch_size = 10;
-    char *del_keys[batch_size];
 
-    int num_poped;
-    int i;
-
-    for(i = 0; i < batch_size; i++)
-    {
-        del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
-    }
-
-    /* Atomically pop a few keys from the mtime zset. */
-    if(num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size))
-    {
-        for(i = 0; i < num_poped; i++)
-        {
-            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
-            handle->enqueue(del_keys[i]);
-        }
-    }
-    else
-    {
-        LOG(LOG_DBG, "Atomic pop failed");
-    }
-
-    for(i = 0; i < batch_size; i++)
-    {
-        free(del_keys[i]);
-    }
+/****************** PROCESS KEY *****************/
 
     char *key = (char *)malloc(CIRCLE_MAX_STRING_LEN);
     handle->dequeue(key);
 
-    redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime name", key);
-    if(hmgetReply->type == REDIS_REPLY_ARRAY)
+    if(strlen(key) > 0 && key != NULL)
     {
-        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
-        LOG(LOG_DBG, "mtime for %s is %s", hmgetReply->element[1]->str, hmgetReply->element[0]->str);
+        redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
+        if(hmgetReply->type == REDIS_REPLY_ARRAY)
+        {
+            LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
+
+            if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || hmgetReply->element[0]->type != REDIS_REPLY_STRING)
+            {
+                LOG(LOG_DBG, "Hmget elements were not the expected string type (bad key?)");
+            }
+            else
+            {
+                LOG(LOG_DBG, "mtime for %s is %s", hmgetReply->element[1]->str, hmgetReply->element[0]->str);
+            }
+        }
+        else
+        {
+            LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
+            exit(EXIT_FAILURE);
+        }
+
+/******************* ADD KEY **********************/
+
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
-        exit(EXIT_FAILURE);
+        int batch_size = 10;
+        char *del_keys[batch_size];
+
+        int num_poped;
+        int i;
+
+        for(i = 0; i < batch_size; i++)
+        {
+            del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
+        }
+
+        /* Atomically pop a few keys from the mtime zset. */
+        if((num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size)) >= 0)
+        {
+            for(i = 0; i < num_poped; i++)
+            {
+                LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
+                handle->enqueue(del_keys[i]);
+            }
+        }
+        else
+        {
+            LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
+        }
+
+        for(i = 0; i < batch_size; i++)
+        {
+            free(del_keys[i]);
+        }
     }
+
 
 /***
     3) Now, lets grab a file.
