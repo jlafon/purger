@@ -9,8 +9,6 @@
 
 #include "warnusers.h"
 #include "log.h"
-#include "sprintstatf.h"
-#include "hash.h"
 
 #include <hiredis.h>
 #include <async.h>
