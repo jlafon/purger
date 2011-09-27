@@ -6,7 +6,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
-#include <signal.h>
 
 #include "treewalk.h"
 #include "log.h"
@@ -103,7 +102,6 @@ process_objects(CIRCLE_handle *handle)
 void
 treewalk_redis_run_sadd(struct stat *st)
 {
-    int ret = 0;
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
     //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
