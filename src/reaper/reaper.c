@@ -99,71 +99,85 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
 void
 process_files(CIRCLE_handle *handle)
 {
-    int batch_size = 10;
-    char *del_keys[batch_size];
-
-    int num_poped;
-    int i;
-
-    for(i = 0; i < batch_size; i++)
-    {
-        del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
-    }
-
-    /* Atomically pop a few keys from the mtime zset. */
-    if(num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size))
-    {
-        for(i = 0; i < num_poped; i++)
-        {
-            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
-            handle->enqueue(del_keys[i]);
-        }
-    }
-    else
-    {
-        LOG(LOG_DBG, "Atomic pop failed");
-    }
-
-    for(i = 0; i < batch_size; i++)
-    {
-        free(del_keys[i]);
-    }
-
+    /* Attempt to grab a key from the local queue if it exists. */
     char *key = (char *)malloc(CIRCLE_MAX_STRING_LEN);
     handle->dequeue(key);
 
-    redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime name", key);
-    if(hmgetReply->type == REDIS_REPLY_ARRAY)
+    if(strlen(key) > 0 && key != NULL)
     {
-        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
-        LOG(LOG_DBG, "mtime for %s is %s", &hmgetReply->element[1], &hmgetReply->element[0]);
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
-        exit(EXIT_FAILURE);
-    }
+        redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
+        if(hmgetReply->type == REDIS_REPLY_ARRAY)
+        {
+            LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
 
-/***
-    3) Now, lets grab a file.
+            if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || hmgetReply->element[0]->type != REDIS_REPLY_STRING)
+            {
+                LOG(LOG_DBG, "Hmget elements were not the expected string type (bad key? \"%s\")", key);
+            }
+            else
+            {
+                LOG(LOG_DBG, "mtime for %s is %s", hmgetReply->element[1]->str, hmgetReply->element[0]->str);
 
-        old_file_stat_info = hmget handle->dequeue()
+                /*
+                 * It looks like we have a potential one to delete here, lets check it out.
+                 * Lets grab the current file information in case it was changed since we last saw it.
+                 */
+                 // new_mtime_info = stat(filename)
 
-    4) And stat it.
-
-        new_file_stat_info = stat(old_file_stat_info)
-
-    5) Then, check to see if it's still a file we should delete.
-
-        if((new_file_stat_info->mtime + 6 days) < now) {
-            Be paranoid here.
-            unlink(file)
-        } else {
-            if(debug) {
-                Check to see if the ZREM from the atomic pop worked.
+                /*
+                 * Now, check to see if this file is still an old one that should be unlinked.
+                 */
+                //if((new_file_stat_info->mtime + 6 days) < now) {
+                //    Be paranoid here.
+                //    WARNING: Don't uncomment this without asking JonB... unlink(file)
+                //} else {
+                //    if(debug) {
+                //        Check to see if the ZREM from the atomic pop worked.
+                //    }
+                //}
             }
         }
-****/
+        else
+        {
+            LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+    /*
+     * If we don't have a key on the local queue, lets go and try to get a few
+     * from the database and throw them in the queue for the next round.
+     */
+    {
+        int batch_size = 10;
+        char *del_keys[batch_size];
+
+        int num_poped;
+        int i;
+
+        for(i = 0; i < batch_size; i++)
+        {
+            del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
+        }
+
+        if((num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size)) >= 0)
+        {
+            for(i = 0; i < num_poped; i++)
+            {
+                LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
+                handle->enqueue(del_keys[i]);
+            }
+        }
+        else
+        {
+            LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
+        }
+
+        for(i = 0; i < batch_size; i++)
+        {
+            free(del_keys[i]);
+        }
+    }
 }
 
 long long
