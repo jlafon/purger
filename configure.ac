@@ -51,6 +51,7 @@ AC_CONFIG_FILES([ \
     src/hiredis/Makefile  \
     src/treewalk/Makefile \
     src/reaper/Makefile   \
+    src/warnusers/Makefile \
     doc/Makefile          \
     doc/man/Makefile
 ])
