@@ -44,12 +44,12 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
 
         char *tmp_results = \
             (char *)malloc(CIRCLE_MAX_STRING_LEN * zrangeReply->elements);
-        int idx = 0, tmp_idx = 0;
 
-        while(zrangeReply->element[idx++])
+        int idx;
+        for(idx = 0; idx < zrangeReply->elements; idx++)
         {
-            LOG(LOG_DBG, "Got zrange ele of: %s", zrangeReply->element[idx - 1]->str);
-            strcpy(&tmp_results[tmp_idx++], zrangeReply->element[idx - 1]->str);
+            LOG(LOG_DBG, "Got zrange ele of: %s", zrangeReply->element[idx]->str);
+            strcpy(&tmp_results[idx], zrangeReply->element[idx]->str);
         }
     }
     else
