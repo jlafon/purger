@@ -136,7 +136,7 @@ process_files(CIRCLE_handle *handle)
     if(hmgetReply->type == REDIS_REPLY_ARRAY)
     {
         LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
-        LOG(LOG_DBG, "mtime for %s is %s", &hmgetReply->element[1], &hmgetReply->element[0]);
+        LOG(LOG_DBG, "mtime for %s is %s", hmgetReply->element[1]->str, hmgetReply->element[0]->str);
     }
     else
     {
