@@ -3,10 +3,6 @@
 
 #include <stdio.h>
 
-#ifndef PURGER_LOGLEVEL
-    #define PURGER_LOGLEVEL 5
-#endif
-
 #define LOG_FATAL (1)
 #define LOG_ERR   (2)
 #define LOG_WARN  (3)

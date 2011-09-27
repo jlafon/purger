@@ -168,7 +168,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 }
 
 
-void
+int
 treewalk_redis_run_cmd(char *cmd, char *filename)
 {
     LOG(LOG_DBG, "RedisCmd = \"%s\"", cmd);
@@ -183,8 +183,29 @@ treewalk_redis_run_cmd(char *cmd, char *filename)
         if (REDIS->err)
         {
             LOG(LOG_ERR, "Redis error: %s", REDIS->errstr);
+            return -1;
         }
+    
     }
+    return 0;
+}
+
+int
+treewalk_redis_run_get(char * key)
+{
+    char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
+    sprintf(redis_cmd_buf, "GET %s",key);
+    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
+    if(getReply->type == REDIS_REPLY_NIL)
+        return -1;
+    else if(getReply->type == REDIS_REPLY_STRING)
+    {
+        LOG(LOG_DBG,"GET returned a string \"%s\"\n", getReply->str);
+        return atoi(getReply->str);
+    }
+    else
+        LOG(LOG_DBG,"GET didn't return a string.");
+    return -1;
 }
 
 int
@@ -297,20 +318,45 @@ main (int argc, char **argv)
 
     for (index = optind; index < argc; index++)
         LOG(LOG_WARN, "Non-option argument %s", argv[index]);
-
     REDIS = redisConnect(redis_hostname, redis_port);
     if (REDIS->err)
     {
         LOG(LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
     }
+    fprintf(stderr,"Debug level: %d\n",CIRCLE_debug_level);
+    CIRCLE_debug_level = 5;
+    CIRCLE_debug_stream = stdout; 
+    
 
     time(&time_started);
-    CIRCLE_init(argc, argv);
-    CIRCLE_cb_create(&add_objects);
+   int rank = CIRCLE_init(argc, argv);
+   if(rank == 0)
+   {
+        int status = treewalk_redis_run_get("treewalk");
+        if(status == 1)
+        {
+            LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with --force.");
+            exit(1);
+        }
+        if(treewalk_redis_run_cmd("SET treewalk 1","")<0)
+        {
+            LOG(LOG_ERR,"Unable to SET treewalk 1");
+            exit(1);
+        }
+   }
+ CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
+    CIRCLE_debug_stream = stdout;
+    if(treewalk_redis_run_cmd("SET treewalk 0","")<0)
+    {
+        fprintf(stderr,"Unable to SET treewalk 0");
+        exit(1);
+    }
+
+
     time(&time_finished);
 
     //LOG(LOG_INFO, "treewalk run started at: %l", time_started);

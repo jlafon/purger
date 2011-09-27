@@ -48,12 +48,29 @@ add_objects(CIRCLE_handle *handle)
 }
 void warnusers_get_uids(CIRCLE_handle *handle)
 {
+    int i = 0;
     char uid[256];
     int status = warnusers_redis_run_get("treewalk");
     switch(status)
     {
         case 0:
-            LOG(LOG_DBG,"Treewalk no longer running, and set is empty.");
+            LOG(LOG_DBG,"Treewalk no longer running.");
+            if(warnusers_redis_run_scard("warnlist") < 0)
+            {
+                LOG(LOG_WARN,"Treewalk is not running, and the set is empty. Exiting.");
+                exit(0);
+            }
+            for(i=0; i < warnusers_redis_run_scard("warnlist"); i++)
+            {
+                if(warnusers_redis_run_spop(uid) == -1)
+                {
+                    LOG(LOG_ERR,"Something went badly wrong with the uid set.");
+                    exit(0);
+                }
+                handle->enqueue(uid);
+            }
+
+            
             break;
         case 1:
             if(warnusers_redis_run_scard("warnlist") < 0)
@@ -62,7 +79,6 @@ void warnusers_get_uids(CIRCLE_handle *handle)
             /* Spin lock */
             while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
                 ;
-            int i = 0;
             for(i=0; i < warnusers_redis_run_scard("warnlist"); i++)
             {
                 if(warnusers_redis_run_spop(uid) == -1)
