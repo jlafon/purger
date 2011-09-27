@@ -11,4 +11,5 @@ void warnusers_redis_run_cmd(char *cmd, char *filename);
 int warnusers_redis_keygen(char *buf, char *filename);
 void print_usage(char **argv);
 void warnusers_redis_run_sadd(int uid);
+int warnusers_redis_run_spop(char * uid);
 #endif /* WARNUSERS_H */
