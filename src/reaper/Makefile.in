@@ -51,7 +51,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_reaper_OBJECTS = reaper.$(OBJEXT)
+am_reaper_OBJECTS = reaper.$(OBJEXT) local.$(OBJEXT) \
+	database.$(OBJEXT)
 reaper_OBJECTS = $(am_reaper_OBJECTS)
 am__DEPENDENCIES_1 =
 reaper_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -196,7 +197,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-reaper_SOURCES = reaper.c
+reaper_SOURCES = reaper.c local.c database.c
 reaper_LDADD = \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
@@ -294,6 +295,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/database.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/local.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/reaper.Po@am__quote@
 
 .c.o:

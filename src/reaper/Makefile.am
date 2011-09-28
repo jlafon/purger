@@ -1,5 +1,5 @@
 bin_PROGRAMS = reaper
-reaper_SOURCES = reaper.c
+reaper_SOURCES = reaper.c local.c database.c
 reaper_LDADD = \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
