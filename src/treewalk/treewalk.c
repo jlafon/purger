@@ -251,6 +251,7 @@ main (int argc, char **argv)
     char *redis_hostname;
     int redis_port;
 
+    int time_flag = 0;
     int dir_flag = 0;
     int force_flag = 0;
     int redis_hostname_flag = 0;
@@ -284,6 +285,7 @@ main (int argc, char **argv)
                 break;
 
             case 't':
+                time_flag = 1;
                 expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
                 LOG(LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
@@ -315,6 +317,11 @@ main (int argc, char **argv)
             default:
                 abort();
         }
+    }
+
+    if(time_flag == 0)
+    {
+        LOG(LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
     }
 
     if(dir_flag == 0)
