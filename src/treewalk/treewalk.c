@@ -16,6 +16,7 @@
 #include <async.h>
 
 FILE* TREEWALK_debug_stream;
+int TREEWALK_debug_level;
 char         *TOP_DIR;
 redisContext *REDIS;
 
@@ -255,13 +256,13 @@ main (int argc, char **argv)
     int force_flag = 0;
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
-
+    
     /* Enable logging. */
     TREEWALK_debug_stream = stdout;
-   // debug_level = PURGER_LOGLEVEL;
+    TREEWALK_debug_level = TREEWALK_log_level;
 
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:ft:")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:l:")) != -1)
     {
         switch(c)
         {
@@ -270,6 +271,9 @@ main (int argc, char **argv)
                 dir_flag = 1;
                 break;
 
+            case 'l':
+                TREEWALK_debug_level = atoi(optarg);
+                break;
             case 'h':
                 redis_hostname = optarg;
                 redis_hostname_flag = 1;
@@ -288,7 +292,7 @@ main (int argc, char **argv)
                 force_flag = 1;
                 break;
             case '?':
-                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't')
+                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't' || optopt == 'l')
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -352,13 +356,11 @@ main (int argc, char **argv)
     if(status == 1 && !force_flag)
     {
         LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
-        CIRCLE_finalize();
         exit(1);
     }
     if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
     {
         LOG(LOG_ERR,"Unable to %s",getCmd);
-        CIRCLE_finalize();
         exit(1);
     }
     CIRCLE_cb_create(&add_objects);
@@ -374,12 +376,18 @@ main (int argc, char **argv)
 
 
     time(&time_finished);
-
-    LOG(LOG_INFO, "treewalk run started at: %l", time_started);
-    LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
-    LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
-        ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
-
+    char starttime_str[256];
+    char endtime_str[256];
+    struct tm * localstart = localtime( &time_started );
+    struct tm * localend = localtime ( &time_finished );
+    strftime(starttime_str, 256, "[%b-%d-%Y %H:%M:%S]",localstart);
+    strftime(endtime_str, 256, "[%b-%d-%Y %H:%M:%S]",localend);
+    if(rank == 0)
+    {
+        LOG(LOG_INFO, "treewalk run started at: %s", starttime_str);
+        LOG(LOG_INFO, "treewalk run completed at: %s", endtime_str);
+        LOG(LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
+    }
     exit(EXIT_SUCCESS);
 }
 
