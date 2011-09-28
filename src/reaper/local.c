@@ -112,31 +112,57 @@ reaper_check_and_delete_file(char *filename, long int db_mtime)
         }
         else
         {
-            if(db_mtime == new_mtime)
+            if(reaper_is_file_expired(db_mtime, new_mtime, 6, filename) == 1)
             {
-                /* The file hasn't been modified since we last saw it */
-                long int cur_time = time(NULL);
-                long int age_secs = cur_time - new_mtime;
-                long int age_days = (long int)(age_secs / SECONDS_IN_A_DAY);
-
-                if(age_days > 6)
-                {
-                    LOG(LOG_DBG, "File has been unlinked: %s", filename);
-                    // TODO: unlink(filename);
-                }
-                else
-                {
-                    LOG(LOG_DBG, "The file is too new to be purged: %s", filename);
-                    /* TODO: Check to see if the ZREM from the atomic pop worked. */
-                    return;
-                }
+                LOG(LOG_DBG, "File has been unlinked: %s", filename);
+                // TODO: unlink(filename);
             }
             else
             {
-                LOG(LOG_DBG, "File was modified (diff %ld): %s", new_mtime - db_mtime, filename);
+                LOG(LOG_DBG, "File has not been unlinked: %s", filename);
+                // File is NOT expired. TODO: check database in debug mode.
             }
         }
     }
+}
+
+int
+reaper_is_file_expired(long int old_db_mtime, long int new_stat_mtime, int age_allowed_in_days, char *filename)
+{
+    int expired = 0; // 0 is NOT expired. 1 IS expired.
+
+    long int current_time = time(NULL);
+    long int age_in_secs = current_time - new_stat_mtime;
+    long int age_in_days = (long int)(age_in_secs / SECONDS_IN_A_DAY);
+
+    /*
+     * If the file has been modified, the new and old mtimes would be
+     * different, so lets only move forward if they're the same.
+     *
+     * On some platforms, the mtime is a floating point number, so keep
+     * in mind that the inverse of this statement does not hold true
+     * due to potential relative error (new != old).
+     */
+    if(old_db_mtime == new_stat_mtime)
+    {
+        if(age_in_days > age_allowed_in_days)
+        {
+            LOG(LOG_DBG, "This file has been marked for deletion: \"%s\"", filename);
+            expired = 1;
+        }
+        else
+        {
+            LOG(LOG_DBG, "File was modified less than %d days ago: \"%s\"", age_allowed_in_days, filename);
+            expired = 0;
+        }
+    }
+    else
+    {
+        LOG(LOG_DBG, "File was POSSIBLY modified (diff %ld): %s", new_stat_mtime - old_db_mtime, filename);
+        expired = 0;
+    }
+   
+    return expired;
 }
 
 /* EOF */
