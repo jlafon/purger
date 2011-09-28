@@ -22,9 +22,8 @@ redisContext *REDIS;
 
 time_t time_started;
 time_t time_finished;
-#define SECONDS_PER_DAY 60*60*24
-#define SECONDS_IN_TWO_WEEKS SECONDS_PER_DAY*14
-time_t expire_threshold = SECONDS_IN_TWO_WEEKS;
+#define SECONDS_PER_DAY 60.0*60.0*24.0
+float expire_threshold = SECONDS_PER_DAY*14.0;
 
 void
 add_objects(CIRCLE_handle *handle)
@@ -91,7 +90,7 @@ process_objects(CIRCLE_handle *handle)
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
            to warnlist */
-        if(difftime(time_started,st.st_mtime) > SECONDS_IN_TWO_WEEKS)
+        if(difftime(time_started,st.st_mtime) > expire_threshold)
         {
             LOG(LOG_DBG,"File expired: \"%s\"",temp);
             /* The mtime of the file as a zadd. */
@@ -285,8 +284,8 @@ main (int argc, char **argv)
                 break;
 
             case 't':
-                expire_threshold = atof(optarg) * SECONDS_PER_DAY;
-                LOG(LOG_WARN,"Changed file expiration time to %f days, or %lf seconds.",expire_threshold/SECONDS_PER_DAY,expire_threshold);
+                expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
+                LOG(LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
             case 'f':
                 force_flag = 1;
