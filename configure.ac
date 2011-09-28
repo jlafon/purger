@@ -9,7 +9,7 @@ AM_INIT_AUTOMAKE(purger, [0.0.1])
 
 # Checks for programs.
 AC_PROG_CC
-
+AC_PROG_RANLIB
 # Libtool
 LT_INIT
 AC_SUBST(LIBTOOL_DEPS)
@@ -48,6 +48,7 @@ echo
 AC_CONFIG_FILES([ \
     Makefile              \
     src/Makefile          \
+    src/common/Makefile   \
     src/hiredis/Makefile  \
     src/treewalk/Makefile \
     src/reaper/Makefile   \

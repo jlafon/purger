@@ -35,13 +35,12 @@ process_files(CIRCLE_handle *handle)
         int maxsleep = 600;
 
         /* Check for a collision in the DB query */
-        while(status == -2)
+/*       while(status == -2)
         {
             status = reaper_check_database_for_more(handle);
 
             sleeptime = (sleeptime
 
-            /* Get the smaller of the exp backoff or the maxsleep */
             sleeptime = ((((sleeptime) - (maxsleep)) & 0x80000000) >> 31) ? \
                 (sleeptime) : (maxsleep);
 
@@ -52,9 +51,8 @@ process_files(CIRCLE_handle *handle)
 
             sleep(sleeptime);
         }
-   
+   */
     }
-
     /* TODO: if both of the above fail, add a card check. */
 
     free(key);

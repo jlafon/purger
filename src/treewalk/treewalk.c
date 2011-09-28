@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <time.h>
 
+#include "state.h"
 #include "treewalk.h"
 #include "log.h"
 #include "sprintstatf.h"
@@ -235,7 +236,42 @@ treewalk_redis_keygen(char *buf, char *filename)
 
     return cnt;
 }
-
+int
+treewalk_check_state(int rank, int force)
+{
+   char * getCmd = (char *) malloc(sizeof(char)*256);
+   sprintf(getCmd,"PURGER_STATE");
+   int status = treewalk_redis_run_get(getCmd);
+   int transition_check = purger_state_check(status,PURGER_STATE_TREEWALK); 
+   if(transition_check == PURGER_STATE_R_NO)
+   {
+       LOG(LOG_FATAL,"Error: You cannot run treewalk at this time.  You can only run treewalk after a previous treewalk, or after reaper has been run.");
+       return -1;
+   }
+   else if(transition_check == PURGER_STATE_R_FORCE && !force)
+   {
+       LOG(LOG_ERR,"Error: You are asking treewalk to run, but not after reaper has run.  If you are sure you want to do this, run again with -f to force.");
+       return -1;
+   }
+   else if(transition_check == PURGER_STATE_R_YES)
+   {
+       if(rank == 0) LOG(LOG_INFO,"Treewalk starting normally.");
+   }
+   sprintf(getCmd,"treewalk-rank-%d",rank);
+   status = treewalk_redis_run_get(getCmd);
+   sprintf(getCmd,"set treewalk-rank-%d 1", rank);
+    if(status == 1 && !force)
+    {
+        LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
+        return -1;
+    }
+    if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
+    {
+        LOG(LOG_ERR,"Unable to %s",getCmd);
+        return -1;
+    }
+  return 0;
+}
 void
 print_usage(char **argv)
 {
@@ -355,24 +391,14 @@ main (int argc, char **argv)
 
    time(&time_started);
    int rank = CIRCLE_init(argc, argv);
-   char * getCmd = (char *) malloc(sizeof(char)*256);
-   sprintf(getCmd,"treewalk-rank-%d",rank);
-   int status = treewalk_redis_run_get(getCmd);
-   sprintf(getCmd,"set treewalk-rank-%d 1", rank);
-    if(status == 1 && !force_flag)
-    {
-        LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
-        exit(1);
-    }
-    if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
-    {
-        LOG(LOG_ERR,"Unable to %s",getCmd);
-        exit(1);
-    }
+   if(treewalk_check_state(rank,force_flag) < 0)
+       exit(1);
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
+    
+    char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
     if(treewalk_redis_run_cmd(getCmd,"")<0)
     {
@@ -388,13 +414,18 @@ main (int argc, char **argv)
     struct tm * localend = localtime ( &time_finished );
     strftime(starttime_str, 256, "[%b-%d-%Y %H:%M:%S]",localstart);
     strftime(endtime_str, 256, "[%b-%d-%Y %H:%M:%S]",localend);
+    sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
+    if(treewalk_redis_run_cmd(getCmd,getCmd)<0)
+    {
+        fprintf(stderr,"Unable to %s",getCmd);
+    }
     if(rank == 0)
     {
         LOG(LOG_INFO, "treewalk run started at: %s", starttime_str);
         LOG(LOG_INFO, "treewalk run completed at: %s", endtime_str);
         LOG(LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
     }
-    exit(EXIT_SUCCESS);
+        exit(EXIT_SUCCESS);
 }
 
 /* EOF */
