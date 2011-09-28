@@ -21,9 +21,9 @@ redisContext *REDIS;
 
 time_t time_started;
 time_t time_finished;
-
 #define SECONDS_PER_DAY 60*60*24
 #define SECONDS_IN_TWO_WEEKS SECONDS_PER_DAY*14
+time_t expire_threshold = SECONDS_IN_TWO_WEEKS;
 
 void
 add_objects(CIRCLE_handle *handle)
@@ -239,7 +239,7 @@ treewalk_redis_keygen(char *buf, char *filename)
 void
 print_usage(char **argv)
 {
-    fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port>]\n", argv[0]);
+    fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f]\n", argv[0]);
 }
 
 int
@@ -261,7 +261,7 @@ main (int argc, char **argv)
    // debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:f")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:")) != -1)
     {
         switch(c)
         {
@@ -280,11 +280,15 @@ main (int argc, char **argv)
                 redis_port_flag = 1;
                 break;
 
+            case 't':
+                expire_threshold = atof(optarg) * SECONDS_PER_DAY;
+                LOG(LOG_WARN,"Changed file expiration time to %f days, or %lf seconds.",expire_threshold/SECONDS_PER_DAY,expire_threshold);
+                break;
             case 'f':
                 force_flag = 1;
                 break;
             case '?':
-                if (optopt == 'd' || optopt == 'h' || optopt == 'p')
+                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't')
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
