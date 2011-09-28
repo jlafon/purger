@@ -56,6 +56,7 @@ am_reaper_OBJECTS = reaper.$(OBJEXT) local.$(OBJEXT) \
 reaper_OBJECTS = $(am_reaper_OBJECTS)
 am__DEPENDENCIES_1 =
 reaper_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(top_srcdir)/src/common/lib_purger_common.a \
 	$(top_srcdir)/src/hiredis/libhiredis.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/auxdir/depcomp
@@ -196,8 +197,9 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 reaper_SOURCES = reaper.c local.c database.c
 reaper_LDADD = \
-    $(libcircle_LIBS)                      \
-    $(MPI_CLDFLAGS)                        \
+    $(libcircle_LIBS)                            \
+    $(MPI_CLDFLAGS)                              \
+    $(top_srcdir)/src/common/lib_purger_common.a \
     $(top_srcdir)/src/hiredis/libhiredis.a
 
 INCLUDES = \

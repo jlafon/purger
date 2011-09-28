@@ -197,10 +197,10 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 treewalk_SOURCES = sprintstatf.c hash.c treewalk.c
 treewalk_LDADD = \
-    -lcrypto                               \
-    $(libcircle_LIBS)                      \
-    $(MPI_CLDFLAGS)                        \
-    $(top_srcdir)/src/hiredis/libhiredis.a \
+    -lcrypto                                     \
+    $(libcircle_LIBS)                            \
+    $(MPI_CLDFLAGS)                              \
+    $(top_srcdir)/src/hiredis/libhiredis.a       \
     $(top_srcdir)/src/common/lib_purger_common.a
 
 INCLUDES = \
