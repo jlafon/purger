@@ -1,4 +1,4 @@
-AC_INIT([purger], [0.0.1], [github-hpc@lanl.gov])
+AC_INIT([purger],[0.0.1],[github-hpc@lanl.gov])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
