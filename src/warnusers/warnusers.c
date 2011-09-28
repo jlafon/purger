@@ -107,7 +107,7 @@ process_objects(CIRCLE_handle *handle)
     {
         char temp[CIRCLE_MAX_STRING_LEN];
         /* Pop an item off the queue */ 
-        LOG(LOG_DBG, "Popping, queue has %d elements", CIRCLE_queue_count());
+        LOG(LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
         handle->dequeue(temp);
         LOG(LOG_DBG, "Popped [%s]", temp);
     }

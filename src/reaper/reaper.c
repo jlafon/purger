@@ -382,8 +382,8 @@ main (int argc, char **argv)
 
     LOG(LOG_INFO, "reaper run started at: %ld", time_started);
     LOG(LOG_INFO, "reaper run completed at: %ld", time_finished);
-    LOG(LOG_INFO, "reaper total time (seconds) for this run: %ld",
-        ((long int) (time_finished - time_started)) / CLOCKS_PER_SEC);
+  //  LOG(LOG_INFO, "reaper total time (seconds) for this run: %ld",
+//        ((long int) (time_finished - time_started)) / CLOCKS_PER_SEC);
 
     CIRCLE_finalize();
 
