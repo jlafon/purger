@@ -1,6 +1,6 @@
 #!/bin/sh
 # Run this to generate all the initial makefiles, etc.
-
+rm m4/lt* m4/libtool.m4 auxdir/ltmain.sh
 #name of package
 PKG_NAME=${PKG_NAME:-Package}
 srcdir=${srcdir:-.}

@@ -1,5 +1,3 @@
-include $(top_srcdir)/common.mk
-
 bin_PROGRAMS = warnusers
 warnusers_SOURCES = warnusers.c
 warnusers_LDADD = \
