@@ -1,3 +1,5 @@
+include $(top_srcdir)/common.mk
+
 bin_PROGRAMS = treewalk
 treewalk_SOURCES = sprintstatf.c hash.c treewalk.c
 treewalk_LDADD = \

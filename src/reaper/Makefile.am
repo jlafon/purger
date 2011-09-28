@@ -1,3 +1,5 @@
+include $(top_srcdir)/common.mk
+
 bin_PROGRAMS = reaper
 reaper_SOURCES = reaper.c local.c database.c
 reaper_LDADD = \
