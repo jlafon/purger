@@ -253,12 +253,12 @@ treewalk_check_state(int rank, int force)
    int transition_check = purger_state_check(status,PURGER_STATE_TREEWALK); 
    if(transition_check == PURGER_STATE_R_NO)
    {
-       LOG(LOG_FATAL,"Error: You cannot run treewalk at this time.  You can only run treewalk after a previous treewalk, or after reaper has been run.");
+       if(rank == 0) LOG(LOG_FATAL,"Error: You cannot run treewalk at this time.  You can only run treewalk after a previous treewalk, or after reaper has been run.");
        return -1;
    }
    else if(transition_check == PURGER_STATE_R_FORCE && !force)
    {
-       LOG(LOG_ERR,"Error: You are asking treewalk to run, but not after reaper has run.  If you are sure you want to do this, run again with -f to force.");
+       if(rank == 0) LOG(LOG_ERR,"Error: You are asking treewalk to run, but not after reaper has run.  If you are sure you want to do this, run again with -f to force.");
        return -1;
    }
    else if(transition_check == PURGER_STATE_R_YES)
@@ -275,10 +275,16 @@ treewalk_check_state(int rank, int force)
    sprintf(getCmd,"set treewalk-rank-%d 1", rank);
     if(status == 1 && !force)
     {
-        LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
+        if(rank == 0) LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
         return -1;
     }
     if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
+    {
+        LOG(LOG_ERR,"Unable to %s",getCmd);
+        return -1;
+    }
+   sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
+   if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
     {
         LOG(LOG_ERR,"Unable to %s",getCmd);
         return -1;
@@ -341,6 +347,7 @@ main (int argc, char **argv)
                 break;
             case 'f':
                 force_flag = 1;
+                if(rank == 0) LOG(LOG_WARN,"Warning: You have chosen to force treewalk.");
                 break;
             case '?':
                 if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't' || optopt == 'l')
