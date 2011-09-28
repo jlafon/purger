@@ -24,6 +24,8 @@ FILE *PURGER_dbgstream;
 int  PURGER_global_rank;
 int  PURGER_debug_level;
 
+const long int SECONDS_IN_A_DAY = 60*60*24;
+
 static unsigned long int
 reaper_strtoul(const char *nptr, int *ret_code)
 {
@@ -167,28 +169,37 @@ process_files(CIRCLE_handle *handle)
                  {
                      int convert_status = 0;
                      long int old_mtime = reaper_strtoul(mtime_str, &convert_status);
+                     long int new_mtime = (long int)new_stat_buf.st_mtime;
 
                      if(convert_status <= 0)
                      {
-                         LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
+                         LOG(LOG_DBG, "The mtime string conversion failed: \"%lld\"", old_mtime);
                      }
                      else
                      {
-                        /*
-                         * Now, check to see if this file is still an old one that should be unlinked.
-                         */
-                        LOG(LOG_DBG, "OLD mtime (from redis): %ld", old_mtime);
-                        LOG(LOG_DBG, "NEW mtime (from lstat): %ld", (long int)new_stat_buf.st_mtime);
-                        LOG(LOG_DBG, "CURRENT time: %ld", (long int)time(NULL)); 
+                        if(old_mtime == new_mtime)
+                        {
+                            /* The file hasn't been modified since we last saw it */
 
-                        //if((new_file_stat_info->mtime + 6 days) < now) {
-                        //    Be paranoid here.
-                        //    WARNING: Don't uncomment this without asking JonB... unlink(file)
-                        //} else {
-                        //    if(debug) {
-                        //        Check to see if the ZREM from the atomic pop worked.
-                        //    }
-                        //}
+                            long int cur_time = time(NULL);
+                            long int age_secs = cur_time - new_mtime;
+                            long int age_days = (long int)(age_secs / SECONDS_IN_A_DAY);
+
+                            if(age_days > 6)
+                            {
+                                LOG(LOG_DBG, "File has been unlinked: %s", filename);
+                                // TODO: unlink(filename);
+                            }
+                            else
+                            {
+                                LOG(LOG_DBG, "The file is too new to be purged: %s", filename);
+                                /* TODO: Check to see if the ZREM from the atomic pop worked. */
+                            }
+                        }
+                        else
+                        {
+                            LOG(LOG_DBG, "File was modified (diff %ld): %s", new_mtime - old_mtime, filename);
+                        }
                     }
                 }
             }
