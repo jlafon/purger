@@ -21,7 +21,7 @@ extern redisContext *REDIS;
 void
 process_files(CIRCLE_handle *handle)
 {
-    /* Attempt to grab a key from the local queue if it exists. */
+    /* Attempt to grab a key from the local queue if it has any keys. */
     char *key = (char *)malloc(CIRCLE_MAX_STRING_LEN);
     handle->dequeue(key);
 
@@ -31,8 +31,31 @@ process_files(CIRCLE_handle *handle)
     }
     else
     {
-        reaper_check_database_for_more(handle);
+        int sleeptime = 1;
+        int maxsleep = 600;
+
+        /* Check for a collision in the DB query */
+        while(status == -2)
+        {
+            status = reaper_check_database_for_more(handle);
+
+            sleeptime = (sleeptime
+
+            /* Get the smaller of the exp backoff or the maxsleep */
+            sleeptime = ((((sleeptime) - (maxsleep)) & 0x80000000) >> 31) ? \
+                (sleeptime) : (maxsleep);
+
+            if(sleeptime == maxsleep)
+            {
+                LOG(LOG_DBG, "Things are running very slow. Is the database overloaded?");
+            }
+
+            sleep(sleeptime);
+        }
+   
     }
+
+    /* TODO: if both of the above fail, add a card check. */
 
     free(key);
 }
