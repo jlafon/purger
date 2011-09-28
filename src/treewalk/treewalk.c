@@ -15,11 +15,15 @@
 #include <hiredis.h>
 #include <async.h>
 
+FILE* TREEWALK_debug_stream;
 char         *TOP_DIR;
 redisContext *REDIS;
 
 time_t time_started;
 time_t time_finished;
+
+#define SECONDS_PER_DAY 60*60*24
+#define SECONDS_IN_TWO_WEEKS SECONDS_PER_DAY*14
 
 void
 add_objects(CIRCLE_handle *handle)
@@ -46,14 +50,13 @@ process_objects(CIRCLE_handle *handle)
     if(lstat(temp,&st) != EXIT_SUCCESS)
     {
             LOG(LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
-            //MPI_Abort(MPI_COMM_WORLD,-1);
     }
     /* Check to see if it is a directory.  If so, put its children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
     {
         current_dir = opendir(temp);
         if(!current_dir) {
-            LOG(LOG_ERR, "Unable to open dir");
+            LOG(LOG_ERR, "Unable to open dir: %s",temp);
         }
         else
         {
@@ -83,18 +86,24 @@ process_objects(CIRCLE_handle *handle)
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         treewalk_redis_run_cmd(redis_cmd_buf, temp);
-
-        /* The mtime of the file as a zadd. */
-        treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime", temp);
-
+        
+        /* Check to see if the file is expired.
+           If so, zadd it by mtime and add the user id
+           to warnlist */
+        if(difftime(time_started,st.st_mtime) > SECONDS_IN_TWO_WEEKS)
+        {
+            LOG(LOG_DBG,"File expired: \"%s\"",temp);
+            /* The mtime of the file as a zadd. */
+            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime", temp);
+            /* add user to warn list */
+            treewalk_redis_run_sadd(&st);
+        }
         /* The start time of this treewalk run as a zadd. */
-        treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
+        //treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
 
         /* Run all of the cmds. */
         treewalk_redis_run_cmd("EXEC", temp);
 
-        /* add user to warn list */
-        treewalk_redis_run_sadd(&st);
     }
 
     free(redis_cmd_buf);
@@ -247,7 +256,7 @@ main (int argc, char **argv)
     int redis_port_flag = 0;
 
     /* Enable logging. */
-   // dbgstream = stderr;
+    TREEWALK_debug_stream = stdout;
    // debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
@@ -324,12 +333,9 @@ main (int argc, char **argv)
         LOG(LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
     }
-    fprintf(stderr,"Debug level: %d\n",CIRCLE_debug_level);
-    CIRCLE_debug_level = 5;
-    CIRCLE_debug_stream = stdout; 
     
 
-    time(&time_started);
+   time(&time_started);
    int rank = CIRCLE_init(argc, argv);
    if(rank == 0)
    {
@@ -345,11 +351,10 @@ main (int argc, char **argv)
             exit(1);
         }
    }
- CIRCLE_cb_create(&add_objects);
+    CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
-    CIRCLE_debug_stream = stdout;
     if(treewalk_redis_run_cmd("SET treewalk 0","")<0)
     {
         fprintf(stderr,"Unable to SET treewalk 0");
@@ -359,10 +364,10 @@ main (int argc, char **argv)
 
     time(&time_finished);
 
-    //LOG(LOG_INFO, "treewalk run started at: %l", time_started);
-    //LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
-    //LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
-    //    ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
+    LOG(LOG_INFO, "treewalk run started at: %l", time_started);
+    LOG(LOG_INFO, "treewalk run completed at: %l", time_finished);
+    LOG(LOG_INFO, "treewalk total time (seconds) for this run: %l",
+        ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
 
     exit(EXIT_SUCCESS);
 }

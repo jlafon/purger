@@ -74,7 +74,7 @@ void warnusers_get_uids(CIRCLE_handle *handle)
             break;
         case 1:
             if(warnusers_redis_run_scard("warnlist") < 0)
-                LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish");
+                LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish.");
             
             /* Spin lock */
             while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
