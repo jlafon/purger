@@ -142,21 +142,10 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 
     char *redis_cmd_fmt = (char *)malloc(2048 * sizeof(char));
     char *redis_cmd_fmt_cnt = \
-            "atime_decimal \"%a\" "
-            "atime_string  \"%A\" "
-            "ctime_decimal \"%c\" "
-            "ctime_string  \"%C\" "
             "gid_decimal   \"%g\" "
-            "gid_string    \"%G\" "
-            "ino           \"%i\" "
             "mtime_decimal \"%m\" "
-            "mtime_string  \"%M\" "
-            "nlink         \"%n\" "
-            "mode_octal    \"%p\" "
-            "mode_string   \"%P\" "
             "size          \"%s\" "
-            "uid_decimal   \"%u\" "
-            "uid_string    \"%U\" ";
+            "uid_decimal   \"%u\" ";
 
     /* Create the start of the command, i.e. "HMSET file:<hash>" */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "HMSET ");
@@ -182,14 +171,14 @@ int
 treewalk_redis_run_cmd(char *cmd, char *filename)
 {
     LOG(LOG_DBG, "RedisCmd = \"%s\"", cmd);
-
-    if(redisCommand(REDIS, cmd) != NULL)
+    redisReply *reply = redisCommand(REDIS, cmd);
+    if(reply->type != REDIS_REPLY_ERROR)
     {
         LOG(LOG_DBG, "Sent %s to redis", cmd);
     }
     else
     {
-        LOG(LOG_DBG, "Failed to SET %s", filename);
+        LOG(LOG_DBG, "Failed %s: %s", cmd,reply->str);
         if (REDIS->err)
         {
             LOG(LOG_ERR, "Redis error: %s", REDIS->errstr);
@@ -198,6 +187,25 @@ treewalk_redis_run_cmd(char *cmd, char *filename)
     
     }
     return 0;
+}
+
+int
+treewalk_redis_run_get_str(char * key, char * str)
+{
+    char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
+    sprintf(redis_cmd_buf, "GET %s",key);
+    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
+    if(getReply->type == REDIS_REPLY_NIL)
+        return -1;
+    else if(getReply->type == REDIS_REPLY_STRING)
+    {
+        LOG(LOG_DBG,"GET returned a string \"%s\"\n", getReply->str);
+        strcpy(str,getReply->str);
+        return 0;
+    }
+    else
+        LOG(LOG_DBG,"GET didn't return a string.");
+    return -1;
 }
 
 int
@@ -255,7 +263,12 @@ treewalk_check_state(int rank, int force)
    }
    else if(transition_check == PURGER_STATE_R_YES)
    {
-       if(rank == 0) LOG(LOG_INFO,"Treewalk starting normally.");
+       if(rank == 0)
+       {
+           char time_stamp[256];
+           treewalk_redis_run_get_str("treewalk_timestamp",time_stamp);
+           LOG(LOG_INFO,"Treewalk starting normally. Last successfull treewalk: %s",time_stamp);
+       }
    }
    sprintf(getCmd,"treewalk-rank-%d",rank);
    status = treewalk_redis_run_get(getCmd);
@@ -296,6 +309,7 @@ main (int argc, char **argv)
     /* Enable logging. */
     TREEWALK_debug_stream = stdout;
     TREEWALK_debug_level = TREEWALK_log_level;
+    int rank = CIRCLE_init(argc, argv);
 
     opterr = 0;
     while((c = getopt(argc, argv, "d:h:p:ft:l:")) != -1)
@@ -323,7 +337,7 @@ main (int argc, char **argv)
             case 't':
                 time_flag = 1;
                 expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
-                LOG(LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
+                if(rank == 0) LOG(LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
             case 'f':
                 force_flag = 1;
@@ -357,25 +371,25 @@ main (int argc, char **argv)
 
     if(time_flag == 0)
     {
-        LOG(LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
+        if(rank == 0) LOG(LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
     }
 
     if(dir_flag == 0)
     {
          print_usage(argv);
-         LOG(LOG_FATAL, "You must specify a starting directory");
+         if(rank == 0) LOG(LOG_FATAL, "You must specify a starting directory");
          exit(EXIT_FAILURE);
     }
 
     if(redis_hostname_flag == 0)
     {
-        LOG(LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
+        if(rank == 0) LOG(LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
         redis_hostname = "localhost";
     }
 
     if(redis_port_flag == 0)
     {
-        LOG(LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
+        if(rank == 0) LOG(LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
         redis_port = 6379;
     }
 
@@ -390,7 +404,6 @@ main (int argc, char **argv)
     
 
    time(&time_started);
-   int rank = CIRCLE_init(argc, argv);
    if(treewalk_check_state(rank,force_flag) < 0)
        exit(1);
     CIRCLE_cb_create(&add_objects);
@@ -412,8 +425,8 @@ main (int argc, char **argv)
     char endtime_str[256];
     struct tm * localstart = localtime( &time_started );
     struct tm * localend = localtime ( &time_finished );
-    strftime(starttime_str, 256, "[%b-%d-%Y %H:%M:%S]",localstart);
-    strftime(endtime_str, 256, "[%b-%d-%Y %H:%M:%S]",localend);
+    strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);
+    strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
     if(treewalk_redis_run_cmd(getCmd,getCmd)<0)
     {
