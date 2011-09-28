@@ -1,21 +1,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <sys/stat.h>
 #include <errno.h>
-#include <limits.h>
-#include <ctype.h>
+#include <hiredis.h>
 
 #include "config.h"
 
 #include "reaper.h"
 #include "../common/log.h"
-
-#include <hiredis.h>
-#include <async.h>
-
-redisContext *REDIS;
 
 time_t time_started;
 time_t time_finished;
@@ -24,108 +16,7 @@ FILE *PURGER_dbgstream;
 int  PURGER_global_rank;
 int  PURGER_debug_level;
 
-const long int SECONDS_IN_A_DAY = 60*60*24;
-
-static unsigned long int
-reaper_strtoul(const char *nptr, int *ret_code)
-{
-    unsigned long int value;
-
-    /* assume all is well */
-    *ret_code = 1;
-
-    /* check for strtoul errors */
-    errno = 0;
-    value = strtoul(nptr, NULL, 10);
-
-    if ((ERANGE == errno && (ULONG_MAX == value || 0 == value)) ||
-        (0 != errno && 0 == value)) {
-        *ret_code = -1;
-    }
-    if (nptr == NULL) {
-        *ret_code = -2;
-    }
-
-    /* caller must always check the return code */
-    return value;
-}
-
-int
-reaper_pop_zset(char **results, char *zset, long long start, long long end)
-{
-    int num_poped = 0;
-
-    redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
-    if(watchReply->type == REDIS_REPLY_STATUS)
-    {
-        LOG(LOG_DBG, "Watch returned: %s", watchReply->str);
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return a status when trying to watch %s.", zset);
-        exit(EXIT_FAILURE);
-    }
-
-    redisReply *zrangeReply = redisCommand(REDIS, "ZRANGE %s %lld %lld", zset, start, end - 1);
-    if(zrangeReply->type == REDIS_REPLY_ARRAY)
-    {
-        LOG(LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
-
-        for(num_poped = 0; num_poped < zrangeReply->elements; num_poped++)
-        {
-            strcpy(*(results+num_poped), zrangeReply->element[num_poped]->str);
-        }
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to zrange %s.", zset);
-        exit(EXIT_FAILURE);
-    }
-
-    redisReply *multiReply = redisCommand(REDIS, "MULTI");
-    if(multiReply->type == REDIS_REPLY_STATUS)
-    {
-        LOG(LOG_DBG, "Multi returned a status of: %s", multiReply->str);
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return a status when trying to multi %s.", zset);
-        exit(EXIT_FAILURE);
-    }
-
-    redisReply *zremReply = redisCommand(REDIS, "ZREMRANGEBYRANK %s %lld %lld", zset, start, end);
-    if(zremReply->type == REDIS_REPLY_STATUS)
-    {
-        LOG(LOG_DBG, "Zremrangebyrank returned a status of: %s", zremReply->str);
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s.", zset);
-        exit(EXIT_FAILURE);
-    }
-
-    redisReply *execReply = redisCommand(REDIS, "EXEC");
-    if(execReply->type == REDIS_REPLY_ARRAY)
-    {
-        LOG(LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
-
-        if(execReply->elements == -1)
-        {
-            LOG(LOG_DBG, "Normal pop from the zset clashed. Try it again later.");
-            return -1;
-        }
-        else
-        {
-            /* Success */
-            return num_poped;
-        }
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an array trying to exec %s.", zset);
-        exit(EXIT_FAILURE);
-    }
-}
+extern redisContext *REDIS;
 
 void
 process_files(CIRCLE_handle *handle)
@@ -144,146 +35,6 @@ process_files(CIRCLE_handle *handle)
     }
 
     free(key);
-}
-
-void
-reaper_check_local_queue(CIRCLE_handle *handle, char *key)
-{
-    redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
-    if(hmgetReply->type == REDIS_REPLY_ARRAY)
-    {
-        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
-
-        if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || \
-                hmgetReply->element[0]->type != REDIS_REPLY_STRING || \
-                hmgetReply->elements != 2)
-        {
-            LOG(LOG_DBG, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
-        }
-        else
-        {
-            char *filename = hmgetReply->element[1]->str + 1;
-            filename[strlen(filename)-1] = '\0';
-            char *mtime_str = hmgetReply->element[0]->str + 1;
-            mtime_str[strlen(mtime_str)-1] = '\0';
-
-            LOG(LOG_DBG, "mtime for %s is %s", filename, mtime_str);
-
-            /*
-             * It looks like we have a potential one to delete here, lets check it out.
-             * Lets grab the current file information in case it was changed since we last saw it.
-             */
-             struct stat new_stat_buf;
-             if(lstat(filename, &new_stat_buf) != 0)
-             {
-                 LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
-             }
-             else
-             {
-                 int convert_status = 0;
-                 long int old_mtime = reaper_strtoul(mtime_str, &convert_status);
-                 long int new_mtime = (long int)new_stat_buf.st_mtime;
-
-                 if(convert_status <= 0)
-                 {
-                     LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
-                 }
-                 else
-                 {
-                    if(old_mtime == new_mtime)
-                    {
-                        /* The file hasn't been modified since we last saw it */
-
-                        long int cur_time = time(NULL);
-                        long int age_secs = cur_time - new_mtime;
-                        long int age_days = (long int)(age_secs / SECONDS_IN_A_DAY);
-
-                        if(age_days > 6)
-                        {
-                            LOG(LOG_DBG, "File has been unlinked: %s", filename);
-                            // TODO: unlink(filename);
-                        }
-                        else
-                        {
-                            LOG(LOG_DBG, "The file is too new to be purged: %s", filename);
-                            /* TODO: Check to see if the ZREM from the atomic pop worked. */
-                        }
-                    }
-                    else
-                    {
-                        LOG(LOG_DBG, "File was modified (diff %ld): %s", new_mtime - old_mtime, filename);
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
-    }
-}
-
-void
-reaper_check_database_for_more(CIRCLE_handle *handle)
-{
-    int batch_size = 10;
-    char *del_keys[batch_size];
-
-    int num_poped;
-    int i;
-
-    for(i = 0; i < batch_size; i++)
-    {
-        del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
-    }
-
-    if((num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size)) >= 0)
-    {
-        for(i = 0; i < num_poped; i++)
-        {
-            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
-            handle->enqueue(del_keys[i]);
-        }
-    }
-    else
-    {
-        LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
-    }
-
-    for(i = 0; i < batch_size; i++)
-    {
-        free(del_keys[i]);
-    }
-}
-
-void
-reaper_redis_zrangebyscore(char *zset, long long from, long long to)
-{
-    redisReply *reply;
-    int numReplies = 0;
-
-    reply = redisCommand(REDIS, "ZRANGEBYSCORE %s %lld %lld", zset, from, to);
-
-    if(reply->type == REDIS_REPLY_ARRAY)
-    {
-        LOG(LOG_DBG, "We have an array.");
-
-        for(numReplies = reply->elements - 1; numReplies >= 0; numReplies--)
-        {
-            if(reply->element[numReplies]->type == REDIS_REPLY_STRING)
-            {
-                LOG(LOG_DBG, "Replied with: %s", reply->element[numReplies]->str);
-            }
-            else
-            {
-                LOG(LOG_DBG, "WTF");
-            }
-        }
-    }
-    else
-    {
-        LOG(LOG_DBG, "Reply was something wheird.");
-    }
 }
 
 void
