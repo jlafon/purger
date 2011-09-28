@@ -136,117 +136,124 @@ process_files(CIRCLE_handle *handle)
 
     if(key != NULL && strlen(key) > 0)
     {
-        redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
-        if(hmgetReply->type == REDIS_REPLY_ARRAY)
+        reaper_check_local_queue(handle, key);
+    }
+    else
+    {
+        reaper_check_database_for_more(handle);
+    }
+
+    free(key);
+}
+
+void
+reaper_check_local_queue(CIRCLE_handle *handle, char *key)
+{
+    redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
+    if(hmgetReply->type == REDIS_REPLY_ARRAY)
+    {
+        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
+
+        if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || \
+                hmgetReply->element[0]->type != REDIS_REPLY_STRING || \
+                hmgetReply->elements != 2)
         {
-            LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
+            LOG(LOG_DBG, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
+        }
+        else
+        {
+            char *filename = hmgetReply->element[1]->str + 1;
+            filename[strlen(filename)-1] = '\0';
+            char *mtime_str = hmgetReply->element[0]->str + 1;
+            mtime_str[strlen(mtime_str)-1] = '\0';
 
-            if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || \
-                    hmgetReply->element[0]->type != REDIS_REPLY_STRING || \
-                    hmgetReply->elements != 2)
-            {
-                LOG(LOG_DBG, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
-            }
-            else
-            {
-                char *filename = hmgetReply->element[1]->str + 1;
-                filename[strlen(filename)-1] = '\0';
-                char *mtime_str = hmgetReply->element[0]->str + 1;
-                mtime_str[strlen(mtime_str)-1] = '\0';
+            LOG(LOG_DBG, "mtime for %s is %s", filename, mtime_str);
 
-                LOG(LOG_DBG, "mtime for %s is %s", filename, mtime_str);
+            /*
+             * It looks like we have a potential one to delete here, lets check it out.
+             * Lets grab the current file information in case it was changed since we last saw it.
+             */
+             struct stat new_stat_buf;
+             if(lstat(filename, &new_stat_buf) != 0)
+             {
+                 LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
+             }
+             else
+             {
+                 int convert_status = 0;
+                 long int old_mtime = reaper_strtoul(mtime_str, &convert_status);
+                 long int new_mtime = (long int)new_stat_buf.st_mtime;
 
-                /*
-                 * It looks like we have a potential one to delete here, lets check it out.
-                 * Lets grab the current file information in case it was changed since we last saw it.
-                 */
-                 struct stat new_stat_buf;
-                 if(lstat(filename, &new_stat_buf) != 0)
+                 if(convert_status <= 0)
                  {
-                     LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
+                     LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
                  }
                  else
                  {
-                     int convert_status = 0;
-                     long int old_mtime = reaper_strtoul(mtime_str, &convert_status);
-                     long int new_mtime = (long int)new_stat_buf.st_mtime;
+                    if(old_mtime == new_mtime)
+                    {
+                        /* The file hasn't been modified since we last saw it */
 
-                     if(convert_status <= 0)
-                     {
-                         LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
-                     }
-                     else
-                     {
-                        if(old_mtime == new_mtime)
+                        long int cur_time = time(NULL);
+                        long int age_secs = cur_time - new_mtime;
+                        long int age_days = (long int)(age_secs / SECONDS_IN_A_DAY);
+
+                        if(age_days > 6)
                         {
-                            /* The file hasn't been modified since we last saw it */
-
-                            long int cur_time = time(NULL);
-                            long int age_secs = cur_time - new_mtime;
-                            long int age_days = (long int)(age_secs / SECONDS_IN_A_DAY);
-
-                            if(age_days > 6)
-                            {
-                                LOG(LOG_DBG, "File has been unlinked: %s", filename);
-                                // TODO: unlink(filename);
-                            }
-                            else
-                            {
-                                LOG(LOG_DBG, "The file is too new to be purged: %s", filename);
-                                /* TODO: Check to see if the ZREM from the atomic pop worked. */
-                            }
+                            LOG(LOG_DBG, "File has been unlinked: %s", filename);
+                            // TODO: unlink(filename);
                         }
                         else
                         {
-                            LOG(LOG_DBG, "File was modified (diff %ld): %s", new_mtime - old_mtime, filename);
+                            LOG(LOG_DBG, "The file is too new to be purged: %s", filename);
+                            /* TODO: Check to see if the ZREM from the atomic pop worked. */
                         }
+                    }
+                    else
+                    {
+                        LOG(LOG_DBG, "File was modified (diff %ld): %s", new_mtime - old_mtime, filename);
                     }
                 }
             }
         }
-        else
+    }
+    else
+    {
+        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
+    }
+}
+
+void
+reaper_check_database_for_more(CIRCLE_handle *handle)
+{
+    int batch_size = 10;
+    char *del_keys[batch_size];
+
+    int num_poped;
+    int i;
+
+    for(i = 0; i < batch_size; i++)
+    {
+        del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
+    }
+
+    if((num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size)) >= 0)
+    {
+        for(i = 0; i < num_poped; i++)
         {
-            LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
-            exit(EXIT_FAILURE);
+            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
+            handle->enqueue(del_keys[i]);
         }
     }
     else
-    /*
-     * If we don't have a key on the local queue, lets go and try to get a few
-     * from the database and throw them in the queue for the next round.
-     */
     {
-        int batch_size = 10;
-        char *del_keys[batch_size];
-
-        int num_poped;
-        int i;
-
-        for(i = 0; i < batch_size; i++)
-        {
-            del_keys[i] = (char *)malloc(CIRCLE_MAX_STRING_LEN);
-        }
-
-        if((num_poped = reaper_pop_zset((char **)&del_keys, "mtime", 0, batch_size)) >= 0)
-        {
-            for(i = 0; i < num_poped; i++)
-            {
-                LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
-                handle->enqueue(del_keys[i]);
-            }
-        }
-        else
-        {
-            LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
-        }
-
-        for(i = 0; i < batch_size; i++)
-        {
-            free(del_keys[i]);
-        }
+        LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
     }
 
-    free(key);
+    for(i = 0; i < batch_size; i++)
+    {
+        free(del_keys[i]);
+    }
 }
 
 void
