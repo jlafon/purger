@@ -184,7 +184,7 @@ treewalk_redis_run_cmd(char *cmd, char *filename)
 
     if(redisCommand(REDIS, cmd) != NULL)
     {
-        LOG(LOG_DBG, "Sent %s to redis", filename);
+        LOG(LOG_DBG, "Sent %s to redis", cmd);
     }
     else
     {
@@ -252,6 +252,7 @@ main (int argc, char **argv)
     int redis_port;
 
     int dir_flag = 0;
+    int force_flag = 0;
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
 
@@ -260,7 +261,7 @@ main (int argc, char **argv)
    // debug_level = PURGER_LOGLEVEL;
 
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:f")) != -1)
     {
         switch(c)
         {
@@ -279,6 +280,9 @@ main (int argc, char **argv)
                 redis_port_flag = 1;
                 break;
 
+            case 'f':
+                force_flag = 1;
+                break;
             case '?':
                 if (optopt == 'd' || optopt == 'h' || optopt == 'p')
                 {
@@ -337,27 +341,30 @@ main (int argc, char **argv)
 
    time(&time_started);
    int rank = CIRCLE_init(argc, argv);
-   if(rank == 0)
-   {
-        int status = treewalk_redis_run_get("treewalk");
-        if(status == 1)
-        {
-            LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with --force.");
-            exit(1);
-        }
-        if(treewalk_redis_run_cmd("SET treewalk 1","")<0)
-        {
-            LOG(LOG_ERR,"Unable to SET treewalk 1");
-            exit(1);
-        }
-   }
+   char * getCmd = (char *) malloc(sizeof(char)*256);
+   sprintf(getCmd,"treewalk-rank-%d",rank);
+   int status = treewalk_redis_run_get(getCmd);
+   sprintf(getCmd,"set treewalk-rank-%d 1", rank);
+    if(status == 1 && !force_flag)
+    {
+        LOG(LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
+        CIRCLE_finalize();
+        exit(1);
+    }
+    if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
+    {
+        LOG(LOG_ERR,"Unable to %s",getCmd);
+        CIRCLE_finalize();
+        exit(1);
+    }
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
-    if(treewalk_redis_run_cmd("SET treewalk 0","")<0)
+    sprintf(getCmd,"set treewalk-rank-%d 0", rank);
+    if(treewalk_redis_run_cmd(getCmd,"")<0)
     {
-        fprintf(stderr,"Unable to SET treewalk 0");
+        fprintf(stderr,"Unable to %s",getCmd);
         exit(1);
     }
 
