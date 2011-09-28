@@ -173,7 +173,7 @@ process_files(CIRCLE_handle *handle)
 
                      if(convert_status <= 0)
                      {
-                         LOG(LOG_DBG, "The mtime string conversion failed: \"%lld\"", old_mtime);
+                         LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", old_mtime);
                      }
                      else
                      {
@@ -247,25 +247,6 @@ process_files(CIRCLE_handle *handle)
     }
 
     free(key);
-}
-
-long long
-reaper_redis_zcard(char *zset)
-{
-    redisReply *reply;
-    int numReplies = 0;
-
-    reply = redisCommand(REDIS, "ZCARD %s", zset);
-
-    if(reply->type == REDIS_REPLY_INTEGER)
-    {
-        return reply->integer;
-    }
-    else
-    {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to count the number in a zset.");
-        exit(EXIT_FAILURE);
-    }
 }
 
 void
@@ -386,20 +367,19 @@ main (int argc, char **argv)
 
     time(&time_started);
 
-//    NUMBER_FILES_REMAINING = reaper_redis_zcard("mtime");
-
     PURGER_global_rank = CIRCLE_init(argc, argv);
     CIRCLE_cb_process(&process_files);
     CIRCLE_begin();
-    CIRCLE_finalize();
 
     time(&time_finished);
-/***
-    LOG(LOG_INFO, "reaper run started at: %l", time_started);
-    LOG(LOG_INFO, "reaper run completed at: %l", time_finished);
-    LOG(LOG_INFO, "reaper total time (seconds) for this run: %l",
-        ((double) (time_finished - time_started)) / CLOCKS_PER_SEC);
-***/
+
+    LOG(LOG_INFO, "reaper run started at: %ld", time_started);
+    LOG(LOG_INFO, "reaper run completed at: %ld", time_finished);
+    LOG(LOG_INFO, "reaper total time (seconds) for this run: %ld",
+        ((long int) (time_finished - time_started)) / CLOCKS_PER_SEC);
+
+    CIRCLE_finalize();
+
     exit(EXIT_SUCCESS);
 }
 
