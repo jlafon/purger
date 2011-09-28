@@ -196,7 +196,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-AM_CFLAGS = -Wall -Wextra
+AM_CFLAGS = -Wall -Wextra -std=gnu99
 reaper_SOURCES = reaper.c local.c database.c
 reaper_LDADD = \
     $(libcircle_LIBS)                            \
