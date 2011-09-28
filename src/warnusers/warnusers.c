@@ -74,7 +74,7 @@ void warnusers_get_uids(CIRCLE_handle *handle)
             break;
         case 1:
             if(warnusers_redis_run_scard("warnlist") < 0)
-                LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish");
+                LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish.");
             
             /* Spin lock */
             while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
@@ -107,7 +107,7 @@ process_objects(CIRCLE_handle *handle)
     {
         char temp[CIRCLE_MAX_STRING_LEN];
         /* Pop an item off the queue */ 
-        LOG(LOG_DBG, "Popping, queue has %d elements", CIRCLE_queue_count());
+        LOG(LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
         handle->dequeue(temp);
         LOG(LOG_DBG, "Popped [%s]", temp);
     }
