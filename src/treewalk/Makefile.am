@@ -5,7 +5,7 @@ treewalk_LDADD = \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
     $(top_srcdir)/src/hiredis/libhiredis.a \
-    $(top_srcdir)/src/common/libstate.a
+    $(top_srcdir)/src/common/lib_purger_common.a
 
 INCLUDES = \
     $(MPI_CFLAGS)               \
