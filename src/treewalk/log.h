@@ -14,7 +14,7 @@
 
 #define LOG(level, ...) do {  \
         if (level <= TREEWALK_debug_level) { \
-            fprintf(TREEWALK_debug_stream,"%d:%s:%d:",CIRCLE_global_rank, __FILE__, __LINE__); \
+            if(level == LOG_DBG) fprintf(TREEWALK_debug_stream,"%d:%s:%d:",CIRCLE_global_rank, __FILE__, __LINE__); \
             fprintf(TREEWALK_debug_stream, __VA_ARGS__); \
             fprintf(TREEWALK_debug_stream, "\n"); \
             fflush(TREEWALK_debug_stream); \

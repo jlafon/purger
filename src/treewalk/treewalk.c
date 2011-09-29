@@ -40,9 +40,7 @@ process_objects(CIRCLE_handle *handle)
     char stat_temp[CIRCLE_MAX_STRING_LEN];
     struct dirent *current_ent; 
     struct stat st;
-
     char *redis_cmd_buf = (char *)malloc(2048 * sizeof(char));
-
     /* Pop an item off the queue */ 
     handle->dequeue(temp);
     LOG(LOG_DBG, "Popped [%s]", temp);
@@ -309,6 +307,7 @@ main (int argc, char **argv)
     int time_flag = 0;
     int dir_flag = 0;
     int force_flag = 0;
+    int restart_flag = 0;
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
     
@@ -318,18 +317,20 @@ main (int argc, char **argv)
     int rank = CIRCLE_init(argc, argv);
 
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:ft:l:")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:l:r")) != -1)
     {
         switch(c)
         {
             case 'd':
                 TOP_DIR = optarg;
+                if(rank == 0) LOG(LOG_INFO,"Using %s as a root path.",TOP_DIR);
                 dir_flag = 1;
                 break;
-
+        
             case 'l':
                 TREEWALK_debug_level = atoi(optarg);
                 break;
+
             case 'h':
                 redis_hostname = optarg;
                 redis_hostname_flag = 1;
@@ -339,28 +340,33 @@ main (int argc, char **argv)
                 redis_port = atoi(optarg);
                 redis_port_flag = 1;
                 break;
+            
+            case 'r':
+                if(rank == 0) LOG(LOG_WARN,"You have specified to use restart files.");
+                restart_flag = 1;
+                break;
 
             case 't':
                 time_flag = 1;
                 expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
                 if(rank == 0) LOG(LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
+           
             case 'f':
                 force_flag = 1;
                 if(rank == 0) LOG(LOG_WARN,"Warning: You have chosen to force treewalk.");
                 break;
+            
             case '?':
                 if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't' || optopt == 'l')
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-                    exit(EXIT_FAILURE);
                 }
                 else if (isprint (optopt))
                 {
                     print_usage(argv);
                     fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-                    exit(EXIT_FAILURE);
                 }
                 else
                 {
@@ -368,20 +374,25 @@ main (int argc, char **argv)
                     fprintf(stderr,
                         "Unknown option character `\\x%x'.\n",
                         optopt);
-                    exit(EXIT_FAILURE);
                 }
-
+                exit(EXIT_FAILURE);
             default:
                 abort();
         }
     }
-
+    if(restart_flag && dir_flag)
+    {
+        if(rank == 0) LOG(LOG_WARN, "You have told treewalk to use both checkpoint files and a directory.  You cannot combine these options.\n"
+                                    "If you use a directory, treewalk will start from scratch.  If you use a checkpoint file, it will start from\n"
+                                    "from the data in the checkpoint files.\n");
+        exit(EXIT_FAILURE);
+    }
     if(time_flag == 0)
     {
         if(rank == 0) LOG(LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
     }
 
-    if(dir_flag == 0)
+    if(dir_flag == 0 && !restart_flag)
     {
          print_usage(argv);
          if(rank == 0) LOG(LOG_FATAL, "You must specify a starting directory");
@@ -413,6 +424,8 @@ main (int argc, char **argv)
    time(&time_started);
    if(treewalk_check_state(rank,force_flag) < 0)
        exit(1);
+    if(restart_flag)
+        CIRCLE_read_restarts();
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
