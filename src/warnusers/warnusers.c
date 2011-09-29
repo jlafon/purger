@@ -37,14 +37,8 @@ add_objects(CIRCLE_handle *handle)
         }
         else if (status == 1)
         {
-            LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements.");
-            while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
-                ;
-            if(warnusers_redis_run_spop(buf)< 0)
-            {
-                LOG(LOG_WARN,"Warnusers giving up.  No items in the set.");
-                exit(0);
-            }
+            LOG(LOG_WARN,"Treewalk is running, but the set is empty.  Exiting warnusers.");
+            exit(0);
         }
     }
     handle->enqueue(buf);
@@ -276,7 +270,7 @@ warnusers_check_state(int rank, int force)
 void
 print_usage(char **argv)
 {
-    fprintf(stderr, "Usage: %s [-h <redis_hostname> -p <redis_port>]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [-h <redis_hostname> -p <redis_port> -f -l <loglevel>]\n", argv[0]);
 }
 
 int
