@@ -10,6 +10,7 @@
 #include "state.h"
 #include "warnusers.h"
 #include "log.h"
+#include "mail.h"
 
 #include <hiredis.h>
 #include <async.h>
@@ -161,7 +162,7 @@ warnusers_redis_run_scard(char * set)
     }
     else if(getReply->type == REDIS_REPLY_INTEGER)
     {
-        LOG(LOG_DBG,"GET returned an int: %d.",getReply->integer);
+        LOG(LOG_DBG,"GET returned an int: %lld.",getReply->integer);
         return getReply->integer;
     }
     else
