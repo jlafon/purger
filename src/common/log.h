@@ -3,11 +3,7 @@
 
 #include <stdio.h>
 
-#ifndef PURGER_LOGLEVEL
-    #define PURGER_LOGLEVEL 0
-#endif
-
-enum PURGER_loglevel
+typedef enum
 {
     PURGER_LOG_FATAL = 1,
     PURGER_LOG_ERR   = 2,
@@ -26,6 +22,6 @@ enum PURGER_loglevel
     } while (0)
 
 extern FILE *PURGER_dbgstream;
-extern enum PURGER_loglevel PURGER_debug_level;
+extern PURGER_loglevel PURGER_debug_level;
 
 #endif /* LOG_H */

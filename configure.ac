@@ -10,6 +10,7 @@ AM_INIT_AUTOMAKE(purger, [0.0.1])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
+AM_PROG_CC_C_O
 
 # Libtool
 # Pull in libtool. We need to support ancient autotools, so don't use LT_INIT.
@@ -24,9 +25,6 @@ PKG_CHECK_MODULES([libcircle], libcircle)
 
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
-
-# Check for logging options
-X_AC_PURGER_LOGGING
 
 # Check for MPI
 LX_FIND_MPI
@@ -43,7 +41,7 @@ echo "  libcircle ...................................... ????"
 echo "  MPI ............................................ $have_C_mpi"
 echo
 echo "Build Options:"
-echo "  Logging level .................................. $loglevel"
+echo "  N/A"
 echo "========================================================"
 echo
 

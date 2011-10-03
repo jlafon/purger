@@ -3,6 +3,10 @@
 
 #include <libcircle.h>
 
+#define REAPER_DB_SUCCESS 1
+#define REAPER_DB_FATAL -1
+#define REAPER_DB_COLLISION -2
+
 int  reaper_msleep(unsigned long milisec);
 int  reaper_pop_zset(char **results, char *zset, long long start, long long end);
 int  reaper_check_database_for_more(CIRCLE_handle *handle);
