@@ -43,13 +43,13 @@ reaper_check_local_queue(CIRCLE_handle *handle, char *key)
     redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
     if(hmgetReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
+        LOG(PURGER_LOG_DBG, "Hmget returned an array of size: %zu", hmgetReply->elements);
 
         if(hmgetReply->element[1]->type != REDIS_REPLY_STRING || \
                 hmgetReply->element[0]->type != REDIS_REPLY_STRING || \
                 hmgetReply->elements != 2)
         {
-            LOG(LOG_ERR, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
+            LOG(PURGER_LOG_ERR, "Hmget elements were not in the correct format (bad key? \"%s\")", key);
             return;
         }
         else
@@ -70,7 +70,7 @@ reaper_check_local_queue(CIRCLE_handle *handle, char *key)
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
+        LOG(PURGER_LOG_ERR, "Redis didn't return an array when trying to hmget %s.", key);
     }
 }
 
@@ -84,7 +84,7 @@ reaper_mtime_to_number(char *mtime_str)
 
     if(status <= 0)
     {
-        LOG(LOG_DBG, "The mtime string conversion failed: from \"%s\" to \"%ld\"", mtime_str, mtime_num);
+        LOG(PURGER_LOG_DBG, "The mtime string conversion failed: from \"%s\" to \"%ld\"", mtime_str, mtime_num);
         return -1;
     }
 
@@ -98,7 +98,7 @@ reaper_check_and_delete_file(char *filename, long int db_mtime)
 
     if(lstat(filename, &new_stat_buf) != 0)
     {
-        LOG(LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
+        LOG(PURGER_LOG_DBG, "The stat of the potential file failed (%s): %s", strerror(errno), filename);
         return;
     }
     else
@@ -108,18 +108,18 @@ reaper_check_and_delete_file(char *filename, long int db_mtime)
 
         if(convert_status <= 0)
         {
-            LOG(LOG_DBG, "The mtime string conversion failed: \"%ld\"", db_mtime);
+            LOG(PURGER_LOG_DBG, "The mtime string conversion failed: \"%ld\"", db_mtime);
         }
         else
         {
             if(reaper_is_file_expired(db_mtime, new_mtime, 6, filename) == 1)
             {
-                LOG(LOG_DBG, "File has been unlinked: %s", filename);
+                LOG(PURGER_LOG_DBG, "File has been unlinked: %s", filename);
                 // TODO: unlink(filename);
             }
             else
             {
-                LOG(LOG_DBG, "File has not been unlinked: %s", filename);
+                LOG(PURGER_LOG_DBG, "File has not been unlinked: %s", filename);
                 // File is NOT expired. TODO: check database in debug mode.
             }
         }
@@ -147,18 +147,18 @@ reaper_is_file_expired(long int old_db_mtime, long int new_stat_mtime, int age_a
     {
         if(age_in_days > age_allowed_in_days)
         {
-            LOG(LOG_DBG, "This file has been marked for deletion: \"%s\"", filename);
+            LOG(PURGER_LOG_DBG, "This file has been marked for deletion: \"%s\"", filename);
             expired = 1;
         }
         else
         {
-            LOG(LOG_DBG, "File was modified less than %d days ago: \"%s\"", age_allowed_in_days, filename);
+            LOG(PURGER_LOG_DBG, "File was modified less than %d days ago: \"%s\"", age_allowed_in_days, filename);
             expired = 0;
         }
     }
     else
     {
-        LOG(LOG_DBG, "File was POSSIBLY modified (diff %ld): %s", new_stat_mtime - old_db_mtime, filename);
+        LOG(PURGER_LOG_DBG, "File was POSSIBLY modified (diff %ld): %s", new_stat_mtime - old_db_mtime, filename);
         expired = 0;
     }
    

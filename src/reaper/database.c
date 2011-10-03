@@ -14,23 +14,23 @@ redisContext *REDIS;
 int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
-    int num_poped = 0;
+    unsigned int num_poped = 0;
 
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
     if(watchReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Watch returned: %s", watchReply->str);
+        LOG(PURGER_LOG_DBG, "Watch returned: %s", watchReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return a status when trying to watch %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return a status when trying to watch %s.", zset);
         return -1;
     }
 
     redisReply *zrangeReply = redisCommand(REDIS, "ZRANGE %s %lld %lld", zset, start, end - 1);
     if(zrangeReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
+        LOG(PURGER_LOG_DBG, "Zrange returned an array of size: %zu", zrangeReply->elements);
 
         for(num_poped = 0; num_poped < zrangeReply->elements; num_poped++)
         {
@@ -39,40 +39,40 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an array when trying to zrange %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return an array when trying to zrange %s.", zset);
         return -1;
     }
 
     redisReply *multiReply = redisCommand(REDIS, "MULTI");
     if(multiReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Multi returned a status of: %s", multiReply->str);
+        LOG(PURGER_LOG_DBG, "Multi returned a status of: %s", multiReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return a status when trying to multi %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return a status when trying to multi %s.", zset);
         return -1;
     }
 
     redisReply *zremReply = redisCommand(REDIS, "ZREMRANGEBYRANK %s %lld %lld", zset, start, end);
     if(zremReply->type == REDIS_REPLY_STATUS)
     {
-        LOG(LOG_DBG, "Zremrangebyrank returned a status of: %s", zremReply->str);
+        LOG(PURGER_LOG_DBG, "Zremrangebyrank returned a status of: %s", zremReply->str);
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s.", zset);
         return -1;
     }
 
     redisReply *execReply = redisCommand(REDIS, "EXEC");
     if(execReply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
+        LOG(PURGER_LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
 
         if(execReply->elements == -1)
         {
-            LOG(LOG_DBG, "Normal pop from the zset clashed. Try it again later.");
+            LOG(PURGER_LOG_DBG, "Normal pop from the zset clashed. Try it again later.");
             return -1;
         }
         else
@@ -83,7 +83,7 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
     else
     {
-        LOG(LOG_ERR, "Redis didn't return an array trying to exec %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return an array trying to exec %s.", zset);
         exit(EXIT_FAILURE);
     }
 }
@@ -106,13 +106,13 @@ reaper_check_database_for_more(CIRCLE_handle *handle)
     {
         for(i = 0; i < num_poped; i++)
         {
-            LOG(LOG_DBG, "Queueing: %s", del_keys[i]);
+            LOG(PURGER_LOG_DBG, "Queueing: %s", del_keys[i]);
             handle->enqueue(del_keys[i]);
         }
     }
     else
     {
-        LOG(LOG_DBG, "Atomic pop failed (%d)", num_poped);
+        LOG(PURGER_LOG_DBG, "Atomic pop failed (%d)", num_poped);
     }
 
     for(i = 0; i < batch_size; i++)
@@ -131,23 +131,23 @@ reaper_redis_zrangebyscore(char *zset, long long from, long long to)
 
     if(reply->type == REDIS_REPLY_ARRAY)
     {
-        LOG(LOG_DBG, "We have an array.");
+        LOG(PURGER_LOG_DBG, "We have an array.");
 
         for(numReplies = reply->elements - 1; numReplies >= 0; numReplies--)
         {
             if(reply->element[numReplies]->type == REDIS_REPLY_STRING)
             {
-                LOG(LOG_DBG, "Replied with: %s", reply->element[numReplies]->str);
+                LOG(PURGER_LOG_DBG, "Replied with: %s", reply->element[numReplies]->str);
             }
             else
             {
-                LOG(LOG_DBG, "WTF");
+                LOG(PURGER_LOG_DBG, "WTF");
             }
         }
     }
     else
     {
-        LOG(LOG_DBG, "Reply was something wheird.");
+        LOG(PURGER_LOG_DBG, "Reply was something wheird.");
     }
 }
 

@@ -7,11 +7,14 @@
     #define PURGER_LOGLEVEL 0
 #endif
 
-#define LOG_FATAL (1)
-#define LOG_ERR   (2)
-#define LOG_WARN  (3)
-#define LOG_INFO  (4)
-#define LOG_DBG   (5)
+enum PURGER_loglevel
+{
+    PURGER_LOG_FATAL = 1,
+    PURGER_LOG_ERR   = 2,
+    PURGER_LOG_WARN  = 3,
+    PURGER_LOG_INFO  = 4,
+    PURGER_LOG_DBG   = 5
+} PURGER_loglevel;
 
 #define LOG(level, ...) do {  \
         if (level <= PURGER_debug_level) { \
@@ -23,6 +26,6 @@
     } while (0)
 
 extern FILE *PURGER_dbgstream;
-extern int  PURGER_debug_level;
+extern enum PURGER_loglevel PURGER_debug_level;
 
 #endif /* LOG_H */
