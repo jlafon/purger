@@ -247,18 +247,11 @@ treewalk_redis_run_get(char * key)
 int
 treewalk_redis_keygen(char *buf, char *filename)
 {
-    unsigned char filename_hash[32];
-
-    int hash_idx = 0;
+    static unsigned char hash_buffer[65];
     int cnt = 0;
 
-    /* Add the key header */
-    cnt += sprintf(buf, "file:");
-
-    /* Generate and add the key */
-    treewalk_filename_hash(filename_hash, (unsigned char *)filename);
-    for(hash_idx = 0; hash_idx < 32; hash_idx++)
-        cnt += sprintf(buf + cnt, "%02x", filename_hash[hash_idx]);
+    treewalk_filename_hash(filename, hash_buffer);
+    cnt += sprintf(buf, "file:%s\n", hash_buffer);
 
     return cnt;
 }
@@ -484,10 +477,10 @@ main (int argc, char **argv)
         LOG(LOG_INFO, "treewalk run completed at: %s", endtime_str);
         LOG(LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
         LOG(LOG_INFO, "\nTotal time in process_objects: %lf\n\
-                   \tRedis commands: %lf %lf%\n\
-                   \tStating:  %lf %lf%\n\
-                   \tReaddir: %lf %lf%\n\
-                   \tHashing: %lf %lf%\n",
+                   \tRedis commands: %lf %lf\n\
+                   \tStating:  %lf %lf\n\
+                   \tReaddir: %lf %lf\n\
+                   \tHashing: %lf %lf\n",
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }

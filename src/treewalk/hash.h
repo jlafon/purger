@@ -3,6 +3,6 @@
 
 #include <openssl/sha.h>
 
-void treewalk_filename_hash(unsigned char* md, const unsigned char* input);
+void treewalk_filename_hash(char *in, char out[65]);
 
 #endif /* HASH_H */
