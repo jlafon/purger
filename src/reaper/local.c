@@ -14,7 +14,7 @@
 extern redisContext *REDIS;
 extern int PURGER_global_rank;
 
-static unsigned long int
+unsigned long int
 reaper_strtoul(const char *nptr, int *ret_code)
 {
     unsigned long int value;
