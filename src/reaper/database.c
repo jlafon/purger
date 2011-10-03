@@ -18,14 +18,14 @@ reaper_backoff_database(CIRCLE_handle *handle)
     float rand_num = 0.0;
     float exp_factor = 2.0;
 
-    int init_timeout = 50;
+    int init_timeout = 10;
     int num_retries = 0;
     int max_timeout = 120000; // 2 minutes
 
     int delay = 0;
     int status = REAPER_DB_COLLISION;
 
-    /* Something around 1.5) */
+    /* Something around 1.5 */
     rand_num = (2.0 * (rand() / (RAND_MAX + 1.0)));
 
     while(status == REAPER_DB_COLLISION)
@@ -51,7 +51,7 @@ reaper_backoff_database(CIRCLE_handle *handle)
 int
 reaper_msleep(unsigned long milisec)
 {
-    struct timespec req = {0};
+    struct timespec req;
     time_t sec = (int)(milisec / 1000);
 
     milisec = milisec - (sec * 1000);
@@ -69,7 +69,7 @@ reaper_msleep(unsigned long milisec)
 int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
-    int num_poped = 0;
+    unsigned long long num_poped = 0;
 
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
     if(watchReply->type == REDIS_REPLY_STATUS)
@@ -101,11 +101,13 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     redisReply *multiReply = redisCommand(REDIS, "MULTI");
     if(multiReply->type == REDIS_REPLY_STATUS)
     {
+        /* Multi always returns OK. So lets only worry about the exec return. */
         LOG(PURGER_LOG_DBG, "Multi returned a status of: %s", multiReply->str);
     }
     else
     {
-        LOG(PURGER_LOG_ERR, "Redis didn't return a status when trying to multi %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return a status when trying to multi %s. Discarding transaction.", zset);
+        redisCommand(REDIS, "DISCARD");
         return REAPER_DB_FATAL;
     }
 
@@ -116,7 +118,8 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
     else
     {
-        LOG(PURGER_LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s.", zset);
+        LOG(PURGER_LOG_ERR, "Redis didn't return an integer when trying to zremrangebyrank %s. Discarding transaction.", zset);
+        redisCommand(REDIS, "DISCARD");
         return REAPER_DB_FATAL;
     }
 
