@@ -341,7 +341,7 @@ main (int argc, char **argv)
         switch(c)
         {
             case 'd':
-                TOP_DIR = optarg;
+                TOP_DIR = realpath(optarg, NULL);
                 if(rank == 0) LOG(LOG_INFO,"Using %s as a root path.",TOP_DIR);
                 dir_flag = 1;
                 break;
