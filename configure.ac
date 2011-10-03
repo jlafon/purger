@@ -10,9 +10,11 @@ AM_INIT_AUTOMAKE(purger, [0.0.1])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
+
 # Libtool
-LT_INIT
-AC_SUBST(LIBTOOL_DEPS)
+# Pull in libtool. We need to support ancient autotools, so don't use LT_INIT.
+#LT_INIT
+AC_PROG_LIBTOOL
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
