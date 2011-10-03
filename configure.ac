@@ -1,23 +1,25 @@
-AC_INIT([purger],[0.0.1],[github-hpc@lanl.gov])
-AC_CONFIG_SRCDIR([src])
-AC_CONFIG_HEADERS([config.h])
+AC_INIT([purger],[0.1],[github-hpc@lanl.gov],[purger],[http://github.com/hpc/purger])
 
+# Keep artifacts in directories as much as possible.
 AC_CONFIG_AUX_DIR(auxdir)
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE(purger, [0.0.1])
+AM_INIT_AUTOMAKE([-Wall no-define])
+AC_CONFIG_HEADERS([config.h])
 
-# Checks for programs.
+# Check for compilers.
 AC_PROG_CC
-AC_PROG_RANLIB
 AM_PROG_CC_C_O
 
-# Libtool
+# Needed for tests
+#X_AC_PURGER_CHECK
+
 # Pull in libtool. We need to support ancient autotools, so don't use LT_INIT.
 #LT_INIT
 AC_PROG_LIBTOOL
 
 # Checks for header files.
+AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
 
 # Check for libcircle
@@ -25,6 +27,8 @@ PKG_CHECK_MODULES([libcircle], libcircle)
 
 # Checks for library functions.
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
+AC_FUNC_LSTAT
+AC_FUNC_MALLOC
 
 # Check for MPI
 LX_FIND_MPI

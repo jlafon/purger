@@ -7,7 +7,7 @@ warnusers_LDADD = \
     $(top_srcdir)/src/hiredis/libhiredis.a \
     $(top_srcdir)/src/common/lib_purger_common.a
 
-INCLUDES = \
+warnusers_CPPFLAGS = \
     $(MPI_CFLAGS)               \
     $(libcircle_CFLAGS)         \
     -I$(top_srcdir)/src/hiredis \

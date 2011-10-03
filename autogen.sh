@@ -84,6 +84,7 @@ mkdir auxdir 2>/dev/null
 
 set -x
 
+rm -f ./m4/libtool.m4
 rm -f ./config.h.in
 rm -f ./aclocal.m4
 rm -rf ./autom4te*.cache
