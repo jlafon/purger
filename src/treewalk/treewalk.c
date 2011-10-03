@@ -15,11 +15,18 @@
 
 #include <hiredis.h>
 #include <async.h>
+#include <mpi.h>
 
 FILE* TREEWALK_debug_stream;
 int TREEWALK_debug_level;
 char         *TOP_DIR;
 redisContext *REDIS;
+
+double process_objects_total[2];
+double hash_time[2];
+double redis_time[2];
+double stat_time[2];
+double readdir_time[2];
 
 time_t time_started;
 time_t time_finished;
@@ -35,18 +42,21 @@ add_objects(CIRCLE_handle *handle)
 void
 process_objects(CIRCLE_handle *handle)
 {
+    process_objects_total[0] = MPI_Wtime();
     DIR *current_dir;
     char temp[CIRCLE_MAX_STRING_LEN];
     char stat_temp[CIRCLE_MAX_STRING_LEN];
     struct dirent *current_ent; 
     struct stat st;
+    int status = 0;
     char *redis_cmd_buf = (char *)malloc(2048 * sizeof(char));
     /* Pop an item off the queue */ 
     handle->dequeue(temp);
-    LOG(LOG_DBG, "Popped [%s]", temp);
-
     /* Try and stat it, checking to see if it is a link */
-    if(lstat(temp,&st) != EXIT_SUCCESS)
+    stat_time[0] = MPI_Wtime();
+    status = lstat(temp,&st);
+    stat_time[1] += MPI_Wtime()-stat_time[0];
+    if(status != EXIT_SUCCESS)
     {
             LOG(LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
     }
@@ -59,6 +69,7 @@ process_objects(CIRCLE_handle *handle)
         }
         else
         {
+            readdir_time[0] = MPI_Wtime();
             /* Read in each directory entry */
             while((current_ent = readdir(current_dir)) != NULL)
             {
@@ -73,14 +84,21 @@ process_objects(CIRCLE_handle *handle)
                     handle->enqueue(&stat_temp[0]);
                 }
             }
+            readdir_time[1] += MPI_Wtime() - readdir_time[0];
         }
         closedir(current_dir);
     }
     else if(S_ISREG(st.st_mode)) {
-        treewalk_redis_run_cmd("MULTI", temp);
+
+        redis_time[0] = MPI_Wtime();
+
 
         char filekey[512];
+        hash_time[0] = MPI_Wtime();
         treewalk_redis_keygen(filekey, temp);
+        hash_time[1] += MPI_Wtime() - hash_time[0];
+        
+        treewalk_redis_run_cmd("MULTI", temp);
 
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
@@ -102,9 +120,11 @@ process_objects(CIRCLE_handle *handle)
 
         /* Run all of the cmds. */
         treewalk_redis_run_cmd("EXEC", temp);
+        redis_time[1] += MPI_Wtime() - redis_time[0];
 
     }
 
+    process_objects_total[1] += MPI_Wtime() - process_objects_total[0];
     free(redis_cmd_buf);
 }
 void
@@ -310,6 +330,12 @@ main (int argc, char **argv)
     int restart_flag = 0;
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
+
+    process_objects_total[2] = 0;
+    redis_time[2] = 0;
+    stat_time[2] = 0;
+    readdir_time[2] = 0;
+
     
     /* Enable logging. */
     TREEWALK_debug_stream = stdout;
@@ -457,8 +483,15 @@ main (int argc, char **argv)
         LOG(LOG_INFO, "treewalk run started at: %s", starttime_str);
         LOG(LOG_INFO, "treewalk run completed at: %s", endtime_str);
         LOG(LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
+        LOG(LOG_INFO, "\nTotal time in process_objects: %lf\n\
+                   \tRedis commands: %lf %lf%\n\
+                   \tStating:  %lf %lf%\n\
+                   \tReaddir: %lf %lf%\n\
+                   \tHashing: %lf %lf%\n",
+                   process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
+                   ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
-        exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
 }
 
 /* EOF */
