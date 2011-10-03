@@ -28,7 +28,7 @@ process_files(CIRCLE_handle *handle)
 
     if(key != NULL && strlen(key) > 0)
     {
-        reaper_check_local_queue(handle, key);
+        reaper_check_local_queue(key);
     }
     else
     {

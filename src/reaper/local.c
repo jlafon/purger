@@ -39,7 +39,7 @@ reaper_strtoul(const char *nptr, int *ret_code)
 }
 
 void
-reaper_check_local_queue(CIRCLE_handle *handle, char *key)
+reaper_check_local_queue(char *key)
 {
     redisReply *hmgetReply = redisCommand(REDIS, "HMGET %s mtime_decimal name", key);
     if(hmgetReply->type == REDIS_REPLY_ARRAY)
