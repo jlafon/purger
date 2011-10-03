@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <hiredis.h>
 
 #include "config.h"

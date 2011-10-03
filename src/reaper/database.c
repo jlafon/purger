@@ -28,7 +28,7 @@ reaper_backoff_database(CIRCLE_handle *handle)
     /* Something around 1.5) */
     rand_num = (2.0 * (rand() / (RAND_MAX + 1.0)));
 
-    while(status == -2)
+    while(status == REAPER_DB_COLLISION)
     {
         status = reaper_check_database_for_more(handle);
 
