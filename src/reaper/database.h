@@ -3,7 +3,6 @@
 
 #include <libcircle.h>
 
-#define REAPER_DB_SUCCESS 1
 #define REAPER_DB_FATAL -1
 #define REAPER_DB_COLLISION -2
 

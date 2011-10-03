@@ -69,7 +69,7 @@ reaper_msleep(unsigned long milisec)
 int
 reaper_pop_zset(char **results, char *zset, long long start, long long end)
 {
-    unsigned long long num_poped = 0;
+    size_t num_poped = 0;
 
     redisReply *watchReply = redisCommand(REDIS, "WATCH %s", zset);
     if(watchReply->type == REDIS_REPLY_STATUS)
@@ -124,26 +124,34 @@ reaper_pop_zset(char **results, char *zset, long long start, long long end)
     }
 
     redisReply *execReply = redisCommand(REDIS, "EXEC");
-    if(execReply->type == REDIS_REPLY_ARRAY)
+    if(execReply->type == REDIS_REPLY_ERROR)
+    {
+        LOG(PURGER_LOG_DBG, "Normal pop from the zset clashed. Try it again later. (%s)", REDIS->errstr);
+        return REAPER_DB_COLLISION;
+    }
+    else if(execReply->type == REDIS_REPLY_ARRAY)
     {
         LOG(PURGER_LOG_DBG, "Exec returned an array of size: %ld", execReply->elements);
 
-        if(execReply->elements == -1)
+        if(execReply->elements > 1)
         {
-            LOG(PURGER_LOG_DBG, "Normal pop from the zset clashed. Try it again later.");
-            return REAPER_DB_COLLISION;
+            LOG(PURGER_LOG_DBG, "Success on a reaper transaction. (%s)", zset);
+            return num_poped;
         }
         else
         {
-            /* Success */
-            return num_poped;
+            LOG(PURGER_LOG_DBG, "The transaction returned an empty result, something is wrong. (%s)", zset);
+            return REAPER_DB_FATAL;
         }
     }
     else
     {
         LOG(PURGER_LOG_ERR, "Redis didn't return an array trying to exec %s.", zset);
-        exit(EXIT_FAILURE);
+        return REAPER_DB_FATAL;
     }
+
+    LOG(PURGER_LOG_DBG, "If we got here, then we missed an edge case.");
+    return REAPER_DB_FATAL;
 }
 
 int
@@ -173,13 +181,16 @@ reaper_check_database_for_more(CIRCLE_handle *handle)
     else
     {
         LOG(PURGER_LOG_DBG, "Atomic pop failed (%d)", num_poped);
-        return num_poped; // Error code
     }
+
 
     for(i = 0; i < batch_size; i++)
     {
         free(del_keys[i]);
     }
+
+    /* Return error code or the number poped. */
+    return num_poped;
 }
 
 void
