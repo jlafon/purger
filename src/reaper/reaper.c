@@ -3,8 +3,6 @@
 #include <string.h>
 #include <errno.h>
 #include <hiredis.h>
-#include <time.h>
-#include <ctype.h>
 
 #include "config.h"
 
@@ -16,7 +14,7 @@ time_t time_finished;
 
 FILE *PURGER_dbgstream;
 int  PURGER_global_rank;
-enum PURGER_loglevel PURGER_debug_level;
+int  PURGER_debug_level;
 
 extern redisContext *REDIS;
 
@@ -29,31 +27,11 @@ process_files(CIRCLE_handle *handle)
 
     if(key != NULL && strlen(key) > 0)
     {
-        //reaper_check_local_queue(handle, key);
+        reaper_check_local_queue(handle, key);
     }
     else
     {
-//        int sleeptime = 1;
-//        int maxsleep = 600;
-
-        /* Check for a collision in the DB query */
-/*       while(status == -2)
-        {
-            status = reaper_check_database_for_more(handle);
-
-            sleeptime = (sleeptime
-
-            sleeptime = ((((sleeptime) - (maxsleep)) & 0x80000000) >> 31) ? \
-                (sleeptime) : (maxsleep);
-
-            if(sleeptime == maxsleep)
-            {
-                LOG(PURGER_LOG_DBG, "Things are running very slow. Is the database overloaded?");
-            }
-
-            sleep(sleeptime);
-        }
-   */
+        reaper_backoff_database(handle);
     }
     /* TODO: if both of the above fail, add a card check. */
 
@@ -126,23 +104,23 @@ main (int argc, char **argv)
 
     if(redis_hostname_flag == 0)
     {
-        LOG(PURGER_LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
+        LOG(LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
         redis_hostname = "localhost";
     }
 
     if(redis_port_flag == 0)
     {
-        LOG(PURGER_LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
+        LOG(LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
         redis_port = 6379;
     }
 
     for (index = optind; index < argc; index++)
-        LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
+        LOG(LOG_WARN, "Non-option argument %s", argv[index]);
 
     REDIS = redisConnect(redis_hostname, redis_port);
     if (REDIS->err)
     {
-        LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
+        LOG(LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
     }
 
@@ -154,9 +132,9 @@ main (int argc, char **argv)
 
     time(&time_finished);
 
-    LOG(PURGER_LOG_INFO, "reaper run started at: %ld", time_started);
-    LOG(PURGER_LOG_INFO, "reaper run completed at: %ld", time_finished);
-  //  LOG(PURGER_LOG_INFO, "reaper total time (seconds) for this run: %ld",
+    LOG(LOG_INFO, "reaper run started at: %ld", time_started);
+    LOG(LOG_INFO, "reaper run completed at: %ld", time_finished);
+  //  LOG(LOG_INFO, "reaper total time (seconds) for this run: %ld",
 //        ((long int) (time_finished - time_started)) / CLOCKS_PER_SEC);
 
     CIRCLE_finalize();
