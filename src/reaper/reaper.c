@@ -4,7 +4,11 @@
 #include <errno.h>
 #include <hiredis.h>
 #include <ctype.h>
-#include <libintl.h>
+
+#ifdef __MACOSX__
+  #include <libintl.h>
+#endif
+
 #include <stdio.h>
 
 #include "config.h"
