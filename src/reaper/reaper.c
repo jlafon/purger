@@ -4,6 +4,8 @@
 #include <errno.h>
 #include <hiredis.h>
 #include <ctype.h>
+#include <libintl.h>
+#include <stdio.h>
 
 #include "config.h"
 
@@ -45,6 +47,38 @@ print_usage(char **argv)
     fprintf(stderr, "Usage: %s [-h <redis_hostname> -p <redis_port>]\n", argv[0]);
 }
 
+void
+reaper_confirm_exec()
+{
+    char *line = NULL;
+    int len = 0;
+     
+    fputs(gettext(
+        "This program will DELETE MANY FILES!\n" \
+        "Are you sure you want to do this? "), stdout);
+    fflush(stdout);
+
+    while(getline(&line, &len, stdin) >= 0)
+    {
+        int res = rpmatch(line);
+        if (res >= 0)
+        {
+            if (res > 0)
+            {
+                /* A yes answer */
+                return;
+            }
+            else
+            {
+                /* A no answer */
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    free (line);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -57,12 +91,14 @@ main (int argc, char **argv)
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
 
+    int yes_flag = 0;
+
     /* Enable logging. */
     PURGER_dbgstream = stderr;
     PURGER_debug_level = PURGER_LOG_DBG;
 
     opterr = 0;
-    while((c = getopt(argc, argv, "h:p:")) != -1)
+    while((c = getopt(argc, argv, "h:p:y")) != -1)
     {
         switch(c)
         {
@@ -74,6 +110,10 @@ main (int argc, char **argv)
             case 'p':
                 redis_port = atoi(optarg);
                 redis_port_flag = 1;
+                break;
+
+            case 'y':
+                yes_flag = 1;
                 break;
 
             case '?':
@@ -101,6 +141,11 @@ main (int argc, char **argv)
             default:
                 abort();
         }
+    }
+
+    if(yes_flag == 0)
+    {
+        reaper_confirm_exec();
     }
 
     if(redis_hostname_flag == 0)
