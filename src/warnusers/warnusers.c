@@ -102,7 +102,7 @@ process_objects(CIRCLE_handle *handle)
 void
 warnusers_redis_run_sadd(int id)
 {
-    static char *buf = (char*)malloc(2048 * sizeof(char));
+    char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf,"SADD warnlist %d",id);
     warnusers_redis_run_cmd(buf,buf);
 }
