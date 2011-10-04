@@ -12,7 +12,7 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 # Needed for tests
-#X_AC_PURGER_CHECK
+X_AC_PURGER_CHECK
 
 # Pull in libtool. We need to support ancient autotools, so don't use LT_INIT.
 #LT_INIT
@@ -46,7 +46,7 @@ echo "  libcircle ...................................... ????"
 echo "  MPI ............................................ $have_C_mpi"
 echo
 echo "Build Options:"
-echo "  N/A"
+echo "  Unit tests ..................................... $x_ac_purger_check"
 echo "========================================================"
 echo
 
