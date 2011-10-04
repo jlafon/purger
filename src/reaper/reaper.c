@@ -44,7 +44,7 @@ process_files(CIRCLE_handle *handle)
 void
 print_usage(char **argv)
 {
-    fprintf(stderr, "Usage: %s [-h <redis_hostname> -p <redis_port>]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [-h <redis_hostname> -p <redis_port> -y]\n", argv[0]);
 }
 
 void
