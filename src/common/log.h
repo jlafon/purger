@@ -14,14 +14,14 @@ typedef enum
 
 #define LOG(level, ...) do {  \
         if (level <= PURGER_debug_level) { \
-            fprintf(PURGER_dbgstream,"%d:%s:%d:", PURGER_global_rank, __FILE__, __LINE__); \
-            fprintf(PURGER_dbgstream, __VA_ARGS__); \
-            fprintf(PURGER_dbgstream, "\n"); \
-            fflush(PURGER_dbgstream); \
+            fprintf(PURGER_debug_stream,"%d:%s:%d:", PURGER_global_rank, __FILE__, __LINE__); \
+            fprintf(PURGER_debug_stream, __VA_ARGS__); \
+            fprintf(PURGER_debug_stream, "\n"); \
+            fflush(PURGER_debug_stream); \
         } \
     } while (0)
 
-extern FILE *PURGER_dbgstream;
+extern FILE *PURGER_debug_stream;
 extern PURGER_loglevel PURGER_debug_level;
 
 #endif /* LOG_H */

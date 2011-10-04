@@ -19,7 +19,7 @@
 
 #include "../common/log.h"
 
-FILE *PURGER_dbgstream;
+FILE *PURGER_debug_stream;
 int  PURGER_global_rank;
 PURGER_loglevel PURGER_debug_level;
 
@@ -98,7 +98,7 @@ main (int argc, char **argv)
     int yes_flag = 0;
 
     /* Enable logging. */
-    PURGER_dbgstream = stderr;
+    PURGER_debug_stream = stderr;
     PURGER_debug_level = PURGER_LOG_DBG;
 
     opterr = 0;
