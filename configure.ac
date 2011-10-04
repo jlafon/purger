@@ -16,6 +16,7 @@ AM_PROG_CC_C_O
 
 # Pull in libtool. We need to support ancient autotools, so don't use LT_INIT.
 #LT_INIT
+AC_PROG_RANLIB
 AC_PROG_LIBTOOL
 
 # Checks for header files.
@@ -50,14 +51,15 @@ echo "========================================================"
 echo
 
 AC_CONFIG_FILES([ \
-    Makefile              \
-    src/Makefile          \
-    src/common/Makefile   \
-    src/hiredis/Makefile  \
-    src/treewalk/Makefile \
-    src/reaper/Makefile   \
+    Makefile               \
+    src/Makefile           \
+    src/common/Makefile    \
+    src/hiredis/Makefile   \
+    src/treewalk/Makefile  \
+    src/reaper/Makefile    \
     src/warnusers/Makefile \
-    doc/Makefile          \
+    tests/Makefile         \
+    doc/Makefile           \
     doc/man/Makefile
 ])
 

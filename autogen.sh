@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Run this script to generate aclocal.m4, config.h.in, 
 # Makefile.in's, and ./configure...
@@ -75,6 +75,15 @@ test -n "$NO_AUTOMAKE" || (aclocal --version) < /dev/null > /dev/null 2>&1 || {
     DIE=1
 }
 
+LIBTOOLIZE=`which libtoolize`
+if [ "${LIBTOOLIZE}foo" == "foo" ]; then
+    LIBTOOLIZE=`which glibtoolize`
+    if [ "${LIBTOOLIZE}foo" == "foo" ]; then
+        echo "Error: Libtoolize was not found."
+        DIE=1
+    fi
+fi
+
 if test $DIE -eq 1; then
     exit 1
 fi
@@ -86,10 +95,9 @@ set -x
 
 rm -f ./m4/libtool.m4
 rm -f ./config.h.in
-rm -f ./aclocal.m4
 rm -rf ./autom4te*.cache
 aclocal -I m4 -I auxdir $ACLOCAL_FLAGS || exit 1
-libtoolize --automake --copy --force || exit 1
+$LIBTOOLIZE --automake --copy --force || exit 1
 autoheader || exit 1
 automake --add-missing --copy --force-missing || exit 1
 autoconf --force --warnings=no-obsolete || exit 1
