@@ -55,7 +55,7 @@ void warnusers_get_uids(CIRCLE_handle *handle)
     {
         case 0:
             LOG(PURGER_LOG_DBG,"Treewalk no longer running.");
-            if(warnusers_redis_run_scard("warnlist") < 0)
+            if(warnusers_redis_run_scard("warnlist") <= 0)
             {
                 LOG(PURGER_LOG_WARN,"Treewalk is not running, and the set is empty. Exiting.");
                 exit(0);
@@ -69,26 +69,13 @@ void warnusers_get_uids(CIRCLE_handle *handle)
                 }
                 handle->enqueue(uid);
             }
-
-            
             break;
         case 1:
             if(warnusers_redis_run_scard("warnlist") < 0)
-                LOG(PURGER_LOG_WARN,"Treewalk is running, but the set is empty.  Warnusers will now spinlock waiting for set elements, or for treewalk to finish.");
-            
-            /* Spin lock */
-            while(warnusers_redis_run_scard("warnlist") <= 0 && warnusers_redis_run_get("treewalk") == 1)
-                ;
-            for(i=0; i < warnusers_redis_run_scard("warnlist"); i++)
-            {
-                if(warnusers_redis_run_spop(uid) == -1)
-                {
-                    LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid set.");
-                    exit(0);
-                }
-                handle->enqueue(uid);
-            }
+                LOG(PURGER_LOG_ERR,"Treewalk is running, you need to let treewalk finish.");
+            exit(0);
             break;
+            
         default:
             LOG(PURGER_LOG_ERR,"Treewalk key not set.  Unexpected state.");
             break;
@@ -115,7 +102,7 @@ process_objects(CIRCLE_handle *handle)
 void
 warnusers_redis_run_sadd(int id)
 {
-    char *buf = (char*)malloc(2048 * sizeof(char));
+    static char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf,"SADD warnlist %d",id);
     warnusers_redis_run_cmd(buf,buf);
 }
@@ -365,7 +352,7 @@ main (int argc, char **argv)
     }
 
     time(&time_started);
-    
+        
     if(warnusers_check_state(PURGER_global_rank,force_flag) < 0)
         exit(1);
     CIRCLE_cb_process(&process_objects);
