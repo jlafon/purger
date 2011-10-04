@@ -100,11 +100,11 @@ process_objects(CIRCLE_handle *handle)
         treewalk_redis_keygen(filekey, temp);
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
-        treewalk_redis_run_cmd("MULTI", temp);
+        treewalk_redis_run_cmd("MULTI");
 
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
-        treewalk_redis_run_cmd(redis_cmd_buf, temp);
+        treewalk_redis_run_cmd(redis_cmd_buf);
         
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
@@ -113,7 +113,7 @@ process_objects(CIRCLE_handle *handle)
         {
             LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
             /* The mtime of the file as a zadd. */
-            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime", temp);
+            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime");
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
         }
@@ -121,7 +121,7 @@ process_objects(CIRCLE_handle *handle)
         //treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
 
         /* Run all of the cmds. */
-        treewalk_redis_run_cmd("EXEC", temp);
+        treewalk_redis_run_cmd("EXEC");
         redis_time[1] += MPI_Wtime() - redis_time[0];
 
     }
@@ -135,11 +135,11 @@ treewalk_redis_run_sadd(struct stat *st)
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
     //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
-    treewalk_redis_run_cmd(buf,buf);
+    treewalk_redis_run_cmd(buf);
 }
 
 int
-treewalk_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
+treewalk_redis_run_zadd(char *filekey, long val, char *zset)
 {
     int cnt = 0;
     char *buf = (char *)malloc(2048 * sizeof(char));
@@ -148,7 +148,7 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset, char *filename)
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
 
-    treewalk_redis_run_cmd(buf, filename);
+    treewalk_redis_run_cmd(buf);
     free(buf);
 
     return cnt;
@@ -188,7 +188,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 
 
 int
-treewalk_redis_run_cmd(char *cmd, char *filename)
+treewalk_redis_run_cmd(char *cmd)
 {
     LOG(PURGER_LOG_DBG, "RedisCmd = \"%s\"", cmd);
     redisReply *reply = redisCommand(REDIS, cmd);
@@ -291,13 +291,13 @@ treewalk_check_state(int rank, int force)
         if(rank == 0) LOG(PURGER_LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
         return -1;
     }
-    if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
+    if(rank == 0 && treewalk_redis_run_cmd(getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
     }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
-   if(rank == 0 && treewalk_redis_run_cmd(getCmd,"")<0)
+   if(rank == 0 && treewalk_redis_run_cmd(getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
@@ -454,7 +454,7 @@ main (int argc, char **argv)
     
     char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
-    if(treewalk_redis_run_cmd(getCmd,"")<0)
+    if(treewalk_redis_run_cmd(getCmd)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
         exit(1);
@@ -469,7 +469,7 @@ main (int argc, char **argv)
     strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
-    if(treewalk_redis_run_cmd(getCmd,getCmd)<0)
+    if(treewalk_redis_run_cmd(getCmd)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }

@@ -1,8 +1,9 @@
 #include <string.h>
+#include <stdio.h>
 #include "hash.h"
 
 void
-treewalk_filename_hash(char *in, char out[65])
+treewalk_filename_hash(char *in, unsigned char out[65])
 {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     int i = 0;
@@ -14,7 +15,7 @@ treewalk_filename_hash(char *in, char out[65])
 
     for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
     {
-        sprintf(out + (i * 2), "%02x", digest[i]);
+        sprintf((char*)out + (i * 2), "%02x", (char) digest[i]);
     }
 
     out[64] = 0;
