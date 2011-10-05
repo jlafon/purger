@@ -29,6 +29,7 @@ double hash_time[2];
 double redis_time[2];
 double stat_time[2];
 double readdir_time[2];
+int benchmarking_flag;
 int sharded_flag;
 int sharded_count;
 time_t time_started;
@@ -102,7 +103,7 @@ process_objects(CIRCLE_handle *handle)
         process_dir(stat_temp,temp,handle); 
         readdir_time[1] += MPI_Wtime() - readdir_time[0];
     }
-    else if(S_ISREG(st.st_mode)) 
+    else if(!benchmarking_flag && S_ISREG(st.st_mode)) 
     {
         /* Hash the file */
         hash_time[0] = MPI_Wtime();
@@ -257,7 +258,7 @@ treewalk_check_state(int rank, int force)
 void
 print_usage(char **argv)
 {
-    fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f]\n", argv[0]);
+    fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f -b]\n", argv[0]);
 }
 
 int
@@ -275,6 +276,7 @@ main (int argc, char **argv)
     int force_flag = 0;
     int restart_flag = 0;
     int redis_hostname_flag = 0;
+    benchmarking_flag = 0;
     sharded_flag = 0;
     int redis_port_flag = 0;
 
@@ -291,10 +293,13 @@ main (int argc, char **argv)
     int rank = CIRCLE_init(argc, argv);
     PURGER_global_rank = rank;
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:ft:l:rs:")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
     {
         switch(c)
         {
+            case 'b':
+		benchmarking_flag = 1;
+		break;
             case 'd':
                 TOP_DIR = realpath(optarg, NULL);
                 if(rank == 0) LOG(PURGER_LOG_INFO,"Using %s as a root path.",TOP_DIR);
@@ -336,7 +341,7 @@ main (int argc, char **argv)
                 break;
             
             case '?':
-                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't' || optopt == 'l')
+                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 't' || optopt == 'l' || optopt == 's')
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -358,32 +363,32 @@ main (int argc, char **argv)
                 abort();
         }
     }
-    if(restart_flag && dir_flag)
+    if(restart_flag && dir_flag && !benchmarking_flag)
     {
         if(rank == 0) LOG(PURGER_LOG_WARN, "You have told treewalk to use both checkpoint files and a directory.  You cannot combine these options.\n"
                                     "If you use a directory, treewalk will start from scratch.  If you use a checkpoint file, it will start from\n"
                                     "from the data in the checkpoint files.\n");
         exit(EXIT_FAILURE);
     }
-    if(time_flag == 0)
+    if(time_flag == 0 && !benchmarking_flag)
     {
         if(rank == 0) LOG(PURGER_LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
     }
 
-    if(dir_flag == 0 && !restart_flag)
+    if(dir_flag == 0 && !restart_flag && !benchmarking_flag)
     {
          print_usage(argv);
          if(rank == 0) LOG(PURGER_LOG_FATAL, "You must specify a starting directory");
          exit(EXIT_FAILURE);
     }
 
-    if(redis_hostname_flag == 0)
+    if(redis_hostname_flag == 0 && !benchmarking_flag)
     {
         if(rank == 0) LOG(PURGER_LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
         redis_hostname = "localhost";
     }
 
-    if(redis_port_flag == 0)
+    if(redis_port_flag == 0 && !benchmarking_flag)
     {
         if(rank == 0) LOG(PURGER_LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
         redis_port = 6379;
@@ -391,7 +396,7 @@ main (int argc, char **argv)
 
     for (index = optind; index < argc; index++)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
-    if (redis_init(redis_hostname,redis_port) < 0)
+    if (!benchmarking_flag && redis_init(redis_hostname,redis_port) < 0)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
@@ -399,11 +404,11 @@ main (int argc, char **argv)
     
 
    time(&time_started);
-   if(treewalk_check_state(rank,force_flag) < 0)
+   if(!benchmarking_flag && treewalk_check_state(rank,force_flag) < 0)
        exit(1);
-    if(restart_flag)
+    if(!benchmarking_flag && restart_flag)
         CIRCLE_read_restarts();
-    if(sharded_flag)
+    if(!benchmarking_flag && sharded_flag)
     {
         sharded_count = redis_shard_init(redis_hostlist,redis_port);
         redis_command_ptr = &redis_shard_command;
@@ -415,7 +420,7 @@ main (int argc, char **argv)
     
     char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
-    if(redis_blocking_command(getCmd,NULL,INT)<0)
+    if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
         exit(1);
@@ -429,7 +434,7 @@ main (int argc, char **argv)
     strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
-    if(redis_blocking_command(getCmd,NULL,INT) < 0)
+    if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT) < 0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }
@@ -447,9 +452,10 @@ main (int argc, char **argv)
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
-    if(sharded_flag)
+    if(!benchmarking_flag && sharded_flag)
 	redis_shard_finalize();
-    redis_finalize(); 
+    if(!benchmarking_flag)
+        redis_finalize(); 
     _exit(EXIT_SUCCESS);
 }
 
