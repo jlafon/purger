@@ -21,4 +21,5 @@ int redis_command(char * cmd);
 int redis_shard_command(int rank, char * cmd);
 int redis_blocking_command(char * cmd, void * result, returnType ret);
 int redis_finalize();
+int redis_shard_finalize();
 #endif

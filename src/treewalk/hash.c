@@ -19,7 +19,9 @@ treewalk_filename_hash(char *in, unsigned char out[65])
     }
 
     out[64] = 0;
-    return strtol(digest,NULL,16);
+    long int result = strtol(digest,NULL,16);
+    if(result <0) result *=-1;
+    return result; 
 }
 
 /* EOF */

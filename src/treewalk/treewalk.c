@@ -104,7 +104,7 @@ process_objects(CIRCLE_handle *handle)
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         if(sharded_flag)
-            redis_shard_command(hash_val % sharded_count,redis_cmd_buf);
+            redis_shard_command((int)hash_val % sharded_count,redis_cmd_buf);
         else
             redis_command(redis_cmd_buf);
         /* Check to see if the file is expired.
@@ -148,7 +148,7 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset,long int hash_val)
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
     if(sharded_flag)
-        redis_shard_command(hash_val % sharded_count, buf);
+        redis_shard_command((int)hash_val % sharded_count, buf);
     else
         redis_command(buf);
     free(buf);
@@ -286,7 +286,7 @@ main (int argc, char **argv)
     PURGER_debug_stream = stdout;
     PURGER_debug_level = PURGER_LOG_DBG;
     int rank = CIRCLE_init(argc, argv);
-
+    PURGER_global_rank = rank;
     opterr = 0;
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:")) != -1)
     {
@@ -430,7 +430,6 @@ main (int argc, char **argv)
         fprintf(stderr,"Unable to %s",getCmd);
     }
     
-    redis_finalize(); 
     if(rank == 0)
     {
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);
@@ -444,6 +443,8 @@ main (int argc, char **argv)
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
+    redis_shard_finalize();
+    redis_finalize(); 
     _exit(EXIT_SUCCESS);
 }
 

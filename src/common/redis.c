@@ -34,7 +34,7 @@ int redis_shard_finalize()
     {
         if(redis_local_sharded_pipeline[i] > 0)
         {
-            LOG(PURGER_LOG_DBG,"Flushing %d items from pipeline %d",redis_local_sharded_pipeline[i]);
+            LOG(PURGER_LOG_DBG,"Flushing %d items from sharded pipeline %d",i);
             for(j = 0; j < redis_local_sharded_pipeline[i]; j++)
                 if(redisGetReply(redis_rank[i],(void*)&redis_rank_reply[i]) == REDIS_OK)
                 {
@@ -48,12 +48,14 @@ int redis_shard_init(char * hostnames, int port)
 {
     int i = 0;
     char * host = strtok(hostnames,",");
+    redis_rank = (redisContext **) malloc(sizeof(redisContext**));
     while(host != NULL)
     {
-        LOG(PURGER_LOG_DBG,"Initializing redis connection to %s",host);
+        LOG(PURGER_LOG_INFO,"Initializing redis connection to %s",host);
         redis_rank[i] = (redisContext *) malloc(sizeof(redisContext*));
         redis_rank[i] = redisConnect(host,port);
-        if(redis_rank[i]->err)
+        LOG(PURGER_LOG_INFO,"Initialized redis connection to %s",host);
+        if(redis_rank[i] && redis_rank[i]->err)
         {
             LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host[i],redis_rank[i]->errstr);
             return -1;
@@ -64,6 +66,9 @@ int redis_shard_init(char * hostnames, int port)
     shard_count = i;
     redis_local_sharded_pipeline = (int *) calloc(i,sizeof(int));
     redis_rank_reply = (redisReply**) malloc(sizeof(redisReply*)*i);
+    for(i = 0; i < shard_count; i++)
+	redis_local_sharded_pipeline[i] = 0;
+    LOG(PURGER_LOG_DBG,"Initialized %d redis connections.",shard_count);
     return shard_count;
 }
 int redis_init(char * hostname, int port)
@@ -128,10 +133,12 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
 
 int redis_shard_command(int rank, char * cmd)
 {
+    LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
     redisAppendCommand(redis_rank[rank],cmd);
-    if(redis_local_sharded_pipeline[rank]++ > REDIS_PIPELINE_MAX)
+    redis_local_sharded_pipeline[rank] = redis_local_sharded_pipeline[rank]+1;
+    if(redis_local_sharded_pipeline[rank] > REDIS_PIPELINE_MAX)
     {
-        LOG(PURGER_LOG_INFO,"Flushing pipeline %d.",rank);
+        LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
         int i;
         for(i = 0; i < redis_local_sharded_pipeline[rank]; i++)
             if(redisGetReply(redis_rank[rank],(void*)&redis_rank_reply[rank]) == REDIS_OK)
