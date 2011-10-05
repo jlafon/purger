@@ -100,8 +100,6 @@ process_objects(CIRCLE_handle *handle)
         treewalk_redis_keygen(filekey, temp);
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
-        treewalk_redis_run_cmd("MULTI");
-
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         treewalk_redis_run_cmd(redis_cmd_buf);
@@ -121,7 +119,6 @@ process_objects(CIRCLE_handle *handle)
         //treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
 
         /* Run all of the cmds. */
-        treewalk_redis_run_cmd("EXEC");
         redis_time[1] += MPI_Wtime() - redis_time[0];
 
     }
@@ -192,13 +189,19 @@ treewalk_redis_run_cmd(char *cmd)
 {
     LOG(PURGER_LOG_DBG, "RedisCmd = \"%s\"", cmd);
     redisReply *reply = redisCommand(REDIS, cmd);
-    if(reply->type != REDIS_REPLY_ERROR)
+
+    if(reply == NULL)
+    {
+        LOG(PURGER_LOG_DBG, "redisReply was null after running \"%s\"", cmd);
+        return -1;
+    }
+    else if(reply->type != REDIS_REPLY_ERROR)
     {
         LOG(PURGER_LOG_DBG, "Sent %s to redis", cmd);
     }
     else
     {
-        LOG(PURGER_LOG_DBG, "Failed %s: %s", cmd,reply->str);
+        LOG(PURGER_LOG_DBG, "Failed %s", cmd);
         if (REDIS->err)
         {
             LOG(PURGER_LOG_ERR, "Redis error: %s", REDIS->errstr);
