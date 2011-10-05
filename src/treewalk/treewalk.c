@@ -41,17 +41,49 @@ add_objects(CIRCLE_handle *handle)
     handle->enqueue(TOP_DIR);
 }
 
+void process_dir(char * parent,char * dir, CIRCLE_handle *handle)
+{
+    DIR *current_dir;
+    struct dirent *current_ent; 
+    current_dir = opendir(dir);
+    if(!current_dir) 
+    {
+        LOG(PURGER_LOG_ERR, "Unable to open dir: %s",dir);
+    }
+    else
+	{
+	    readdir_time[0] = MPI_Wtime();
+	    /* Read in each directory entry */
+	    while((current_ent = readdir(current_dir)) != NULL)
+	    {
+	    /* We don't care about . or .. */
+	    if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
+		{
+		    strcpy(parent,dir);
+		    strcat(parent,"/");
+		    strcat(parent,current_ent->d_name);
+
+		    LOG(PURGER_LOG_DBG, "Pushing [%s] <- [%s]", parent, dir);
+		    handle->enqueue(&parent[0]);
+		}
+	    }
+	    readdir_time[1] += MPI_Wtime() - readdir_time[0];
+	}
+	closedir(current_dir);
+return;
+}
+
 void
 process_objects(CIRCLE_handle *handle)
 {
     process_objects_total[0] = MPI_Wtime();
-    DIR *current_dir;
-    char temp[CIRCLE_MAX_STRING_LEN];
-    char stat_temp[CIRCLE_MAX_STRING_LEN];
-    struct dirent *current_ent; 
+    static char temp[CIRCLE_MAX_STRING_LEN];
+    static char stat_temp[CIRCLE_MAX_STRING_LEN];
+    static char redis_cmd_buf[CIRCLE_MAX_STRING_LEN];
+    static char filekey[512];
     struct stat st;
     int status = 0;
-    char *redis_cmd_buf = (char *)malloc(2048 * sizeof(char));
+    int crc = 0;
     /* Pop an item off the queue */ 
     handle->dequeue(temp);
     /* Try and stat it, checking to see if it is a link */
@@ -65,46 +97,24 @@ process_objects(CIRCLE_handle *handle)
     /* Check to see if it is a directory.  If so, put its children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
     {
-        current_dir = opendir(temp);
-        if(!current_dir) {
-            LOG(PURGER_LOG_ERR, "Unable to open dir: %s",temp);
-        }
-        else
-        {
-            readdir_time[0] = MPI_Wtime();
-            /* Read in each directory entry */
-            while((current_ent = readdir(current_dir)) != NULL)
-            {
-            /* We don't care about . or .. */
-            if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
-                {
-                    strcpy(stat_temp,temp);
-                    strcat(stat_temp,"/");
-                    strcat(stat_temp,current_ent->d_name);
-
-                    LOG(PURGER_LOG_DBG, "Pushing [%s] <- [%s]", stat_temp, temp);
-                    handle->enqueue(&stat_temp[0]);
-                }
-            }
-            readdir_time[1] += MPI_Wtime() - readdir_time[0];
-        }
-        closedir(current_dir);
+        readdir_time[0] = MPI_Wtime();
+        process_dir(stat_temp,temp,handle); 
+        readdir_time[1] += MPI_Wtime() - readdir_time[0];
     }
-    else if(S_ISREG(st.st_mode)) {
+    else if(S_ISREG(st.st_mode)) 
+    {
 
-        redis_time[0] = MPI_Wtime();
-
-
-        char filekey[512];
-        long int hash_val = 0;
         hash_time[0] = MPI_Wtime();
-        treewalk_redis_keygen(filekey, temp,&hash_val);
+        treewalk_redis_keygen(filekey, temp);
+        crc = (int)crc32(filekey,32) % sharded_count;
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
+        
+	redis_time[0] = MPI_Wtime();
         if(sharded_flag)
-            redis_shard_command((int)hash_val % sharded_count,redis_cmd_buf);
+            redis_shard_command(crc,redis_cmd_buf);
         else
             redis_command(redis_cmd_buf);
         /* Check to see if the file is expired.
@@ -114,16 +124,13 @@ process_objects(CIRCLE_handle *handle)
         {
             LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
             /* The mtime of the file as a zadd. */
-            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",hash_val);
+            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
         }
-
-        /* Run all of the cmds. */
         redis_time[1] += MPI_Wtime() - redis_time[0];
 
     }
-
     process_objects_total[1] += MPI_Wtime() - process_objects_total[0];
     free(redis_cmd_buf);
 }
@@ -139,7 +146,7 @@ treewalk_redis_run_sadd(struct stat *st)
 }
 
 int
-treewalk_redis_run_zadd(char *filekey, long val, char *zset,long int hash_val)
+treewalk_redis_run_zadd(char *filekey, long val, char *zset, int crc)
 {
     int cnt = 0;
     char *buf = (char *)malloc(2048 * sizeof(char));
@@ -148,7 +155,7 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset,long int hash_val)
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
     if(sharded_flag)
-        redis_shard_command((int)hash_val % sharded_count, buf);
+        redis_shard_command(crc, buf);
     else
         redis_command(buf);
     free(buf);
@@ -191,12 +198,12 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 
 
 int
-treewalk_redis_keygen(char *buf, char *filename, long int * hashval)
+treewalk_redis_keygen(char *buf, char *filename)
 {
     static unsigned char hash_buffer[65];
     int cnt = 0;
 
-    *hashval = treewalk_filename_hash(filename, hash_buffer);
+    treewalk_filename_hash(filename, hash_buffer);
     cnt += sprintf(buf, "file:%s\n", hash_buffer);
     
     return cnt;
@@ -443,7 +450,8 @@ main (int argc, char **argv)
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
-    redis_shard_finalize();
+    if(sharded_flag)
+	redis_shard_finalize();
     redis_finalize(); 
     _exit(EXIT_SUCCESS);
 }
