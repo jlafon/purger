@@ -52,7 +52,7 @@ void redis_print_error(redisContext * context)
     }
     return;
 }
-int redis_blocking_command(char * cmd, void * result)
+int redis_blocking_command(char * cmd, void * result, returnType ret)
 {
     BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
     if(BLOCKING_reply == NULL)
@@ -64,9 +64,17 @@ int redis_blocking_command(char * cmd, void * result)
     switch(BLOCKING_reply->type)
     {
         case REDIS_REPLY_STATUS: break;
-        case REDIS_REPLY_INTEGER: if(result != NULL) *(int*)result = BLOCKING_reply->integer; break;
+        case REDIS_REPLY_INTEGER: 
+                            if(result != NULL && ret == INT) 
+                                *(int*)result = BLOCKING_reply->integer;
+                            LOG(PURGER_LOG_DBG,"Returning type int: %d",BLOCKING_reply->integer);
+                            break;
         case REDIS_REPLY_NIL: break;
-        case REDIS_REPLY_STRING: if(result != NULL) strcpy((char*)result,BLOCKING_reply->str); break;
+        case REDIS_REPLY_STRING: 
+                            if(result != NULL && ret == CHAR) 
+                                strcpy((char*)result,BLOCKING_reply->str); 
+                            LOG(PURGER_LOG_DBG,"Returning type char: %s",BLOCKING_reply->str);
+                            break;
         case REDIS_REPLY_ARRAY: break;
         default: break;
     }

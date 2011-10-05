@@ -3,7 +3,7 @@
 #include <hiredis.h>
 #include "log.h"
 #define REDIS_PIPELINE_MAX 100
-
+typedef enum { INT, CHAR } returnType;
 redisContext *REDIS;
 redisReply *REPLY;
 redisContext *BLOCKING_redis;
@@ -12,6 +12,6 @@ int redis_pipeline_size;
 int redis_init(char * hostname, int port);
 void redis_print_error(redisContext * context);
 int redis_command(char * cmd);
-int redis_blocking_command(char * cmd, void * result);
+int redis_blocking_command(char * cmd, void * result, returnType ret);
 int redis_finalize();
 #endif

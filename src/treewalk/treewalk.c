@@ -132,9 +132,7 @@ treewalk_redis_run_sadd(struct stat *st)
 {
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
-    //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
     redis_command(buf);
-    //treewalk_redis_run_cmd(buf);
 }
 
 int
@@ -146,8 +144,6 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset)
     cnt += sprintf(buf, "ZADD %s ", zset);
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
-
-    //treewalk_redis_run_cmd(buf);
     redis_command(buf);
     free(buf);
 
@@ -188,53 +184,6 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 
 
 int
-treewalk_redis_run_cmd(char *cmd)
-{
-    LOG(PURGER_LOG_DBG, "RedisCmd = \"%s\"", cmd);
-    redisReply *reply = redisCommand(REDIS, cmd);
-
-    if(reply == NULL)
-    {
-        LOG(PURGER_LOG_DBG, "redisReply was null after running \"%s\"", cmd);
-        return -1;
-    }
-    else if(reply->type != REDIS_REPLY_ERROR)
-    {
-        LOG(PURGER_LOG_DBG, "Sent %s to redis", cmd);
-    }
-    else
-    {
-        LOG(PURGER_LOG_DBG, "Failed %s", cmd);
-        if (REDIS->err)
-        {
-            LOG(PURGER_LOG_ERR, "Redis error: %s", REDIS->errstr);
-            return -1;
-        }
-    
-    }
-    return 0;
-}
-
-int
-treewalk_redis_run_get_str(char * key, char * str)
-{
-    char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
-    sprintf(redis_cmd_buf, "GET %s",key);
-    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
-    if(getReply->type == REDIS_REPLY_NIL)
-        return -1;
-    else if(getReply->type == REDIS_REPLY_STRING)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned a string \"%s\"\n", getReply->str);
-        strcpy(str,getReply->str);
-        return 0;
-    }
-    else
-        LOG(PURGER_LOG_DBG,"GET didn't return a string.");
-    return -1;
-}
-
-int
 treewalk_redis_run_get(char * key)
 {
     char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
@@ -267,8 +216,12 @@ int
 treewalk_check_state(int rank, int force)
 {
    char * getCmd = (char *) malloc(sizeof(char)*256);
-   sprintf(getCmd,"PURGER_STATE");
-   int status = treewalk_redis_run_get(getCmd);
+   sprintf(getCmd,"get PURGER_STATE");
+   int status = -1;
+   redis_blocking_command(getCmd,(void*)&status,INT);
+   if(status == -1)
+       LOG(PURGER_LOG_ERR,"Status not set.");
+   LOG(PURGER_LOG_DBG,"Status = %d\n",status);
    int transition_check = purger_state_check(status,PURGER_STATE_TREEWALK); 
    if(transition_check == PURGER_STATE_R_NO)
    {
@@ -285,7 +238,7 @@ treewalk_check_state(int rank, int force)
        if(rank == 0)
        {
            char time_stamp[256];
-           treewalk_redis_run_get_str("treewalk_timestamp",time_stamp);
+           redis_blocking_command("GET treewalk_timestamp",(void*)time_stamp,CHAR);
            LOG(PURGER_LOG_INFO,"Treewalk starting normally. Last successfull treewalk: %s",time_stamp);
        }
    }
@@ -459,7 +412,7 @@ main (int argc, char **argv)
     
     char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
-    if(redis_blocking_command(getCmd,NULL)<0)
+    if(redis_blocking_command(getCmd,NULL,INT)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
         exit(1);
@@ -473,7 +426,7 @@ main (int argc, char **argv)
     strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
-    if(redis_blocking_command(getCmd,NULL) < 0)
+    if(redis_blocking_command(getCmd,NULL,INT) < 0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }
