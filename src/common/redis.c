@@ -72,7 +72,9 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
         case REDIS_REPLY_NIL: break;
         case REDIS_REPLY_STRING: 
                             if(result != NULL && ret == CHAR) 
-                                strcpy((char*)result,BLOCKING_reply->str); 
+                                strcpy((char*)result,BLOCKING_reply->str);
+                            else if(result != NULL && ret == INT)
+                                *(int*)result = atoi(BLOCKING_reply->str);
                             LOG(PURGER_LOG_DBG,"Returning type char: %s",BLOCKING_reply->str);
                             break;
         case REDIS_REPLY_ARRAY: break;
@@ -82,7 +84,6 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
 }
 int redis_command(char * cmd)
 {
-    LOG(PURGER_LOG_DBG,"Appending %s\n",cmd);
     redisAppendCommand(REDIS,cmd);
     if(redis_pipeline_size++ > REDIS_PIPELINE_MAX)
     {

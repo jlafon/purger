@@ -14,7 +14,6 @@
 
 #include "log.h"
 #include "redis.h"
-
 #include <hiredis.h>
 #include <async.h>
 #include <mpi.h>
@@ -103,8 +102,6 @@ process_objects(CIRCLE_handle *handle)
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         redis_command(redis_cmd_buf);
-        //treewalk_redis_run_cmd(redis_cmd_buf);
-        
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
            to warnlist */
@@ -116,8 +113,6 @@ process_objects(CIRCLE_handle *handle)
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
         }
-        /* The start time of this treewalk run as a zadd. */
-        //treewalk_redis_run_zadd(filekey, (long)time_started, "starttime", temp);
 
         /* Run all of the cmds. */
         redis_time[1] += MPI_Wtime() - redis_time[0];
@@ -183,23 +178,6 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 }
 
 
-int
-treewalk_redis_run_get(char * key)
-{
-    char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
-    sprintf(redis_cmd_buf, "GET %s",key);
-    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
-    if(getReply->type == REDIS_REPLY_NIL)
-        return -1;
-    else if(getReply->type == REDIS_REPLY_STRING)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned a string \"%s\"\n", getReply->str);
-        return atoi(getReply->str);
-    }
-    else
-        LOG(PURGER_LOG_DBG,"GET didn't return a string.");
-    return -1;
-}
 
 int
 treewalk_redis_keygen(char *buf, char *filename)
@@ -242,8 +220,8 @@ treewalk_check_state(int rank, int force)
            LOG(PURGER_LOG_INFO,"Treewalk starting normally. Last successfull treewalk: %s",time_stamp);
        }
    }
-   sprintf(getCmd,"treewalk-rank-%d",rank);
-   status = treewalk_redis_run_get(getCmd);
+   sprintf(getCmd,"GET treewalk-rank-%d",rank);
+   redis_blocking_command(getCmd,(void*)&status,INT);
    sprintf(getCmd,"set treewalk-rank-%d 1", rank);
     if(status == 1 && !force)
     {

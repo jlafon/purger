@@ -1,1 +1,1 @@
-SUBDIRS = common hiredis reaper treewalk warnusers 
+SUBDIRS = hiredis common reaper treewalk warnusers 
