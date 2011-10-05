@@ -8,14 +8,31 @@ extern redisReply *BLOCKING_reply;
 extern int redis_pipeline_size;
 
 
+
+int redis_finalize()
+{
+    int i = 0;
+    if(redis_pipeline_size > 0)
+    {
+        LOG(PURGER_LOG_DBG,"Flushing %d items from pipeline",redis_pipeline_size);
+        for(i = 0; i < redis_pipeline_size; i++)
+            if(redisGetReply(REDIS,(void*)&REPLY) == REDIS_OK)
+            {
+                freeReplyObject(REPLY);
+            }
+    }
+    redisFree(REDIS);
+    redisFree(BLOCKING_redis);
+}
 int redis_init(char * hostname, int port)
 {
     redis_pipeline_size = 0;
     REDIS = redisConnect(hostname, port);
-    if(REDIS->err)
+    BLOCKING_redis = redisConnect(hostname, port);
+    if(REDIS->err || BLOCKING_redis->err)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
-	return -1;	    
+        return -1;	    
     }
     return 0; 
 }
@@ -46,10 +63,10 @@ int redis_blocking_command(char * cmd, void * result)
     }
     switch(BLOCKING_reply->type)
     {
-	case REDIS_REPLY_STATUS: break;
-        case REDIS_REPLY_INTEGER: *(int*)result = BLOCKING_reply->integer; break;
+        case REDIS_REPLY_STATUS: break;
+        case REDIS_REPLY_INTEGER: if(result != NULL) *(int*)result = BLOCKING_reply->integer; break;
         case REDIS_REPLY_NIL: break;
-        case REDIS_REPLY_STRING: strcpy((char*)result,BLOCKING_reply->str); break;
+        case REDIS_REPLY_STRING: if(result != NULL) strcpy((char*)result,BLOCKING_reply->str); break;
         case REDIS_REPLY_ARRAY: break;
         default: break;
     }
@@ -57,14 +74,15 @@ int redis_blocking_command(char * cmd, void * result)
 }
 int redis_command(char * cmd)
 {
+    LOG(PURGER_LOG_DBG,"Appending %s\n",cmd);
     redisAppendCommand(REDIS,cmd);
     if(redis_pipeline_size++ > REDIS_PIPELINE_MAX)
     {
         redis_pipeline_size = 0;
         if(redisGetReply(REDIS,(void*)&REPLY) == REDIS_OK)
-	{
-  	    freeReplyObject(REPLY);
-	}
+	    {
+  	        freeReplyObject(REPLY);
+	    }
         else 
         {
             redis_print_error(REDIS);

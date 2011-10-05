@@ -23,7 +23,6 @@ FILE* PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
 int PURGER_global_rank;
 char         *TOP_DIR;
-redisContext *REDIS;
 
 double process_objects_total[2];
 double hash_time[2];
@@ -103,7 +102,8 @@ process_objects(CIRCLE_handle *handle)
         
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
-        treewalk_redis_run_cmd(redis_cmd_buf);
+        redis_command(redis_cmd_buf);
+        //treewalk_redis_run_cmd(redis_cmd_buf);
         
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
@@ -133,7 +133,8 @@ treewalk_redis_run_sadd(struct stat *st)
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
     //!\todo: Use a different function?  This command needs two arguments, but I don't care about the second
-    treewalk_redis_run_cmd(buf);
+    redis_command(buf);
+    //treewalk_redis_run_cmd(buf);
 }
 
 int
@@ -146,7 +147,8 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset)
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
 
-    treewalk_redis_run_cmd(buf);
+    //treewalk_redis_run_cmd(buf);
+    redis_command(buf);
     free(buf);
 
     return cnt;
@@ -295,13 +297,13 @@ treewalk_check_state(int rank, int force)
         if(rank == 0) LOG(PURGER_LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
         return -1;
     }
-    if(rank == 0 && treewalk_redis_run_cmd(getCmd)<0)
+    if(rank == 0 && redis_command(getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
     }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
-   if(rank == 0 && treewalk_redis_run_cmd(getCmd)<0)
+   if(rank == 0 && redis_command(getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
@@ -438,8 +440,7 @@ main (int argc, char **argv)
 
     for (index = optind; index < argc; index++)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
-    REDIS = redisConnect(redis_hostname, redis_port);
-    if (REDIS->err)
+    if (redis_init(redis_hostname,redis_port) < 0)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
@@ -458,12 +459,11 @@ main (int argc, char **argv)
     
     char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
-    if(treewalk_redis_run_cmd(getCmd)<0)
+    if(redis_blocking_command(getCmd,NULL)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
         exit(1);
     }
-
 
     time(&time_finished);
     char starttime_str[256];
@@ -473,10 +473,12 @@ main (int argc, char **argv)
     strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     sprintf(getCmd,"set treewalk_timestamp \"%s\"",endtime_str);
-    if(treewalk_redis_run_cmd(getCmd)<0)
+    if(redis_blocking_command(getCmd,NULL) < 0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }
+    
+    redis_finalize(); 
     if(rank == 0)
     {
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);

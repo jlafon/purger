@@ -13,4 +13,5 @@ int redis_init(char * hostname, int port);
 void redis_print_error(redisContext * context);
 int redis_command(char * cmd);
 int redis_blocking_command(char * cmd, void * result);
+int redis_finalize();
 #endif
