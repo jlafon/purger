@@ -28,7 +28,8 @@ double hash_time[2];
 double redis_time[2];
 double stat_time[2];
 double readdir_time[2];
-
+int sharded_flag;
+int sharded_count;
 time_t time_started;
 time_t time_finished;
 #define SECONDS_PER_DAY 60.0*60.0*24.0
@@ -95,13 +96,17 @@ process_objects(CIRCLE_handle *handle)
 
 
         char filekey[512];
+        long int hash_val = 0;
         hash_time[0] = MPI_Wtime();
-        treewalk_redis_keygen(filekey, temp);
+        treewalk_redis_keygen(filekey, temp,&hash_val);
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
-        redis_command(redis_cmd_buf);
+        if(sharded_flag)
+            redis_shard_command(hash_val % sharded_count,redis_cmd_buf);
+        else
+            redis_command(redis_cmd_buf);
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
            to warnlist */
@@ -109,7 +114,7 @@ process_objects(CIRCLE_handle *handle)
         {
             LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
             /* The mtime of the file as a zadd. */
-            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime");
+            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",hash_val);
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
         }
@@ -127,11 +132,14 @@ treewalk_redis_run_sadd(struct stat *st)
 {
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
-    redis_command(buf);
+    if(sharded_flag)
+        redis_shard_command(st->st_uid % sharded_count,buf);
+    else
+        redis_command(buf);
 }
 
 int
-treewalk_redis_run_zadd(char *filekey, long val, char *zset)
+treewalk_redis_run_zadd(char *filekey, long val, char *zset,long int hash_val)
 {
     int cnt = 0;
     char *buf = (char *)malloc(2048 * sizeof(char));
@@ -139,7 +147,10 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset)
     cnt += sprintf(buf, "ZADD %s ", zset);
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
-    redis_command(buf);
+    if(sharded_flag)
+        redis_shard_command(hash_val % sharded_count, buf);
+    else
+        redis_command(buf);
     free(buf);
 
     return cnt;
@@ -180,14 +191,14 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 
 
 int
-treewalk_redis_keygen(char *buf, char *filename)
+treewalk_redis_keygen(char *buf, char *filename, long int * hashval)
 {
     static unsigned char hash_buffer[65];
     int cnt = 0;
 
-    treewalk_filename_hash(filename, hash_buffer);
+    *hashval = treewalk_filename_hash(filename, hash_buffer);
     cnt += sprintf(buf, "file:%s\n", hash_buffer);
-
+    
     return cnt;
 }
 int
@@ -254,6 +265,7 @@ main (int argc, char **argv)
     int c;
 
     char *redis_hostname;
+    char *redis_hostlist;
     int redis_port;
 
     int time_flag = 0;
@@ -261,6 +273,7 @@ main (int argc, char **argv)
     int force_flag = 0;
     int restart_flag = 0;
     int redis_hostname_flag = 0;
+    sharded_flag = 0;
     int redis_port_flag = 0;
 
     process_objects_total[2] = 0;
@@ -275,7 +288,7 @@ main (int argc, char **argv)
     int rank = CIRCLE_init(argc, argv);
 
     opterr = 0;
-    while((c = getopt(argc, argv, "d:h:p:ft:l:r")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:l:rs:")) != -1)
     {
         switch(c)
         {
@@ -309,7 +322,11 @@ main (int argc, char **argv)
                 expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
                 if(rank == 0) LOG(PURGER_LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
-           
+            case 's':
+                sharded_flag = 1;
+                redis_hostlist = optarg;
+                break;
+
             case 'f':
                 force_flag = 1;
                 if(rank == 0) LOG(PURGER_LOG_WARN,"Warning: You have chosen to force treewalk.");
@@ -383,6 +400,10 @@ main (int argc, char **argv)
        exit(1);
     if(restart_flag)
         CIRCLE_read_restarts();
+    if(sharded_flag)
+    {
+        sharded_count = redis_shard_init(redis_hostlist,redis_port);
+    }
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();

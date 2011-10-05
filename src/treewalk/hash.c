@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "hash.h"
 
-void
+long int
 treewalk_filename_hash(char *in, unsigned char out[65])
 {
     unsigned char digest[SHA256_DIGEST_LENGTH];
@@ -19,6 +19,7 @@ treewalk_filename_hash(char *in, unsigned char out[65])
     }
 
     out[64] = 0;
+    return strtol(digest,NULL,16);
 }
 
 /* EOF */

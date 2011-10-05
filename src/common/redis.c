@@ -1,14 +1,17 @@
 #include <string.h>
 #include "redis.h"
 
+
+extern redisContext **redis_rank;
+extern redisReply **redis_rank_reply;
 extern redisContext *REDIS;
 extern redisContext *BLOCKING_redis;
 extern redisReply *REPLY;
 extern redisReply *BLOCKING_reply;
 extern int redis_pipeline_size;
-
-
-
+extern int redis_local_pipeline_max;
+extern int * redis_local_sharded_pipeline;
+extern int shard_count;
 int redis_finalize()
 {
     int i = 0;
@@ -24,9 +27,49 @@ int redis_finalize()
     redisFree(REDIS);
     redisFree(BLOCKING_redis);
 }
+int redis_shard_finalize()
+{
+    int i = 0, j = 0;
+    for(i = 0; i < shard_count; i++)
+    {
+        if(redis_local_sharded_pipeline[i] > 0)
+        {
+            LOG(PURGER_LOG_DBG,"Flushing %d items from pipeline %d",redis_local_sharded_pipeline[i]);
+            for(j = 0; j < redis_local_sharded_pipeline[i]; j++)
+                if(redisGetReply(redis_rank[i],(void*)&redis_rank_reply[i]) == REDIS_OK)
+                {
+                    freeReplyObject(redis_rank_reply[i]);
+                }
+        }
+        redisFree(redis_rank[i]);
+    }
+}
+int redis_shard_init(char * hostnames, int port)
+{
+    int i = 0;
+    char * host = strtok(hostnames,",");
+    while(host != NULL)
+    {
+        LOG(PURGER_LOG_DBG,"Initializing redis connection to %s",host);
+        redis_rank[i] = (redisContext *) malloc(sizeof(redisContext*));
+        redis_rank[i] = redisConnect(host,port);
+        if(redis_rank[i]->err)
+        {
+            LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host[i],redis_rank[i]->errstr);
+            return -1;
+        }
+        i++;
+        host = strtok(NULL,",");
+    }
+    shard_count = i;
+    redis_local_sharded_pipeline = (int *) calloc(i,sizeof(int));
+    redis_rank_reply = (redisReply**) malloc(sizeof(redisReply*)*i);
+    return shard_count;
+}
 int redis_init(char * hostname, int port)
 {
     redis_pipeline_size = 0;
+    redis_local_pipeline_max = rand() % REDIS_PIPELINE_MAX + 1000;
     REDIS = redisConnect(hostname, port);
     BLOCKING_redis = redisConnect(hostname, port);
     if(REDIS->err || BLOCKING_redis->err)
@@ -82,21 +125,45 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
     }
     return 0;
 }
+
+int redis_shard_command(int rank, char * cmd)
+{
+    redisAppendCommand(redis_rank[rank],cmd);
+    if(redis_local_sharded_pipeline[rank]++ > REDIS_PIPELINE_MAX)
+    {
+        LOG(PURGER_LOG_INFO,"Flushing pipeline %d.",rank);
+        int i;
+        for(i = 0; i < redis_local_sharded_pipeline[rank]; i++)
+            if(redisGetReply(redis_rank[rank],(void*)&redis_rank_reply[rank]) == REDIS_OK)
+            {
+                freeReplyObject(redis_rank_reply[rank]);
+            }
+            else 
+            {
+                redis_print_error(redis_rank[rank]);
+            }    
+        redis_local_sharded_pipeline[rank] = 0;
+    }
+    return 0;
+
+}
 int redis_command(char * cmd)
 {
     redisAppendCommand(REDIS,cmd);
     if(redis_pipeline_size++ > REDIS_PIPELINE_MAX)
     {
+        LOG(PURGER_LOG_INFO,"Flushing pipeline.");
+        int i;
+        for(i = 0; i < redis_pipeline_size; i++)
+            if(redisGetReply(REDIS,(void*)&REPLY) == REDIS_OK)
+            {
+                freeReplyObject(REPLY);
+            }
+            else 
+            {
+                redis_print_error(REDIS);
+            }    
         redis_pipeline_size = 0;
-        if(redisGetReply(REDIS,(void*)&REPLY) == REDIS_OK)
-	    {
-  	        freeReplyObject(REPLY);
-	    }
-        else 
-        {
-            redis_print_error(REDIS);
-            return -1;
-        }    
     }
     return 0;
 } 
