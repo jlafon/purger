@@ -21,6 +21,7 @@ typedef enum
         } \
     } while (0)
 
+extern int PURGER_global_rank;
 extern FILE *PURGER_debug_stream;
 extern PURGER_loglevel PURGER_debug_level;
 

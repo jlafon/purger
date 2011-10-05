@@ -12,7 +12,8 @@
 #include "sprintstatf.h"
 #include "hash.h"
 
-#include "../common/log.h"
+#include "log.h"
+#include "redis.h"
 
 #include <hiredis.h>
 #include <async.h>
