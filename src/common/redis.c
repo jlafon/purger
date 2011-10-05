@@ -1,7 +1,10 @@
+#include <string.h>
 #include "redis.h"
 
 extern redisContext *REDIS;
+extern redisContext *BLOCKING_redis;
 extern redisReply *REPLY;
+extern redisReply *BLOCKING_reply;
 extern int redis_pipeline_size;
 
 
@@ -16,21 +19,41 @@ int redis_init(char * hostname, int port)
     }
     return 0; 
 }
-void redis_print_error()
+void redis_print_error(redisContext * context)
 {
     if(REPLY == NULL)
     {
         LOG(PURGER_LOG_ERR,"Unable to print redis error.");
     }
-    switch(REDIS->err)
+    switch(context->err)
     {
-         case REDIS_ERR_IO:       LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",REDIS->errstr); break;
-         case REDIS_ERR_EOF:      LOG(PURGER_LOG_ERR,"The server closed the connection:%s",REDIS->errstr); break;
-         case REDIS_ERR_PROTOCOL: LOG(PURGER_LOG_ERR,"There was an error while parsing the protocol:%s",REDIS->errstr); break;
-         case REDIS_ERR_OTHER:    LOG(PURGER_LOG_ERR,"Unknown error:%s",REDIS->errstr); break;
+         case REDIS_ERR_IO:       LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",context->errstr); break;
+         case REDIS_ERR_EOF:      LOG(PURGER_LOG_ERR,"The server closed the connection:%s",context->errstr); break;
+         case REDIS_ERR_PROTOCOL: LOG(PURGER_LOG_ERR,"There was an error while parsing the protocol:%s",context->errstr); break;
+         case REDIS_ERR_OTHER:    LOG(PURGER_LOG_ERR,"Unknown error:%s",context->errstr); break;
          default:                 LOG(PURGER_LOG_ERR,"Redis error status not set."); break;
     }
     return;
+}
+int redis_blocking_command(char * cmd, void * result)
+{
+    BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
+    if(BLOCKING_reply == NULL)
+    {
+	LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
+        redis_print_error(BLOCKING_redis);
+	return -1; 
+    }
+    switch(BLOCKING_reply->type)
+    {
+	case REDIS_REPLY_STATUS: break;
+        case REDIS_REPLY_INTEGER: *(int*)result = BLOCKING_reply->integer; break;
+        case REDIS_REPLY_NIL: break;
+        case REDIS_REPLY_STRING: strcpy((char*)result,BLOCKING_reply->str); break;
+        case REDIS_REPLY_ARRAY: break;
+        default: break;
+    }
+    return 0;
 }
 int redis_command(char * cmd)
 {
@@ -44,7 +67,7 @@ int redis_command(char * cmd)
 	}
         else 
         {
-            redis_print_error();
+            redis_print_error(REDIS);
             return -1;
         }    
     }
