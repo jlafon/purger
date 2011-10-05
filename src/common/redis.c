@@ -154,8 +154,9 @@ int redis_shard_command(int rank, char * cmd)
     return 0;
 
 }
-int redis_command(char * cmd)
+int redis_command(int rank,char * cmd)
 {
+
     redisAppendCommand(REDIS,cmd);
     if(redis_pipeline_size++ > REDIS_PIPELINE_MAX)
     {

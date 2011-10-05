@@ -23,6 +23,7 @@ PURGER_loglevel PURGER_debug_level;
 int PURGER_global_rank;
 char         *TOP_DIR;
 
+int (*redis_command_ptr)(int rank, char * cmd);
 double process_objects_total[2];
 double hash_time[2];
 double redis_time[2];
@@ -103,7 +104,7 @@ process_objects(CIRCLE_handle *handle)
     }
     else if(S_ISREG(st.st_mode)) 
     {
-
+        /* Hash the file */
         hash_time[0] = MPI_Wtime();
         treewalk_redis_keygen(filekey, temp);
         crc = (int)crc32(filekey,32) % sharded_count;
@@ -112,37 +113,34 @@ process_objects(CIRCLE_handle *handle)
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         
+        /* Execute the redis command */
 	redis_time[0] = MPI_Wtime();
-        if(sharded_flag)
-            redis_shard_command(crc,redis_cmd_buf);
-        else
-            redis_command(redis_cmd_buf);
+        (*redis_command_ptr)(crc,redis_cmd_buf);
+        redis_time[1] += MPI_Wtime() - redis_time[0];
+
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
            to warnlist */
         if(difftime(time_started,st.st_mtime) > expire_threshold)
         {
             LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
+            redis_time[0] = MPI_Wtime();
             /* The mtime of the file as a zadd. */
             treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
+            redis_time[1] += MPI_Wtime() - redis_time[0];
         }
-        redis_time[1] += MPI_Wtime() - redis_time[0];
-
     }
     process_objects_total[1] += MPI_Wtime() - process_objects_total[0];
-    free(redis_cmd_buf);
 }
+
 void
 treewalk_redis_run_sadd(struct stat *st)
 {
     char *buf = (char*)malloc(2048 * sizeof(char));
     sprintf(buf, "SADD warnlist %d",st->st_uid);
-    if(sharded_flag)
-        redis_shard_command(st->st_uid % sharded_count,buf);
-    else
-        redis_command(buf);
+    (*redis_command_ptr)(st->st_uid % sharded_count,buf);
 }
 
 int
@@ -154,10 +152,7 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset, int crc)
     cnt += sprintf(buf, "ZADD %s ", zset);
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
-    if(sharded_flag)
-        redis_shard_command(crc, buf);
-    else
-        redis_command(buf);
+    (*redis_command_ptr)(crc, buf);
     free(buf);
 
     return cnt;
@@ -246,13 +241,13 @@ treewalk_check_state(int rank, int force)
         if(rank == 0) LOG(PURGER_LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
         return -1;
     }
-    if(rank == 0 && redis_command(getCmd)<0)
+    if(rank == 0 && (*redis_command_ptr)(0,getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
     }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
-   if(rank == 0 && redis_command(getCmd)<0)
+   if(rank == 0 && (*redis_command_ptr)(0,getCmd)<0)
     {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
@@ -287,6 +282,7 @@ main (int argc, char **argv)
     redis_time[2] = 0;
     stat_time[2] = 0;
     readdir_time[2] = 0;
+    redis_command_ptr = &redis_command;
 
     
     /* Enable logging. */
@@ -410,6 +406,7 @@ main (int argc, char **argv)
     if(sharded_flag)
     {
         sharded_count = redis_shard_init(redis_hostlist,redis_port);
+        redis_command_ptr = &redis_shard_command;
     }
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
