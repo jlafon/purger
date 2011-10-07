@@ -695,12 +695,20 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
 
     /* Abort if there is not target to set */
     if (target == NULL)
+    {
+	fprintf(stdout,"%s:%d:Error: target not set",__FILE__,__LINE__);
+	fflush(stdout);
         return -1;
+    }
 
     /* Build the command string accordingly to protocol */
     curarg = sdsempty();
     if (curarg == NULL)
+    {
+	fprintf(stdout,"%s:%d:Error: sdsempty failed.",__FILE__,__LINE__);
+	fflush(stdout);
         return -1;
+    }
 
     while(*c != '\0') {
         if (*c != '%' || c[1] == '\0') {
@@ -970,17 +978,21 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
 
 void __redisSetError(redisContext *c, int type, const char *str) {
     size_t len;
-
+    
     c->err = type;
     if (str != NULL) {
         len = strlen(str);
         len = len < (sizeof(c->errstr)-1) ? len : (sizeof(c->errstr)-1);
         memcpy(c->errstr,str,len);
         c->errstr[len] = '\0';
+	fprintf(stdout,"Redis error: %s\n",c->errstr);
+	fflush(stdout);
     } else {
         /* Only REDIS_ERR_IO may lack a description! */
         assert(type == REDIS_ERR_IO);
         strerror_r(errno,c->errstr,sizeof(c->errstr));
+	fprintf(stdout,"Redis error: no string\n");
+	fflush(stdout);
     }
 }
 
@@ -1107,7 +1119,11 @@ int redisBufferWrite(redisContext *c, int *done) {
 
     /* Return early when the context has seen an error. */
     if (c->err)
-        return REDIS_ERR;
+	{
+            fprintf(stdout,"This context has a previous error\n");
+	    fflush(stdout);	
+            return REDIS_ERR;
+	}
 
     if (sdslen(c->obuf) > 0) {
         nwritten = write(c->fd,c->obuf,sdslen(c->obuf));
@@ -1115,6 +1131,7 @@ int redisBufferWrite(redisContext *c, int *done) {
             if (errno == EAGAIN && !(c->flags & REDIS_BLOCK)) {
                 /* Try again later */
             } else {
+                fprintf(stdout,"Redis IO error.  Errno %d\n",errno);
                 __redisSetError(c,REDIS_ERR_IO,NULL);
                 return REDIS_ERR;
             }

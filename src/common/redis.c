@@ -12,6 +12,8 @@ extern int redis_pipeline_size;
 extern int redis_local_pipeline_max;
 extern int * redis_local_sharded_pipeline;
 extern int shard_count;
+extern char ** hostlist;
+
 int redis_finalize()
 {
     int i = 0;
@@ -47,17 +49,21 @@ int redis_shard_finalize()
 int redis_shard_init(char * hostnames, int port)
 {
     int i = 0;
+    redis_port = port;
     char * host = strtok(hostnames,",");
     redis_rank = (redisContext **) malloc(sizeof(redisContext**));
+    hostlist = (char **) malloc(sizeof(char **));
     while(host != NULL)
     {
         LOG(PURGER_LOG_INFO,"Initializing redis connection to %s",host);
         redis_rank[i] = (redisContext *) malloc(sizeof(redisContext*));
         redis_rank[i] = redisConnect(host,port);
+	hostlist[i] = (char*) malloc(sizeof(char)*2048);
+	strcpy(hostlist[i],host);
         LOG(PURGER_LOG_INFO,"Initialized redis connection to %s",host);
         if(redis_rank[i] && redis_rank[i]->err)
         {
-            LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host[i],redis_rank[i]->errstr);
+            LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host,redis_rank[i]->errstr);
             return -1;
         }
         i++;
@@ -74,7 +80,8 @@ int redis_shard_init(char * hostnames, int port)
 int redis_init(char * hostname, int port)
 {
     redis_pipeline_size = 0;
-    redis_local_pipeline_max = rand() % REDIS_PIPELINE_MAX + 1000;
+    srand(2^PURGER_global_rank-1,time(NULL));
+    redis_local_pipeline_max = rand() % REDIS_PIPELINE_MAX + 500;
     REDIS = redisConnect(hostname, port);
     BLOCKING_redis = redisConnect(hostname, port);
     if(REDIS->err || BLOCKING_redis->err)
@@ -86,16 +93,16 @@ int redis_init(char * hostname, int port)
 }
 void redis_print_error(redisContext * context)
 {
-    if(REPLY == NULL)
-    {
-        LOG(PURGER_LOG_ERR,"Unable to print redis error.");
-    }
     switch(context->err)
     {
-         case REDIS_ERR_IO:       LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",context->errstr); break;
+         case REDIS_ERR_IO:       
+			LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",context->errstr);
+			redis_handle_sigpipe(); 
+			break;
          case REDIS_ERR_EOF:      LOG(PURGER_LOG_ERR,"The server closed the connection:%s",context->errstr); break;
          case REDIS_ERR_PROTOCOL: LOG(PURGER_LOG_ERR,"There was an error while parsing the protocol:%s",context->errstr); break;
          case REDIS_ERR_OTHER:    LOG(PURGER_LOG_ERR,"Unknown error:%s",context->errstr); break;
+         case REDIS_ERR_OOM:	  LOG(PURGER_LOG_ERR,"Redis OOM:%s",context->errstr); break;
          default:                 LOG(PURGER_LOG_ERR,"Redis error status not set."); break;
     }
     return;
@@ -130,25 +137,63 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
     }
     return 0;
 }
-
-int redis_shard_command(int rank, char * cmd)
+int redis_handle_sigpipe()
 {
-    LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
-    redisAppendCommand(redis_rank[rank],cmd);
-    redis_local_sharded_pipeline[rank] = redis_local_sharded_pipeline[rank]+1;
-    if(redis_local_sharded_pipeline[rank] > REDIS_PIPELINE_MAX)
-    {
-        LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
-        int i;
-        for(i = 0; i < redis_local_sharded_pipeline[rank]; i++)
-            if(redisGetReply(redis_rank[rank],(void*)&redis_rank_reply[rank]) == REDIS_OK)
+   LOG(PURGER_LOG_ERR,"Caught sigpipe, attempting to reinitialize connection.");
+   redisFree(redis_rank[current_redis_rank]);
+   redis_rank[current_redis_rank] = redisConnect(hostlist[current_redis_rank],redis_port);
+   if(redis_rank[current_redis_rank] && redis_rank[current_redis_rank]->err)
+        {
+            LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",hostlist[current_redis_rank],redis_rank[current_redis_rank]->errstr);
+            return -1;
+        }
+   LOG(PURGER_LOG_ERR,"Connection established.");
+return 0;
+}
+
+int redis_flush_pipe(redisContext * c, redisReply * r)
+{
+        int done = 0;
+        do
+        {
+             if(redisBufferWrite(c,&done) == REDIS_ERR)
+             {
+                LOG(PURGER_LOG_ERR,"Error on redisBufferWrite");
+                perror("redisBufferWrite");
+				_exit(1); 
+				redis_print_error(c);
+                break;
+             }
+        } while( !done );
+
+            if(redisGetReply(c,(void*)&r) == REDIS_OK)
             {
-                freeReplyObject(redis_rank_reply[rank]);
+                freeReplyObject(r);
             }
             else 
             {
-                redis_print_error(redis_rank[rank]);
-            }    
+                LOG(PURGER_LOG_ERR,"Error on redisGetReply");
+                redis_print_error(c);
+            }  
+}
+int redis_shard_command(int rank, char * cmd)
+{
+    current_redis_rank = rank;
+    LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
+    if(redisAppendCommand(redis_rank[rank],cmd) != REDIS_OK)
+    {
+			LOG(PURGER_LOG_ERR,"Error on redisAppendCommand, attempting to flush pipe");
+			redis_print_error(redis_rank[rank]);
+                        LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
+                        redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]);
+			LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
+    }
+    redis_local_sharded_pipeline[rank] = redis_local_sharded_pipeline[rank]+1;
+    if(redis_local_sharded_pipeline[rank] > redis_local_pipeline_max)
+    {
+        LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
+	redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]);
+        LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
         redis_local_sharded_pipeline[rank] = 0;
     }
     return 0;

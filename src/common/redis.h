@@ -6,11 +6,17 @@
 typedef enum { INT, CHAR } returnType;
 redisContext *REDIS;
 redisReply *REPLY;
+
 redisContext *BLOCKING_redis;
 redisReply *BLOCKING_reply;
+
 redisContext **redis_rank;
 redisReply **redis_rank_reply;
+
 int * redis_local_sharded_pipeline;
+char ** hostlist;
+int redis_port;
+int current_redis_rank;
 int shard_count;
 int redis_pipeline_size;
 int redis_local_pipeline_max;
@@ -22,4 +28,5 @@ int redis_shard_command(int rank, char * cmd);
 int redis_blocking_command(char * cmd, void * result, returnType ret);
 int redis_finalize();
 int redis_shard_finalize();
+int redis_handle_sigpipe();
 #endif

@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <execinfo.h>
 
 #include "state.h"
 #include "treewalk.h"
@@ -23,6 +25,15 @@ PURGER_loglevel PURGER_debug_level;
 int PURGER_global_rank;
 char         *TOP_DIR;
 
+
+static void treewalk_signal_handler(int signum, struct sigcontext ctx)
+{
+     if(signum == SIGSEGV)
+	LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
+     LOG(PURGER_LOG_ERR,"Received signal %d",signum);
+     redis_handle_sigpipe(); 
+     return;
+}
 int (*redis_command_ptr)(int rank, char * cmd);
 double process_objects_total[2];
 double hash_time[2];
@@ -54,7 +65,6 @@ void process_dir(char * parent,char * dir, CIRCLE_handle *handle)
     }
     else
 	{
-	    readdir_time[0] = MPI_Wtime();
 	    /* Read in each directory entry */
 	    while((current_ent = readdir(current_dir)) != NULL)
 	    {
@@ -69,7 +79,6 @@ void process_dir(char * parent,char * dir, CIRCLE_handle *handle)
 		    handle->enqueue(&parent[0]);
 		}
 	    }
-	    readdir_time[1] += MPI_Wtime() - readdir_time[0];
 	}
 	closedir(current_dir);
 return;
@@ -83,6 +92,7 @@ process_objects(CIRCLE_handle *handle)
     static char stat_temp[CIRCLE_MAX_STRING_LEN];
     static char redis_cmd_buf[CIRCLE_MAX_STRING_LEN];
     static char filekey[512];
+    static int count = 0;
     struct stat st;
     int status = 0;
     int crc = 0;
@@ -92,6 +102,8 @@ process_objects(CIRCLE_handle *handle)
     stat_time[0] = MPI_Wtime();
     status = lstat(temp,&st);
     stat_time[1] += MPI_Wtime()-stat_time[0];
+    if(count++ % 10000 == 0)
+	   LOG(PURGER_LOG_INFO,"Count %d",count);
     if(status != EXIT_SUCCESS)
     {
             LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
@@ -285,12 +297,23 @@ main (int argc, char **argv)
     stat_time[2] = 0;
     readdir_time[2] = 0;
     redis_command_ptr = &redis_command;
-
+    struct sigaction sa;
+    sa.sa_handler = (void *)treewalk_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    if(sigaction(SIGBUS, &sa, NULL) == -1)
+	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+    if(sigaction(SIGPIPE, &sa, NULL) == -1)
+	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+    if(sigaction(SIGINT, &sa, NULL) == -1)
+	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     
     /* Enable logging. */
     PURGER_debug_stream = stdout;
     PURGER_debug_level = PURGER_LOG_DBG;
+     
     int rank = CIRCLE_init(argc, argv);
+    CIRCLE_enable_logging(CIRCLE_LOG_INFO);
     PURGER_global_rank = rank;
     opterr = 0;
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
@@ -375,7 +398,7 @@ main (int argc, char **argv)
         if(rank == 0) LOG(PURGER_LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
     }
 
-    if(dir_flag == 0 && !restart_flag && !benchmarking_flag)
+    if(dir_flag == 0 && !restart_flag)
     {
          print_usage(argv);
          if(rank == 0) LOG(PURGER_LOG_FATAL, "You must specify a starting directory");
@@ -416,14 +439,12 @@ main (int argc, char **argv)
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
-    CIRCLE_finalize();
     
     char getCmd[256];
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
     if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT)<0)
     {
         fprintf(stderr,"Unable to %s",getCmd);
-        exit(1);
     }
 
     time(&time_finished);
@@ -439,16 +460,17 @@ main (int argc, char **argv)
         fprintf(stderr,"Unable to %s",getCmd);
     }
     
+    CIRCLE_finalize();
     if(rank == 0)
     {
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);
         LOG(PURGER_LOG_INFO, "treewalk run completed at: %s", endtime_str);
         LOG(PURGER_LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
         LOG(PURGER_LOG_INFO, "\nTotal time in process_objects: %lf\n\
-                   \tRedis commands: %lf %lf\n\
-                   \tStating:  %lf %lf\n\
-                   \tReaddir: %lf %lf\n\
-                   \tHashing: %lf %lf\n",
+                   \tRedis commands: %lf %lf%%\n\
+                   \tStating:  %lf %lf%%\n\
+                   \tReaddir: %lf %lf%%\n\
+                   \tHashing: %lf %lf%%\n",
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
