@@ -188,6 +188,7 @@ int redis_shard_command(int rank, char * cmd)
     {
         LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
         int i, done = 0;
+        redis_flush_pipe(redis_rank[rank], redis_rank_reply[rank]);
        	/*do
 	{
 	     if(redisBufferWrite(redis_rank[rank],&done) == REDIS_ERR)
@@ -197,8 +198,7 @@ int redis_shard_command(int rank, char * cmd)
 			redis_print_error(redis_rank[rank]);
 			break;
 	     }
-	} while( !done );*/
-        for(i = 0; i < redis_local_sharded_pipeline[rank]; i++)
+	} while( !done );
 	if(redisGetReply(redis_rank[rank],(void*)&redis_rank_reply[rank]) == REDIS_OK)
 	{
 		freeReplyObject(redis_rank_reply[rank]);
@@ -206,7 +206,7 @@ int redis_shard_command(int rank, char * cmd)
 	else
 	{
 		redis_print_error(redis_rank[rank]);
-	}
+	}*/
         LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
         redis_local_sharded_pipeline[rank] = 0;
     }

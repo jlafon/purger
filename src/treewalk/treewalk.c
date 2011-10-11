@@ -46,6 +46,7 @@ int sharded_count;
 time_t time_started;
 time_t time_finished;
 int file_count;
+int dir_count;
 #define SECONDS_PER_DAY 60.0*60.0*24.0
 float expire_threshold = SECONDS_PER_DAY*14.0;
 
@@ -110,6 +111,7 @@ process_objects(CIRCLE_handle *handle)
     /* Check to see if it is a directory.  If so, put its children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
     {
+	dir_count++;
         readdir_time[0] = MPI_Wtime();
         process_dir(stat_temp,temp,handle); 
         readdir_time[1] += MPI_Wtime() - readdir_time[0];
@@ -301,6 +303,7 @@ main (int argc, char **argv)
     stat_time[2] = 0;
     readdir_time[2] = 0;
     redis_command_ptr = &redis_command;
+    dir_count = 0;
     file_count = 0; 
     opterr = 0;
     
@@ -474,8 +477,12 @@ main (int argc, char **argv)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }
-    
+   if(!benchmarking_flag && sharded_flag)
+	redis_shard_finalize();
+    if(!benchmarking_flag)
+        redis_finalize(); 
     CIRCLE_finalize();
+    LOG(PURGER_LOG_INFO,"Files: %d\tDirs: %d\tTotal: %d\n",file_count,dir_count,file_count+dir_count);
     if(rank == 0)
     {
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);
@@ -489,11 +496,7 @@ main (int argc, char **argv)
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
-    if(!benchmarking_flag && sharded_flag)
-	redis_shard_finalize();
-    if(!benchmarking_flag)
-        redis_finalize(); 
-    _exit(EXIT_SUCCESS);
+        _exit(EXIT_SUCCESS);
 }
 
 /* EOF */
