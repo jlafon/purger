@@ -212,7 +212,7 @@ treewalk_redis_keygen(char *buf, char *filename)
     int cnt = 0;
 
     treewalk_filename_hash(filename, hash_buffer);
-    cnt += sprintf(buf, "file:%s\n", hash_buffer);
+    cnt += sprintf(buf, "file:%s ", hash_buffer);
     
     return cnt;
 }

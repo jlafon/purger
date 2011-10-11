@@ -81,7 +81,7 @@ int redis_init(char * hostname, int port)
 {
     redis_pipeline_size = 0;
     srand(2^PURGER_global_rank-1,time(NULL));
-    redis_local_pipeline_max = rand() % REDIS_PIPELINE_MAX + 500;
+    redis_local_pipeline_max = rand() % REDIS_PIPELINE_MAX + 10000;
     REDIS = redisConnect(hostname, port);
     BLOCKING_redis = redisConnect(hostname, port);
     if(REDIS->err || BLOCKING_redis->err)
@@ -153,12 +153,13 @@ return 0;
 
 int redis_flush_pipe(redisContext * c, redisReply * r)
 {
+        c->err = 0;
         int done = 0;
         do
         {
              if(redisBufferWrite(c,&done) == REDIS_ERR)
              {
-                LOG(PURGER_LOG_ERR,"Error on redisBufferWrite");
+                LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
                 perror("redisBufferWrite");
 				_exit(1); 
 				redis_print_error(c);
@@ -180,9 +181,9 @@ int redis_shard_command(int rank, char * cmd)
 {
     current_redis_rank = rank;
     LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
-    if(redisAppendCommand(redis_rank[rank],cmd) != REDIS_OK)
+    if(redisAppendFormattedCommand(redis_rank[rank],cmd) != REDIS_OK)
     {
-			LOG(PURGER_LOG_ERR,"Error on redisAppendCommand, attempting to flush pipe");
+			LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand \"%s\", attempting to flush pipe",cmd);
 			redis_print_error(redis_rank[rank]);
                         LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
                         redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]);

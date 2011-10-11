@@ -715,19 +715,37 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
             if (*c == ' ') {
                 if (touched) {
                     newargv = realloc(curargv,sizeof(char*)*(argc+1));
-                    if (newargv == NULL) goto err;
+                    if (newargv == NULL) 
+			{ 
+			fprintf(stdout,"%s:%d:Error: realloc failed.",__FILE__,__LINE__);
+			perror("realloc");
+			fflush(stdout);
+			goto err;
+			}
                     curargv = newargv;
                     curargv[argc++] = curarg;
                     totlen += bulklen(sdslen(curarg));
 
                     /* curarg is put in argv so it can be overwritten. */
                     curarg = sdsempty();
-                    if (curarg == NULL) goto err;
+                    if (curarg == NULL) 
+			{ 
+			fprintf(stdout,"%s:%d:Error: sdsempty failed.",__FILE__,__LINE__);
+			perror("sdsempty");
+			fflush(stdout);
+			goto err;
+			}
                     touched = 0;
                 }
             } else {
                 newarg = sdscatlen(curarg,c,1);
-                if (newarg == NULL) goto err;
+                if (newarg == NULL) 
+		{ 
+		fprintf(stdout,"%s:%d:Error: sdsempty failed.",__FILE__,__LINE__);
+		perror("sdsempty");
+		fflush(stdout);
+		goto err;
+		}	
                 curarg = newarg;
                 touched = 1;
             }
@@ -835,6 +853,9 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
 
                 fmt_invalid:
                     va_end(_cpy);
+		    
+			fprintf(stdout,"%s:%d:Error: format invalid.",__FILE__,__LINE__);
+			fflush(stdout);
                     goto err;
 
                 fmt_valid:
@@ -866,7 +887,12 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
     /* Add the last argument if needed */
     if (touched) {
         newargv = realloc(curargv,sizeof(char*)*(argc+1));
-        if (newargv == NULL) goto err;
+        if (newargv == NULL) 
+			{ 
+			fprintf(stdout,"%s:%d:Error: realloc failed.",__FILE__,__LINE__);
+			perror("realloc");
+			fflush(stdout);
+			}
         curargv = newargv;
         curargv[argc++] = curarg;
         totlen += bulklen(sdslen(curarg));
@@ -882,8 +908,12 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
 
     /* Build the command at protocol level */
     cmd = malloc(totlen+1);
-    if (cmd == NULL) goto err;
-
+    if (cmd == NULL)
+	{ 
+	fprintf(stdout,"%s:%d:Error: malloc failed.",__FILE__,__LINE__);
+	perror("malloc");
+	fflush(stdout);
+}
     pos = sprintf(cmd,"*%d\r\n",argc);
     for (j = 0; j < argc; j++) {
         pos += sprintf(cmd+pos,"$%zu\r\n",sdslen(curargv[j]));
@@ -1226,7 +1256,13 @@ int redisvAppendCommand(redisContext *c, const char *format, va_list ap) {
     free(cmd);
     return REDIS_OK;
 }
-
+int redisAppendFormattedCommand(redisContext *c, char * command){
+     if(!command || strlen(command) <= 0)
+         return REDIS_ERR;
+     if(__redisAppendCommand(c,command,strlen(command)) != REDIS_OK)
+	return REDIS_ERR;
+    return REDIS_OK;
+}
 int redisAppendCommand(redisContext *c, const char *format, ...) {
     va_list ap;
     int ret;

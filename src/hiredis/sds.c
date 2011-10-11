@@ -33,9 +33,11 @@
 #include <string.h>
 #include <ctype.h>
 #include "sds.h"
+#define SDS_ABORT_ON_OOM 1
 
 #ifdef SDS_ABORT_ON_OOM
 static void sdsOomAbort(void) {
+    perror("OOM");
     fprintf(stderr,"SDS: Out Of Memory (SDS_ABORT_ON_OOM defined)\n");
     abort();
 }
@@ -129,7 +131,8 @@ sds sdscatlen(sds s, const void *t, size_t len) {
     size_t curlen = sdslen(s);
 
     s = sdsMakeRoomFor(s,len);
-    if (s == NULL) return NULL;
+    if (s == NULL) 
+    { fprintf("%s:%d:sdsMakeRoomFor failed.",__FILE__,__LINE__); return NULL; }
     sh = (void*) (s-(sizeof(struct sdshdr)));
     memcpy(s+curlen, t, len);
     sh->len = curlen+len;
