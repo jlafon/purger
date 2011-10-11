@@ -153,47 +153,60 @@ return 0;
 
 int redis_flush_pipe(redisContext * c, redisReply * r)
 {
-        c->err = 0;
-        int done = 0;
-        do
-        {
-             if(redisBufferWrite(c,&done) == REDIS_ERR)
-             {
-                LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
-                perror("redisBufferWrite");
-				_exit(1); 
-				redis_print_error(c);
-                break;
-             }
-        } while( !done );
+	int done = 0;
+	do
+	{
+	     if(redisBufferWrite(c,&done) == REDIS_ERR)
+	     {
+			LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
+			perror("redisBufferWrite");
+			redis_print_error(c);
+			break;
+	     }
+	} while( !done );
 
-            if(redisGetReply(c,(void*)&r) == REDIS_OK)
-            {
-                freeReplyObject(r);
-            }
-            else 
-            {
-                LOG(PURGER_LOG_ERR,"Error on redisGetReply");
-                redis_print_error(c);
-            }  
+    if(redisGetReply(c,(void*)&r) == REDIS_OK)
+    {
+			freeReplyObject(r);
+    }
+    else 
+    {
+			LOG(PURGER_LOG_ERR,"Error on redisGetReply");
+			redis_print_error(c);
+    }  
 }
 int redis_shard_command(int rank, char * cmd)
 {
     current_redis_rank = rank;
     LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
-    if(redisAppendFormattedCommand(redis_rank[rank],cmd) != REDIS_OK)
+    if(redisAppendCommand(redis_rank[rank],cmd) != REDIS_OK)
     {
 			LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand \"%s\", attempting to flush pipe",cmd);
 			redis_print_error(redis_rank[rank]);
-                        LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
-                        redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]);
-			LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
     }
-    redis_local_sharded_pipeline[rank] = redis_local_sharded_pipeline[rank]+1;
-    if(redis_local_sharded_pipeline[rank] > redis_local_pipeline_max)
+    if(redis_local_sharded_pipeline[rank]++ > redis_local_pipeline_max)
     {
         LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
-	redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]);
+        int i, done = 0;
+       	/*do
+	{
+	     if(redisBufferWrite(redis_rank[rank],&done) == REDIS_ERR)
+	     {
+			LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
+			perror("redisBufferWrite");
+			redis_print_error(redis_rank[rank]);
+			break;
+	     }
+	} while( !done );*/
+        for(i = 0; i < redis_local_sharded_pipeline[rank]; i++)
+	if(redisGetReply(redis_rank[rank],(void*)&redis_rank_reply[rank]) == REDIS_OK)
+	{
+		freeReplyObject(redis_rank_reply[rank]);
+	}
+	else
+	{
+		redis_print_error(redis_rank[rank]);
+	}
         LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
         redis_local_sharded_pipeline[rank] = 0;
     }

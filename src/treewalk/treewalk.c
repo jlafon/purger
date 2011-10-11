@@ -45,6 +45,7 @@ int sharded_flag;
 int sharded_count;
 time_t time_started;
 time_t time_finished;
+int file_count;
 #define SECONDS_PER_DAY 60.0*60.0*24.0
 float expire_threshold = SECONDS_PER_DAY*14.0;
 
@@ -102,8 +103,6 @@ process_objects(CIRCLE_handle *handle)
     stat_time[0] = MPI_Wtime();
     status = lstat(temp,&st);
     stat_time[1] += MPI_Wtime()-stat_time[0];
-    if(count++ % 10000 == 0)
-	   LOG(PURGER_LOG_INFO,"Count %d",count);
     if(status != EXIT_SUCCESS)
     {
             LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
@@ -117,6 +116,7 @@ process_objects(CIRCLE_handle *handle)
     }
     else if(!benchmarking_flag && S_ISREG(st.st_mode)) 
     {
+        file_count++;
         /* Hash the file */
         hash_time[0] = MPI_Wtime();
         treewalk_redis_keygen(filekey, temp);
@@ -276,28 +276,35 @@ print_usage(char **argv)
 int
 main (int argc, char **argv)
 {
+    /* Locals */
     int index;
     int c;
-
-    char *redis_hostname;
-    char *redis_hostlist;
-    int redis_port;
-
     int time_flag = 0;
     int dir_flag = 0;
     int force_flag = 0;
     int restart_flag = 0;
     int redis_hostname_flag = 0;
+    int redis_port;
+    int redis_port_flag = 0;
+    struct sigaction sa;
+    char *redis_hostname;
+    char *redis_hostlist;
+    char starttime_str[256];
+    char endtime_str[256];
+    char getCmd[256];
+
+    /* Globals */
     benchmarking_flag = 0;
     sharded_flag = 0;
-    int redis_port_flag = 0;
-
     process_objects_total[2] = 0;
     redis_time[2] = 0;
     stat_time[2] = 0;
     readdir_time[2] = 0;
     redis_command_ptr = &redis_command;
-    struct sigaction sa;
+    file_count = 0; 
+    opterr = 0;
+    
+    /* Set up signal handler */
     sa.sa_handler = (void *)treewalk_signal_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
@@ -311,11 +318,13 @@ main (int argc, char **argv)
     /* Enable logging. */
     PURGER_debug_stream = stdout;
     PURGER_debug_level = PURGER_LOG_DBG;
-     
+    
+    /* Init lib circle */
     int rank = CIRCLE_init(argc, argv);
     CIRCLE_enable_logging(CIRCLE_LOG_INFO);
     PURGER_global_rank = rank;
-    opterr = 0;
+   
+    /* Parse options */ 
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
     {
         switch(c)
@@ -425,31 +434,37 @@ main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
     
-
-   time(&time_started);
-   if(!benchmarking_flag && treewalk_check_state(rank,force_flag) < 0)
+    /* Timing */
+    time(&time_started);
+    
+    /* Ensure it's OK to run at this time */
+    if(!benchmarking_flag && treewalk_check_state(rank,force_flag) < 0)
        exit(1);
+
+    /* Read from restart files */
     if(!benchmarking_flag && restart_flag)
         CIRCLE_read_restarts();
+
+    /* Enable sharding */
     if(!benchmarking_flag && sharded_flag)
     {
         sharded_count = redis_shard_init(redis_hostlist,redis_port);
         redis_command_ptr = &redis_shard_command;
     }
+
+    /* Parallel section */
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
-    
-    char getCmd[256];
+   
+    /* Set state */ 
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
     if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT)<0)
     {
-        fprintf(stderr,"Unable to %s",getCmd);
+          fprintf(stderr,"Unable to %s",getCmd);
     }
-
+ 
     time(&time_finished);
-    char starttime_str[256];
-    char endtime_str[256];
     struct tm * localstart = localtime( &time_started );
     struct tm * localend = localtime ( &time_finished );
     strftime(starttime_str, 256, "%b-%d-%Y,%H:%M:%S",localstart);

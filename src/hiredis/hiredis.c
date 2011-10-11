@@ -40,6 +40,7 @@
 #include "hiredis.h"
 #include "net.h"
 #include "sds.h"
+#include "log.h"
 
 static redisReply *createReplyObject(int type);
 static void *createStringObject(const redisReadTask *task, char *str, size_t len);
@@ -850,7 +851,8 @@ int redisvFormatCommand(char **target, const char *format, va_list ap) {
                         }
                         goto fmt_invalid;
                     }
-
+                    fprintf(stdout,"%s:%d:Warning: Unrecognized format: %s\n",__FILE__,__LINE__,_p);
+                    goto fmt_valid;
                 fmt_invalid:
                     va_end(_cpy);
 		    
@@ -1256,17 +1258,10 @@ int redisvAppendCommand(redisContext *c, const char *format, va_list ap) {
     free(cmd);
     return REDIS_OK;
 }
-int redisAppendFormattedCommand(redisContext *c, char * command){
-     if(!command || strlen(command) <= 0)
-         return REDIS_ERR;
-     if(__redisAppendCommand(c,command,strlen(command)) != REDIS_OK)
-	return REDIS_ERR;
-    return REDIS_OK;
-}
 int redisAppendCommand(redisContext *c, const char *format, ...) {
     va_list ap;
     int ret;
-
+    
     va_start(ap,format);
     ret = redisvAppendCommand(c,format,ap);
     va_end(ap);

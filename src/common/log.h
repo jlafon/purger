@@ -17,7 +17,7 @@ typedef enum
             fprintf(PURGER_debug_stream,"%d:%s:%d:", PURGER_global_rank, __FILE__, __LINE__); \
             fprintf(PURGER_debug_stream, __VA_ARGS__); \
             fprintf(PURGER_debug_stream, "\n"); \
-            fflush(PURGER_debug_stream); \
+	    fflush(PURGER_debug_stream); \
         } \
     } while (0)
 
