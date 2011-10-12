@@ -94,7 +94,6 @@ process_objects(CIRCLE_handle *handle)
     static char stat_temp[CIRCLE_MAX_STRING_LEN];
     static char redis_cmd_buf[CIRCLE_MAX_STRING_LEN];
     static char filekey[512];
-    static int count = 0;
     struct stat st;
     int status = 0;
     int crc = 0;
@@ -122,7 +121,7 @@ process_objects(CIRCLE_handle *handle)
         /* Hash the file */
         hash_time[0] = MPI_Wtime();
         treewalk_redis_keygen(filekey, temp);
-        crc = (int)crc32(filekey,32) % sharded_count;
+        crc = (int)treewalk_crc32(filekey,32) % sharded_count;
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
         /* Create and hset with basic attributes. */
@@ -193,7 +192,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "%s", filekey);
 
     /* Add the filename itself to the redis set command */
-    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", filename);
+    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", treewalk_base64_encode(filename));
 
     /* Add the args for sprintstatf */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " %s", redis_cmd_fmt_cnt);
@@ -324,7 +323,7 @@ main (int argc, char **argv)
     
     /* Init lib circle */
     int rank = CIRCLE_init(argc, argv);
-    CIRCLE_enable_logging(CIRCLE_LOG_INFO);
+    CIRCLE_enable_logging(CIRCLE_LOG_DBG);
     PURGER_global_rank = rank;
    
     /* Parse options */ 
@@ -459,14 +458,13 @@ main (int argc, char **argv)
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
-   
-    /* Set state */ 
+       /* Set state */ 
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
     if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT)<0)
     {
           fprintf(stderr,"Unable to %s",getCmd);
     }
- 
+     
     time(&time_finished);
     struct tm * localstart = localtime( &time_started );
     struct tm * localend = localtime ( &time_finished );
@@ -477,12 +475,12 @@ main (int argc, char **argv)
     {
         fprintf(stderr,"Unable to %s",getCmd);
     }
-   if(!benchmarking_flag && sharded_flag)
+    LOG(PURGER_LOG_INFO,"Files: %d\tDirs: %d\tTotal: %d\n",file_count,dir_count,file_count+dir_count);
+    if(!benchmarking_flag && sharded_flag)
 	redis_shard_finalize();
     if(!benchmarking_flag)
         redis_finalize(); 
-    CIRCLE_finalize();
-    LOG(PURGER_LOG_INFO,"Files: %d\tDirs: %d\tTotal: %d\n",file_count,dir_count,file_count+dir_count);
+   
     if(rank == 0)
     {
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);
@@ -496,6 +494,7 @@ main (int argc, char **argv)
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
     }
+    CIRCLE_finalize();
         _exit(EXIT_SUCCESS);
 }
 

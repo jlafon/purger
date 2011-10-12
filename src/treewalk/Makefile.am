@@ -3,7 +3,7 @@ include $(top_srcdir)/common.mk
 bin_PROGRAMS = treewalk
 treewalk_SOURCES = sprintstatf.c hash.c treewalk.c
 treewalk_LDADD = \
-    -lcrypto                                     \
+    -lssl -lcrypto                                     \
     $(libcircle_LIBS)                            \
     $(MPI_CLDFLAGS)                              \
     $(top_srcdir)/src/common/lib_purger_common.a \

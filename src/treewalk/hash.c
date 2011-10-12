@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "log.h"
 #include "hash.h"
+
 static uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3,	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -67,11 +69,11 @@ treewalk_filename_hash(char *in, unsigned char out[65])
     }
 
     out[64] = 0;
-
+    return 0;
 }
 
 int32_t
-crc32(const void *buf, size_t size)
+treewalk_crc32(const void *buf, size_t size)
 {
         uint32_t crc = 0x5;
 	const uint8_t *p;
@@ -85,6 +87,38 @@ crc32(const void *buf, size_t size)
 	int32_t r = crc ^ ~0U;
  	if(r < 0) r *=-1;
 	return r;
+}
+char * treewalk_base64_decode(unsigned char * encodedtext, int len)
+{
+    BIO *b64, *buffer;
+    char *output = (char*) malloc(sizeof(char)*len);
+    memset(output,0,len);
+    b64 = BIO_new(BIO_f_base64());
+    BIO_set_flags(b64,BIO_get_flags(b64) | BIO_FLAGS_BASE64_NO_NL);
+    buffer = BIO_new_mem_buf(encodedtext,len); 
+    buffer = BIO_push(b64,buffer);
+    BIO_read(buffer,output,len);
+    BIO_free_all(buffer);
+    return output;
+}
+char * treewalk_base64_encode(const unsigned char * plaintext)
+{
+    BIO *buffer, *b64;
+    BUF_MEM *buffptr;
+    b64 = BIO_new(BIO_f_base64());
+    buffer = BIO_new(BIO_s_mem());
+    BIO_set_flags(b64,BIO_get_flags(b64) | BIO_FLAGS_BASE64_NO_NL);
+    BIO_set_flags(buffer,BIO_get_flags(buffer) | BIO_FLAGS_BASE64_NO_NL);
+    b64 = BIO_push(b64,buffer);
+    BIO_write(b64,plaintext,strlen(plaintext));
+    BIO_flush(b64);
+    BIO_get_mem_ptr(b64, &buffptr);
+    char *ret = (char *) malloc(buffptr->length);
+    memcpy(ret, buffptr->data, buffptr->length-1);
+    ret[buffptr->length-1] = 0;
+    BIO_free_all(b64);
+    LOG(PURGER_LOG_DBG,"Encoded %s to %s\n",plaintext,ret);
+    return ret;
 }
 
 /* EOF */

@@ -24,6 +24,7 @@ int redis_init(char * hostname, int port);
 int redis_shard_init(char * hostnames, int port);
 void redis_print_error(redisContext * context);
 int redis_command(int rank,char * cmd);
+int redis_shard_vcommand(int rank, const char * format, va_list ap);
 int redis_shard_command(int rank, char * cmd);
 int redis_blocking_command(char * cmd, void * result, returnType ret);
 int redis_finalize();
