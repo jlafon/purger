@@ -311,7 +311,6 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
     int time_flag = 0;
-    int restart_flag = 0;
 	/* Parse options */ 
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
     {
@@ -342,7 +341,7 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
             
             case 'r':
                 if(opts->rank == 0) LOG(PURGER_LOG_WARN,"You have specified to use restart files.");
-                restart_flag = 1;
+                opts->restart_flag = 1;
                 break;
 
             case 't':
@@ -383,7 +382,7 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
                 abort();
         }
     }
-    if(restart_flag && dir_flag && !benchmarking_flag)
+    if(opts->restart_flag && dir_flag && !benchmarking_flag)
     {
         if(opts->rank == 0) LOG(PURGER_LOG_WARN, "You have told treewalk to use both checkpoint files and a directory.  You cannot combine these options.\n"
                                     "If you use a directory, treewalk will start from scratch.  If you use a checkpoint file, it will start from\n"
@@ -395,7 +394,7 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
         if(opts->rank == 0) LOG(PURGER_LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",opts->expire_threshold,opts->expire_threshold/(60.0*60.0*24.0));
     }
 
-    if(dir_flag == 0 && !restart_flag)
+    if(dir_flag == 0 && !opts->restart_flag)
     {
          print_usage(argv);
          if(opts->rank == 0) LOG(PURGER_LOG_FATAL, "You must specify a starting directory");
@@ -417,16 +416,28 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
     for (index = optind; index < argc; index++)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
 }
+
+void treewalk_init_opts(treewalk_options_st * opts)
+{
+    opts->redis_hostname = NULL;
+    opts->redis_hostlist = NULL;
+    opts->redis_port = 0;
+    opts->force_flag = 0;
+    opts->rank = 0;
+    opts->restart_flag = 0;
+    opts->expire_threshold = 0.0;
+}
+
 int
 main (int argc, char **argv)
 {
     /* Locals */
-    int restart_flag = 0;
     char starttime_str[256];
     char endtime_str[256];
     char getCmd[256];
 
     treewalk_options_st opts;    
+    treewalk_init_opts(&opts);
 
     /* Globals */
     treewalk_init_globals();
@@ -440,7 +451,7 @@ main (int argc, char **argv)
     
     /* Init lib circle */
     int rank = CIRCLE_init(argc, argv);
-    CIRCLE_enable_logging(CIRCLE_LOG_INFO);
+    CIRCLE_enable_logging(CIRCLE_LOG_WARN);
     PURGER_global_rank = rank;
     opts.rank = rank;
 
@@ -462,7 +473,7 @@ main (int argc, char **argv)
        exit(1);
 
     /* Read from restart files */
-    if(!benchmarking_flag && restart_flag)
+    if(!benchmarking_flag && opts.restart_flag)
         CIRCLE_read_restarts();
 
     /* Enable sharding */
