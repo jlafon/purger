@@ -10,16 +10,15 @@
 #include "state.h"
 #include "warnusers.h"
 #include "mail.h"
-
-#include "../common/log.h"
+#include "log.h"
 
 #include <hiredis.h>
 #include <async.h>
-FILE *PURGER_debug_stream;
+FILE           *PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
-int PURGER_global_rank;
-char         *TOP_DIR;
-redisContext *REDIS;
+int             PURGER_global_rank;
+char           *TOP_DIR;
+redisContext   *REDIS;
 
 time_t time_started;
 time_t time_finished;
@@ -46,7 +45,8 @@ add_objects(CIRCLE_handle *handle)
     handle->enqueue(buf);
 }
 
-void warnusers_get_uids(CIRCLE_handle *handle)
+void 
+warnusers_get_uids(CIRCLE_handle *handle)
 {
     int i = 0;
     char uid[256];
@@ -81,6 +81,7 @@ void warnusers_get_uids(CIRCLE_handle *handle)
             break;
     }
 }
+
 void
 process_objects(CIRCLE_handle *handle)
 {
@@ -99,6 +100,7 @@ process_objects(CIRCLE_handle *handle)
     }
     return;
 }
+
 void
 warnusers_redis_run_sadd(int id)
 {
@@ -106,6 +108,7 @@ warnusers_redis_run_sadd(int id)
     sprintf(buf,"SADD warnlist %d",id);
     warnusers_redis_run_cmd(buf,buf);
 }
+
 int
 warnusers_redis_run_cmd(char *cmd, char *filename)
 {
@@ -127,7 +130,6 @@ warnusers_redis_run_cmd(char *cmd, char *filename)
     }   
     return 0;
 }
-
 
 int
 warnusers_redis_run_scard(char * set)
@@ -151,6 +153,7 @@ warnusers_redis_run_scard(char * set)
         LOG(PURGER_LOG_DBG,"GET returned something else.");
     return -1;
 }
+
 int 
 warnusers_redis_run_get(char * key)
 {
@@ -168,6 +171,7 @@ warnusers_redis_run_get(char * key)
         LOG(PURGER_LOG_DBG,"GET didn't return a string");
     return -1;
 }
+
 int
 warnusers_redis_run_spop(char * uid)
 {
@@ -235,23 +239,23 @@ warnusers_check_state(int rank, int force)
    sprintf(getCmd,"warnusers-rank-%d",rank);
    status = warnusers_redis_run_get(getCmd);
    sprintf(getCmd,"set warnusers-rank-%d 1", rank);
-    if(status == 1 && !force)
-    {
-        if(rank == 0) LOG(PURGER_LOG_ERR,"Warnusers is already running.  If you wish to continue, verify that there is not a warnusers already running and re-run with -f to force it.");
-        return -1;
-    }
-    if(rank == 0 && warnusers_redis_run_cmd(getCmd,"")<0)
-    {
-        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
-        return -1;
-    }
+   if(status == 1 && !force)
+   {
+       if(rank == 0) LOG(PURGER_LOG_ERR,"Warnusers is already running.  If you wish to continue, verify that there is not a warnusers already running and re-run with -f to force it.");
+       return -1;
+   }
+   if(rank == 0 && warnusers_redis_run_cmd(getCmd,"")<0)
+   {
+       LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
+       return -1;
+   }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
    if(rank == 0 && warnusers_redis_run_cmd(getCmd,"")<0)
-    {
-        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
-        return -1;
-    }
-  return 0;
+   {
+       LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
+       return -1;
+   }
+   return 0;
 }
 
 

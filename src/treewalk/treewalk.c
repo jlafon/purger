@@ -19,21 +19,25 @@
 #include <hiredis.h>
 #include <async.h>
 #include <mpi.h>
+#define SECONDS_PER_DAY 60.0*60.0*24.0
 
-FILE* PURGER_debug_stream;
+FILE*           PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
-int PURGER_global_rank;
-char         *TOP_DIR;
+int             PURGER_global_rank;
+char*           TOP_DIR;
 
 
-static void treewalk_signal_handler(int signum, struct sigcontext ctx)
+static void 
+treewalk_signal_handler(int signum, struct sigcontext ctx)
 {
      if(signum == SIGSEGV)
-	LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
+     LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
      LOG(PURGER_LOG_ERR,"Received signal %d",signum);
      redis_handle_sigpipe(); 
      return;
 }
+
+
 int (*redis_command_ptr)(int rank, char * cmd);
 double process_objects_total[2];
 double hash_time[2];
@@ -47,7 +51,6 @@ time_t time_started;
 time_t time_finished;
 int file_count;
 int dir_count;
-#define SECONDS_PER_DAY 60.0*60.0*24.0
 float expire_threshold = SECONDS_PER_DAY*14.0;
 
 void
@@ -56,7 +59,8 @@ add_objects(CIRCLE_handle *handle)
     handle->enqueue(TOP_DIR);
 }
 
-void process_dir(char * parent,char * dir, CIRCLE_handle *handle)
+void 
+process_dir(char * parent,char * dir, CIRCLE_handle *handle)
 {
     DIR *current_dir;
     struct dirent *current_ent; 
@@ -66,24 +70,24 @@ void process_dir(char * parent,char * dir, CIRCLE_handle *handle)
         LOG(PURGER_LOG_ERR, "Unable to open dir: %s",dir);
     }
     else
-	{
-	    /* Read in each directory entry */
-	    while((current_ent = readdir(current_dir)) != NULL)
-	    {
-	    /* We don't care about . or .. */
-	    if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
-		{
-		    strcpy(parent,dir);
-		    strcat(parent,"/");
-		    strcat(parent,current_ent->d_name);
+    {
+        /* Read in each directory entry */
+        while((current_ent = readdir(current_dir)) != NULL)
+        {
+            /* We don't care about . or .. */
+            if((strncmp(current_ent->d_name,".",2)) && (strncmp(current_ent->d_name,"..",3)))
+            {
+                strcpy(parent,dir);
+                strcat(parent,"/");
+                strcat(parent,current_ent->d_name);
 
-		    LOG(PURGER_LOG_DBG, "Pushing [%s] <- [%s]", parent, dir);
-		    handle->enqueue(&parent[0]);
-		}
-	    }
-	}
-	closedir(current_dir);
-return;
+                LOG(PURGER_LOG_DBG, "Pushing [%s] <- [%s]", parent, dir);
+                handle->enqueue(&parent[0]);
+            }
+        }
+    }
+    closedir(current_dir);
+    return;
 }
 
 void
@@ -105,12 +109,12 @@ process_objects(CIRCLE_handle *handle)
     stat_time[1] += MPI_Wtime()-stat_time[0];
     if(status != EXIT_SUCCESS)
     {
-            LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
+        LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
     }
     /* Check to see if it is a directory.  If so, put its children in the queue */
     else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
     {
-	dir_count++;
+        dir_count++;
         readdir_time[0] = MPI_Wtime();
         process_dir(stat_temp,temp,handle); 
         readdir_time[1] += MPI_Wtime() - readdir_time[0];
@@ -121,14 +125,14 @@ process_objects(CIRCLE_handle *handle)
         /* Hash the file */
         hash_time[0] = MPI_Wtime();
         treewalk_redis_keygen(filekey, temp);
-        crc = (int)treewalk_crc32(filekey,32) % sharded_count;
+        crc = (int)purger_crc32(filekey,32) % sharded_count;
         hash_time[1] += MPI_Wtime() - hash_time[0];
         
         /* Create and hset with basic attributes. */
         treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
         
         /* Execute the redis command */
-	redis_time[0] = MPI_Wtime();
+        redis_time[0] = MPI_Wtime();
         (*redis_command_ptr)(crc,redis_cmd_buf);
         redis_time[1] += MPI_Wtime() - redis_time[0];
 
@@ -162,13 +166,11 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset, int crc)
 {
     int cnt = 0;
     char *buf = (char *)malloc(2048 * sizeof(char));
-
     cnt += sprintf(buf, "ZADD %s ", zset);
     cnt += sprintf(buf + cnt, "%ld ", val);
     cnt += sprintf(buf + cnt, "%s", filekey);
     (*redis_command_ptr)(crc, buf);
     free(buf);
-
     return cnt;
 }
 
@@ -177,7 +179,6 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
 {
     int fmt_cnt = 0;
     int buf_cnt = 0;
-
     char *redis_cmd_fmt = (char *)malloc(2048 * sizeof(char));
     char *redis_cmd_fmt_cnt = \
             "gid_decimal   \"%g\" "
@@ -185,6 +186,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
             "size          \"%s\" "
             "uid_decimal   \"%u\" ";
 
+    char * encoded_filename = purger_base64_encode(filename);
     /* Create the start of the command, i.e. "HMSET file:<hash>" */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "HMSET ");
 
@@ -192,7 +194,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "%s", filekey);
 
     /* Add the filename itself to the redis set command */
-    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", treewalk_base64_encode(filename));
+    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", encoded_filename);
 
     /* Add the args for sprintstatf */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " %s", redis_cmd_fmt_cnt);
@@ -201,22 +203,20 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     buf_cnt += sprintstatf(buf, redis_cmd_fmt, st);
 
     free(redis_cmd_fmt);
+    free(encoded_filename);
     return buf_cnt;
 }
-
-
 
 int
 treewalk_redis_keygen(char *buf, char *filename)
 {
     static unsigned char hash_buffer[65];
     int cnt = 0;
-
-    treewalk_filename_hash(filename, hash_buffer);
+    purger_filename_hash(filename, hash_buffer);
     cnt += sprintf(buf, "file:%s ", hash_buffer);
-    
     return cnt;
 }
+
 int
 treewalk_check_state(int rank, int force)
 {
@@ -250,31 +250,33 @@ treewalk_check_state(int rank, int force)
    sprintf(getCmd,"GET treewalk-rank-%d",rank);
    redis_blocking_command(getCmd,(void*)&status,INT);
    sprintf(getCmd,"set treewalk-rank-%d 1", rank);
-    if(status == 1 && !force)
-    {
-        if(rank == 0) LOG(PURGER_LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
-        return -1;
-    }
-    if(rank == 0 && (*redis_command_ptr)(0,getCmd)<0)
-    {
-        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
-        return -1;
-    }
+   if(status == 1 && !force)
+   {
+       if(rank == 0) LOG(PURGER_LOG_ERR,"Treewalk is already running.  If you wish to continue, verify that there is not a treewalk already running and re-run with -f to force it.");
+       return -1;
+   }
+   if(rank == 0 && (*redis_command_ptr)(0,getCmd)<0)
+   {
+       LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
+       return -1;
+   }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
    if(rank == 0 && (*redis_command_ptr)(0,getCmd)<0)
-    {
+   {
         LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
         return -1;
-    }
-  return 0;
+   }
+   return 0;
 }
+
 void
 print_usage(char **argv)
 {
     fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f -b]\n", argv[0]);
 }
 
-void treewalk_init_globals()
+void 
+treewalk_init_globals()
 {
     benchmarking_flag = 0;
     sharded_flag = 0;
@@ -289,21 +291,24 @@ void treewalk_init_globals()
     return; 
 }
 
-void treewalk_install_signal_handlers()
+void 
+treewalk_install_signal_handlers()
 {
     struct sigaction * sa = (struct sigaction *) malloc(sizeof(struct sigaction));
     sa->sa_handler = (void *)treewalk_signal_handler;
     sigemptyset(&sa->sa_mask);
     sa->sa_flags = SA_RESTART;
     if(sigaction(SIGBUS, sa, NULL) == -1)
-	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     if(sigaction(SIGPIPE, sa, NULL) == -1)
-	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     if(sigaction(SIGINT, sa, NULL) == -1)
-	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     return; 
 }
-void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
+
+void 
+treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
 {
     int c;
     int index;
@@ -311,14 +316,14 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
     int time_flag = 0;
-	/* Parse options */ 
+    /* Parse options */ 
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
     {
         switch(c)
         {
             case 'b':
-		benchmarking_flag = 1;
-		break;
+        benchmarking_flag = 1;
+        break;
             case 'd':
                 TOP_DIR = realpath(optarg, NULL);
                 if(opts->rank == 0) LOG(PURGER_LOG_INFO,"Using %s as a root path.",TOP_DIR);
@@ -417,7 +422,8 @@ void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
 }
 
-void treewalk_init_opts(treewalk_options_st * opts)
+void 
+treewalk_init_opts(treewalk_options_st * opts)
 {
     opts->redis_hostname = NULL;
     opts->redis_hostlist = NULL;
@@ -451,7 +457,7 @@ main (int argc, char **argv)
     
     /* Init lib circle */
     int rank = CIRCLE_init(argc, argv);
-    CIRCLE_enable_logging(CIRCLE_LOG_WARN);
+    CIRCLE_enable_logging(CIRCLE_LOG_ERR);
     PURGER_global_rank = rank;
     opts.rank = rank;
 
@@ -508,7 +514,7 @@ main (int argc, char **argv)
     }
     LOG(PURGER_LOG_INFO,"Files: %d\tDirs: %d\tTotal: %d\n",file_count,dir_count,file_count+dir_count);
     if(!benchmarking_flag && sharded_flag)
-	redis_shard_finalize();
+        redis_shard_finalize();
     if(!benchmarking_flag)
         redis_finalize(); 
    
@@ -517,6 +523,7 @@ main (int argc, char **argv)
         LOG(PURGER_LOG_INFO, "treewalk run started at: %s", starttime_str);
         LOG(PURGER_LOG_INFO, "treewalk run completed at: %s", endtime_str);
         LOG(PURGER_LOG_INFO, "treewalk total time (seconds) for this run: %f",difftime(time_finished,time_started));
+    }
         LOG(PURGER_LOG_INFO, "\nTotal time in process_objects: %lf\n\
                    \tRedis commands: %lf %lf%%\n\
                    \tStating:  %lf %lf%%\n\
@@ -524,9 +531,8 @@ main (int argc, char **argv)
                    \tHashing: %lf %lf%%\n",
                    process_objects_total[1],redis_time[1],redis_time[1]/process_objects_total[1]*100.0,stat_time[1],stat_time[1]/process_objects_total[1]*100.0,readdir_time[1],readdir_time[1]/process_objects_total[1]*100.0
                    ,hash_time[1],hash_time[1]/process_objects_total[1]*100.0);
-    }
     CIRCLE_finalize();
-        _exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
 }
 
 /* EOF */

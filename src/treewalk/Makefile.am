@@ -1,7 +1,7 @@
 include $(top_srcdir)/common.mk
 
 bin_PROGRAMS = treewalk
-treewalk_SOURCES = sprintstatf.c hash.c treewalk.c
+treewalk_SOURCES = sprintstatf.c treewalk.c
 treewalk_LDADD = \
     -lssl -lcrypto                                     \
     $(libcircle_LIBS)                            \
