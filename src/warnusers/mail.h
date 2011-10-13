@@ -1,15 +1,15 @@
 #ifndef      __WARNUSERS_MAIL_H
 #define      __WARNUSERS_MAIL_H
 
-struct mailinfo_t {
-  char from[256];
-  char fromreal[256];
-  char defaultto[256];
-  char subject[256];
-  char server[256];
-  char txt[2048];
-};
-typedef struct mailinfo_t mailinfo_t;
+typedef struct
+{
+  char* from;
+  char* fromreal;
+  char* defaultto;
+  char* subject;
+  char* server;
+  char* txt;
+} mailinfo_t;
 
 void sendmail_write(
 		    const int  sock,

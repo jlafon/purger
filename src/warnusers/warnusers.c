@@ -23,6 +23,7 @@ redisContext   *REDIS;
 time_t time_started;
 time_t time_finished;
 
+mailinfo_t mailinfo; 
 void
 add_objects(CIRCLE_handle *handle)
 {
@@ -355,8 +356,21 @@ main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    mailinfo.from     = "consult@lanl.gov";
+    mailinfo.fromreal = "ydms-master@lanl.gov";
+    mailinfo.subject = "[PURGER NOTIFICATION]";
+    mailinfo.defaultto = "nfs@lanl.gov";
+    mailinfo.server = "mail.lanl.gov";
+    mailinfo.txt = "The following text file in the Turquiose network contains a list of       \
+                   your scratch files that have not been modified in the last 14+ days.       \
+                   Those files will be deleted in at least 6 days if not modified by then.    \ 
+                   This notification may not have up-to-the-minute information, but we        \
+                   will verify a file's actual age before purging it.   For more information, \
+                    please see our purge policy:  http://hpc.lanl.gov/purge_policy.           \
+                   If you have questions or concerns, please contact ICN Consultants          \
+                   at 505-665-4444 option 3."; 
+
     time(&time_started);
-        
     if(warnusers_check_state(PURGER_global_rank,force_flag) < 0)
         exit(1);
     CIRCLE_cb_process(&process_objects);

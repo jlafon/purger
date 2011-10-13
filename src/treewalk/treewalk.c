@@ -1,3 +1,9 @@
+/**
+  *
+  * @file treewalk.c
+  * @authors Jharrod LaFon, Jon Bringhurst
+  *
+  */
 #include <stdlib.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -21,24 +27,25 @@
 #include <mpi.h>
 #define SECONDS_PER_DAY 60.0*60.0*24.0
 
+/* Output for debugging */
 FILE*           PURGER_debug_stream;
+
+/* Verbosity */
 PURGER_loglevel PURGER_debug_level;
+
+/* Each rank's global id */
 int             PURGER_global_rank;
+
+/* File tree root */
 char*           TOP_DIR;
 
-
-static void 
-treewalk_signal_handler(int signum, struct sigcontext ctx)
-{
-     if(signum == SIGSEGV)
-     LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
-     LOG(PURGER_LOG_ERR,"Received signal %d",signum);
-     redis_handle_sigpipe(); 
-     return;
-}
-
-
+/**
+  * Function pointer used to call the correct redis function (sharded or not sharded).
+  * This avoids a comparison for every database call.
+  */
 int (*redis_command_ptr)(int rank, char * cmd);
+
+/* Global accounting/performance variables */
 double process_objects_total[2];
 double hash_time[2];
 double redis_time[2];
@@ -51,8 +58,24 @@ time_t time_started;
 time_t time_finished;
 int file_count;
 int dir_count;
+
+/* Default time for which a file expires */
 float expire_threshold = SECONDS_PER_DAY*14.0;
 
+/**
+  * Signal handler used to catch signals sent to treewalk.
+  */
+static void 
+treewalk_signal_handler(int signum, struct sigcontext ctx)
+{
+     if(signum == SIGSEGV)
+     LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
+     LOG(PURGER_LOG_ERR,"Received signal %d",signum);
+     redis_handle_sigpipe(); 
+     return;
+}
+
+/* Call back given to initialize the data set.  Adds the first path to the queue. */
 void
 add_objects(CIRCLE_handle *handle)
 {
@@ -80,7 +103,6 @@ process_dir(char * parent,char * dir, CIRCLE_handle *handle)
                 strcpy(parent,dir);
                 strcat(parent,"/");
                 strcat(parent,current_ent->d_name);
-
                 LOG(PURGER_LOG_DBG, "Pushing [%s] <- [%s]", parent, dir);
                 handle->enqueue(&parent[0]);
             }
@@ -89,6 +111,19 @@ process_dir(char * parent,char * dir, CIRCLE_handle *handle)
     closedir(current_dir);
     return;
 }
+void
+treewalk_create_redis_lpush_cmd(char * cmd, char * key, int uid)
+{
+    sprintf(cmd,"LPUSH %d \"%s\"",uid,key);
+}
+void treewalk_redis_run_sadd(struct stat *st)
+{
+    char *buf = (char*)malloc(2048 * sizeof(char));
+    sprintf(buf, "SADD warnlist %d",st->st_uid);
+    (*redis_command_ptr)(st->st_uid % sharded_count,buf);
+}
+
+
 
 void
 process_objects(CIRCLE_handle *handle)
@@ -147,18 +182,13 @@ process_objects(CIRCLE_handle *handle)
             treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
             /* add user to warn list */
             treewalk_redis_run_sadd(&st);
+            /* add file to list of expired files for that user */
+            treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
+            (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
             redis_time[1] += MPI_Wtime() - redis_time[0];
         }
     }
     process_objects_total[1] += MPI_Wtime() - process_objects_total[0];
-}
-
-void
-treewalk_redis_run_sadd(struct stat *st)
-{
-    char *buf = (char*)malloc(2048 * sizeof(char));
-    sprintf(buf, "SADD warnlist %d",st->st_uid);
-    (*redis_command_ptr)(st->st_uid % sharded_count,buf);
 }
 
 int
