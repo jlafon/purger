@@ -274,27 +274,8 @@ print_usage(char **argv)
     fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f -b]\n", argv[0]);
 }
 
-int
-main (int argc, char **argv)
+void treewalk_init_globals()
 {
-    /* Locals */
-    int index;
-    int c;
-    int time_flag = 0;
-    int dir_flag = 0;
-    int force_flag = 0;
-    int restart_flag = 0;
-    int redis_hostname_flag = 0;
-    int redis_port;
-    int redis_port_flag = 0;
-    struct sigaction sa;
-    char *redis_hostname;
-    char *redis_hostlist;
-    char starttime_str[256];
-    char endtime_str[256];
-    char getCmd[256];
-
-    /* Globals */
     benchmarking_flag = 0;
     sharded_flag = 0;
     process_objects_total[2] = 0;
@@ -305,28 +286,33 @@ main (int argc, char **argv)
     dir_count = 0;
     file_count = 0; 
     opterr = 0;
-    
-    /* Set up signal handler */
-    sa.sa_handler = (void *)treewalk_signal_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if(sigaction(SIGBUS, &sa, NULL) == -1)
+    return; 
+}
+
+void treewalk_install_signal_handlers()
+{
+    struct sigaction * sa = (struct sigaction *) malloc(sizeof(struct sigaction));
+    sa->sa_handler = (void *)treewalk_signal_handler;
+    sigemptyset(&sa->sa_mask);
+    sa->sa_flags = SA_RESTART;
+    if(sigaction(SIGBUS, sa, NULL) == -1)
 	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
-    if(sigaction(SIGPIPE, &sa, NULL) == -1)
+    if(sigaction(SIGPIPE, sa, NULL) == -1)
 	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
-    if(sigaction(SIGINT, &sa, NULL) == -1)
+    if(sigaction(SIGINT, sa, NULL) == -1)
 	LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
-    
-    /* Enable logging. */
-    PURGER_debug_stream = stdout;
-    PURGER_debug_level = PURGER_LOG_DBG;
-    
-    /* Init lib circle */
-    int rank = CIRCLE_init(argc, argv);
-    CIRCLE_enable_logging(CIRCLE_LOG_DBG);
-    PURGER_global_rank = rank;
-   
-    /* Parse options */ 
+    return; 
+}
+void treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
+{
+    int c;
+    int index;
+    int dir_flag = 0;
+    int redis_hostname_flag = 0;
+    int redis_port_flag = 0;
+    int time_flag = 0;
+    int restart_flag = 0;
+	/* Parse options */ 
     while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
     {
         switch(c)
@@ -336,7 +322,7 @@ main (int argc, char **argv)
 		break;
             case 'd':
                 TOP_DIR = realpath(optarg, NULL);
-                if(rank == 0) LOG(PURGER_LOG_INFO,"Using %s as a root path.",TOP_DIR);
+                if(opts->rank == 0) LOG(PURGER_LOG_INFO,"Using %s as a root path.",TOP_DIR);
                 dir_flag = 1;
                 break;
         
@@ -345,33 +331,33 @@ main (int argc, char **argv)
                 break;
 
             case 'h':
-                redis_hostname = optarg;
+                opts->redis_hostname = optarg;
                 redis_hostname_flag = 1;
                 break;
 
             case 'p':
-                redis_port = atoi(optarg);
+                opts->redis_port = atoi(optarg);
                 redis_port_flag = 1;
                 break;
             
             case 'r':
-                if(rank == 0) LOG(PURGER_LOG_WARN,"You have specified to use restart files.");
+                if(opts->rank == 0) LOG(PURGER_LOG_WARN,"You have specified to use restart files.");
                 restart_flag = 1;
                 break;
 
             case 't':
                 time_flag = 1;
-                expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
-                if(rank == 0) LOG(PURGER_LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
+                opts->expire_threshold = (float)SECONDS_PER_DAY * atof(optarg);
+                if(opts->rank == 0) LOG(PURGER_LOG_WARN,"Changed file expiration time to %.2f days, or %.2f seconds.",expire_threshold/(60.0*60.0*24),expire_threshold);
                 break;
             case 's':
                 sharded_flag = 1;
-                redis_hostlist = optarg;
+                opts->redis_hostlist = optarg;
                 break;
 
             case 'f':
-                force_flag = 1;
-                if(rank == 0) LOG(PURGER_LOG_WARN,"Warning: You have chosen to force treewalk.");
+                opts->force_flag = 1;
+                if(opts->rank == 0) LOG(PURGER_LOG_WARN,"Warning: You have chosen to force treewalk.");
                 break;
             
             case '?':
@@ -399,38 +385,70 @@ main (int argc, char **argv)
     }
     if(restart_flag && dir_flag && !benchmarking_flag)
     {
-        if(rank == 0) LOG(PURGER_LOG_WARN, "You have told treewalk to use both checkpoint files and a directory.  You cannot combine these options.\n"
+        if(opts->rank == 0) LOG(PURGER_LOG_WARN, "You have told treewalk to use both checkpoint files and a directory.  You cannot combine these options.\n"
                                     "If you use a directory, treewalk will start from scratch.  If you use a checkpoint file, it will start from\n"
                                     "from the data in the checkpoint files.\n");
         exit(EXIT_FAILURE);
     }
     if(time_flag == 0 && !benchmarking_flag)
     {
-        if(rank == 0) LOG(PURGER_LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",expire_threshold,expire_threshold/(60.0*60.0*24.0));
+        if(opts->rank == 0) LOG(PURGER_LOG_WARN, "A file timeout value was not specified.  Files older than %.2f seconds (%.2f days) will be expired.",opts->expire_threshold,opts->expire_threshold/(60.0*60.0*24.0));
     }
 
     if(dir_flag == 0 && !restart_flag)
     {
          print_usage(argv);
-         if(rank == 0) LOG(PURGER_LOG_FATAL, "You must specify a starting directory");
+         if(opts->rank == 0) LOG(PURGER_LOG_FATAL, "You must specify a starting directory");
          exit(EXIT_FAILURE);
     }
 
     if(redis_hostname_flag == 0 && !benchmarking_flag)
     {
-        if(rank == 0) LOG(PURGER_LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
-        redis_hostname = "localhost";
+        if(opts->rank == 0) LOG(PURGER_LOG_WARN, "A hostname for redis was not specified, defaulting to localhost.");
+        opts->redis_hostname = "localhost";
     }
 
     if(redis_port_flag == 0 && !benchmarking_flag)
     {
-        if(rank == 0) LOG(PURGER_LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
-        redis_port = 6379;
+        if(opts->rank == 0) LOG(PURGER_LOG_WARN, "A port number for redis was not specified, defaulting to 6379.");
+        opts->redis_port = 6379;
     }
 
     for (index = optind; index < argc; index++)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
-    if (!benchmarking_flag && redis_init(redis_hostname,redis_port) < 0)
+}
+int
+main (int argc, char **argv)
+{
+    /* Locals */
+    int restart_flag = 0;
+    char starttime_str[256];
+    char endtime_str[256];
+    char getCmd[256];
+
+    treewalk_options_st opts;    
+
+    /* Globals */
+    treewalk_init_globals();
+
+    /* Set up signal handler */
+    treewalk_install_signal_handlers();
+
+    /* Enable logging. */
+    PURGER_debug_stream = stdout;
+    PURGER_debug_level = PURGER_LOG_DBG;
+    
+    /* Init lib circle */
+    int rank = CIRCLE_init(argc, argv);
+    CIRCLE_enable_logging(CIRCLE_LOG_INFO);
+    PURGER_global_rank = rank;
+    opts.rank = rank;
+
+    /* Process command line options */    
+    treewalk_process_options(argc,argv,&opts); 
+
+    /* Init redis */
+    if (!benchmarking_flag && redis_init(opts.redis_hostname,opts.redis_port) < 0)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
@@ -440,7 +458,7 @@ main (int argc, char **argv)
     time(&time_started);
     
     /* Ensure it's OK to run at this time */
-    if(!benchmarking_flag && treewalk_check_state(rank,force_flag) < 0)
+    if(!benchmarking_flag && treewalk_check_state(opts.rank,opts.force_flag) < 0)
        exit(1);
 
     /* Read from restart files */
@@ -450,7 +468,7 @@ main (int argc, char **argv)
     /* Enable sharding */
     if(!benchmarking_flag && sharded_flag)
     {
-        sharded_count = redis_shard_init(redis_hostlist,redis_port);
+        sharded_count = redis_shard_init(opts.redis_hostlist,opts.redis_port);
         redis_command_ptr = &redis_shard_command;
     }
 
@@ -458,7 +476,9 @@ main (int argc, char **argv)
     CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
-       /* Set state */ 
+    /* End parallel section (well, kind of) */   
+
+    /* Set state */ 
     sprintf(getCmd,"set treewalk-rank-%d 0", rank);
     if(!benchmarking_flag && redis_blocking_command(getCmd,NULL,INT)<0)
     {
