@@ -176,7 +176,7 @@ process_objects(CIRCLE_handle *handle)
            to warnlist */
         if(difftime(time_started,st.st_mtime) > expire_threshold)
         {
-            LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
+            LOG(PURGER_LOG_INFO,"File expired: \"%s\"",temp);
             redis_time[0] = MPI_Wtime();
             /* The mtime of the file as a zadd. */
             treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
