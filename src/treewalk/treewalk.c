@@ -82,6 +82,10 @@ add_objects(CIRCLE_handle *handle)
     handle->enqueue(TOP_DIR);
 }
 
+
+/*
+ * Handles one directory.  Adds all its children to the queue.
+ */
 void 
 process_dir(char * parent,char * dir, CIRCLE_handle *handle)
 {
@@ -111,11 +115,20 @@ process_dir(char * parent,char * dir, CIRCLE_handle *handle)
     closedir(current_dir);
     return;
 }
+
+/*
+ * Creates a command like: "LPUSH <uid> <filekey>" to append
+ * an expired file key to a user's list.
+ */
 void
 treewalk_create_redis_lpush_cmd(char * cmd, char * key, int uid)
 {
     sprintf(cmd,"LPUSH %d \"%s\"",uid,key);
 }
+
+/*
+ * Creates a command to add a user to the list of users to be warned.
+ */
 void treewalk_redis_run_sadd(struct stat *st)
 {
     char *buf = (char*)malloc(2048 * sizeof(char));
@@ -123,8 +136,9 @@ void treewalk_redis_run_sadd(struct stat *st)
     (*redis_command_ptr)(st->st_uid % sharded_count,buf);
 }
 
-
-
+/*
+ * Callback for handling work queue elements. 
+ */
 void
 process_objects(CIRCLE_handle *handle)
 {
@@ -138,6 +152,7 @@ process_objects(CIRCLE_handle *handle)
     int crc = 0;
     /* Pop an item off the queue */ 
     handle->dequeue(temp);
+
     /* Try and stat it, checking to see if it is a link */
     stat_time[0] = MPI_Wtime();
     status = lstat(temp,&st);
@@ -190,7 +205,9 @@ process_objects(CIRCLE_handle *handle)
     }
     process_objects_total[1] += MPI_Wtime() - process_objects_total[0];
 }
-
+/*
+ * Function to run a ZADD in redis.
+ */
 int
 treewalk_redis_run_zadd(char *filekey, long val, char *zset, int crc)
 {
@@ -204,6 +221,9 @@ treewalk_redis_run_zadd(char *filekey, long val, char *zset, int crc)
     return cnt;
 }
 
+/*
+ * Helper function to create a redis command from a file's attributes.
+ */
 int
 treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char *filekey)
 {
@@ -237,6 +257,9 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     return buf_cnt;
 }
 
+/*
+ * Helper function to hash a filename into a key.
+ */
 int
 treewalk_redis_keygen(char *buf, char *filename)
 {
@@ -247,6 +270,9 @@ treewalk_redis_keygen(char *buf, char *filename)
     return cnt;
 }
 
+/*
+ * Asserts that the state transition for purger is valid.
+ */
 int
 treewalk_check_state(int rank, int force)
 {
@@ -299,12 +325,18 @@ treewalk_check_state(int rank, int force)
    return 0;
 }
 
+/*
+ * Prints usage.
+ */
 void
 print_usage(char **argv)
 {
     fprintf(stderr, "Usage: %s -d <starting directory> [-h <redis_hostname> -p <redis_port> -t <days to expire> -f -b]\n", argv[0]);
 }
 
+/*
+ * Initializes global variables.
+ */
 void 
 treewalk_init_globals()
 {
@@ -321,6 +353,9 @@ treewalk_init_globals()
     return; 
 }
 
+/*
+ * Installs signal handler functions.
+ */
 void 
 treewalk_install_signal_handlers()
 {
@@ -329,14 +364,17 @@ treewalk_install_signal_handlers()
     sigemptyset(&sa->sa_mask);
     sa->sa_flags = SA_RESTART;
     if(sigaction(SIGBUS, sa, NULL) == -1)
-    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+        LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     if(sigaction(SIGPIPE, sa, NULL) == -1)
-    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+        LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     if(sigaction(SIGINT, sa, NULL) == -1)
-    LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
+        LOG(PURGER_LOG_ERR,"Failed to set signal handler.");
     return; 
 }
 
+/*
+ * Process user options and set flags.
+ */
 void 
 treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
 {
@@ -452,6 +490,9 @@ treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
 }
 
+/*
+ * Initialize the options struct
+ */
 void 
 treewalk_init_opts(treewalk_options_st * opts)
 {
@@ -464,6 +505,9 @@ treewalk_init_opts(treewalk_options_st * opts)
     opts->expire_threshold = 0.0;
 }
 
+/*
+ * Main
+ */
 int
 main (int argc, char **argv)
 {
