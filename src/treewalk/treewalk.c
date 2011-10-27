@@ -385,13 +385,16 @@ treewalk_process_options(int argc, char **argv,treewalk_options_st * opts)
     int redis_port_flag = 0;
     int time_flag = 0;
     /* Parse options */ 
-    while((c = getopt(argc, argv, "d:h:p:ft:l:rs:b")) != -1)
+    while((c = getopt(argc, argv, "d:h:p:ft:l:rs:bi:")) != -1)
     {
         switch(c)
         {
             case 'b':
-        benchmarking_flag = 1;
-        break;
+                benchmarking_flag = 1;
+                break;
+            case 'i':
+                opts->db_number = atoi(optarg);
+                break;
             case 'd':
                 TOP_DIR = realpath(optarg, NULL);
                 if(opts->rank == 0) LOG(PURGER_LOG_INFO,"Using %s as a root path.",TOP_DIR);
@@ -500,6 +503,7 @@ treewalk_init_opts(treewalk_options_st * opts)
     opts->redis_hostlist = NULL;
     opts->redis_port = 0;
     opts->force_flag = 0;
+    opts->db_number = 0;
     opts->rank = 0;
     opts->restart_flag = 0;
     opts->expire_threshold = 0.0;
@@ -539,7 +543,7 @@ main (int argc, char **argv)
     treewalk_process_options(argc,argv,&opts); 
 
     /* Init redis */
-    if (!benchmarking_flag && redis_init(opts.redis_hostname,opts.redis_port) < 0)
+    if (!benchmarking_flag && redis_init(opts.redis_hostname,opts.redis_port,opts.db_number) < 0)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
@@ -559,7 +563,7 @@ main (int argc, char **argv)
     /* Enable sharding */
     if(!benchmarking_flag && sharded_flag)
     {
-        sharded_count = redis_shard_init(opts.redis_hostlist,opts.redis_port);
+        sharded_count = redis_shard_init(opts.redis_hostlist,opts.redis_port,opts.db_number);
         redis_command_ptr = &redis_shard_command;
     }
 

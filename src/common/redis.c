@@ -49,7 +49,7 @@ int redis_shard_finalize()
         redisFree(redis_rank[i]);
     }
 }
-int redis_shard_init(char * hostnames, int port)
+int redis_shard_init(char * hostnames, int port, int db_number)
 {
     int i = 0;
     redis_port = port;
@@ -61,14 +61,15 @@ int redis_shard_init(char * hostnames, int port)
         LOG(PURGER_LOG_INFO,"Initializing redis connection to %s",host);
         redis_rank[i] = (redisContext *) malloc(sizeof(redisContext*));
         redis_rank[i] = redisConnect(host,port);
-	hostlist[i] = (char*) malloc(sizeof(char)*2048);
-	strcpy(hostlist[i],host);
+        hostlist[i] = (char*) malloc(sizeof(char)*2048);
+        strcpy(hostlist[i],host);
         LOG(PURGER_LOG_INFO,"Initialized redis connection to %s",host);
         if(redis_rank[i] && redis_rank[i]->err)
         {
             LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host,redis_rank[i]->errstr);
             return -1;
         }
+        redisCommand("SELECT %d", db_number);
         i++;
         host = strtok(NULL,",");
     }
@@ -77,13 +78,13 @@ int redis_shard_init(char * hostnames, int port)
     redis_rank_reply = (redisReply**) malloc(sizeof(redisReply*)*i);
     for(i = 0; i < shard_count; i++)
     {
-	redis_local_sharded_pipeline[i] = 0;
-	redisAppendCommand(redis_rank[i],"MULTI");
+        redis_local_sharded_pipeline[i] = 0;
+        redisAppendCommand(redis_rank[i],"MULTI");
     }
     LOG(PURGER_LOG_DBG,"Initialized %d redis connections.",shard_count);
     return shard_count;
 }
-int redis_init(char * hostname, int port)
+int redis_init(char * hostname, int port, int db_number)
 {
     redis_pipeline_size = 0;
     srand(2^PURGER_global_rank-1,time(NULL));
@@ -95,6 +96,7 @@ int redis_init(char * hostname, int port)
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         return -1;	    
     }
+    redisCommand("SELECT %d",db_number);
     return 0; 
 }
 void redis_print_error(redisContext * context)

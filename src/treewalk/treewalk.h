@@ -9,6 +9,7 @@ typedef struct
   int redis_port;
   int force_flag;
   int rank;
+  int db_number;
   int restart_flag;
   float expire_threshold;
 } treewalk_options_st;
