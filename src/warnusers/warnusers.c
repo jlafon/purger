@@ -11,6 +11,7 @@
 #include "mail.h"
 #include "log.h"
 #include "redis.h"
+#define WARN_STRING_LEN 4096
 FILE           *PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
 int             PURGER_global_rank;
@@ -67,6 +68,18 @@ void add_objects(CIRCLE_handle *handle)
     }
     return;
 }
+
+void
+process_uid_list(char * uid_str)
+{
+    int uid = atoi(uid_str);
+    int num_files = 0;
+    char command_str[WARN_STRING_LEN];
+    sprintf(command_str,"llen %d",uid);
+    (*redis_command_ptr)(uid % sharded_count,command_str,(void*)num_files,INT);
+     
+}
+
 void
 process_objects(CIRCLE_handle *handle)
 {
@@ -75,6 +88,7 @@ process_objects(CIRCLE_handle *handle)
     LOG(PURGER_LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
     handle->dequeue(temp);
     LOG(PURGER_LOG_DBG, "Popped [%s]", temp);
+
     return;
 }
 
