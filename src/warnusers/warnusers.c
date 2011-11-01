@@ -6,56 +6,36 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
-
 #include "state.h"
 #include "warnusers.h"
 #include "mail.h"
 #include "log.h"
-
-#include <hiredis.h>
-#include <async.h>
+#include "redis.h"
 FILE           *PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
 int             PURGER_global_rank;
 int             sharded_count;
 char           *TOP_DIR;
-redisContext   *REDIS;
 
 time_t time_started;
 time_t time_finished;
 
-int (*redis_command_ptr)(int rank, char *cmd);
+int (*redis_command_ptr)(int rank, char *cmd,void * result, returnType ret);
 
-mailinfo_t mailinfo; 
-void
-add_objects(CIRCLE_handle *handle)
+static int non_sharded_redis_command(int rank, char *cmd, void * result, returnType ret)
 {
-    char buf[256];
-    if(warnusers_redis_run_spop(buf)< 0)
-    {
-        LOG(PURGER_LOG_WARN,"No elements in set.");
-        int status = warnusers_redis_run_get("treewalk");
-        if(status == 0)
-        {
-            LOG(PURGER_LOG_WARN,"Treewalk no longer running, and the set is empty.  Exiting warnusers.");
-            exit(0);
-        }
-        else if (status == 1)
-        {
-            LOG(PURGER_LOG_WARN,"Treewalk is running, but the set is empty.  Exiting warnusers.");
-            exit(0);
-        }
-    }
-    handle->enqueue(buf);
+    return redis_blocking_command(cmd,result,ret);
 }
 
+mailinfo_t mailinfo; 
+
 void 
-warnusers_get_uids(CIRCLE_handle *handle)
+warnusers_get_uids(int rank, CIRCLE_handle *handle)
 {
     int i = 0;
     int qty = 0;
     char uid[256];
-    qty = warnusers_redis_run_scard("warnlist");
+    (*redis_command_ptr)(rank,"scard warnlist",(void*)&qty,INT);
     if(qty <= 0)
     {
         LOG(PURGER_LOG_WARN,"There are no users to warn.");
@@ -63,159 +43,47 @@ warnusers_get_uids(CIRCLE_handle *handle)
     }
     for(i=0; i < qty; i++)
     {
-        if(warnusers_redis_run_spop(uid) == -1)
+        if((*redis_command_ptr)(rank,"spop warnlist",(void*)uid,CHAR) < 0)
         {
             LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid get.");
             exit(0);
         }
-        handle->enqueue(uid);
+        else
+            handle->enqueue(uid);
     }
     
 }
-
-void
-process_objects(CIRCLE_handle *handle)
+void add_objects(CIRCLE_handle *handle)
 {
-    char uid[256];
-    if(PURGER_global_rank == 0)
-    {
-        if(sharded_count == 0)
-            warnusers_get_uids(handle);
-        else
-        {
-            int i = 0;
-            for(i = 0; i < sharded_count; i++)
-            {
-                
-            }
-        }
-    }
+    if(sharded_count == 0)
+        warnusers_get_uids(0,handle);
     else
     {
-        char temp[CIRCLE_MAX_STRING_LEN];
-        /* Pop an item off the queue */ 
-        LOG(PURGER_LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
-        handle->dequeue(temp);
-        LOG(PURGER_LOG_DBG, "Popped [%s]", temp);
+        int i = 0;
+        for(i = 0; i < sharded_count; i++)
+        {
+            warnusers_get_uids(i,handle);
+        }
     }
     return;
 }
-
 void
-warnusers_redis_run_sadd(int id)
+process_objects(CIRCLE_handle *handle)
 {
-    char *buf = (char*)malloc(2048 * sizeof(char));
-    sprintf(buf,"SADD warnlist %d",id);
-    warnusers_redis_run_cmd(buf,buf);
+    char temp[CIRCLE_MAX_STRING_LEN];
+    /* Pop an item off the queue */ 
+    LOG(PURGER_LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
+    handle->dequeue(temp);
+    LOG(PURGER_LOG_DBG, "Popped [%s]", temp);
+    return;
 }
-
-int
-warnusers_redis_run_cmd(char *cmd, char *filename)
-{
-    LOG(PURGER_LOG_DBG, "RedisCmd = \"%s\"", cmd);
-    redisReply *reply = redisCommand(REDIS, cmd);
-    if(reply->type != REDIS_REPLY_ERROR)
-    {   
-        LOG(PURGER_LOG_DBG, "Sent %s to redis", cmd);
-    }   
-    else
-    {   
-        LOG(PURGER_LOG_DBG, "Failed %s: %s", cmd,reply->str);
-        if (REDIS->err)
-        {   
-            LOG(PURGER_LOG_ERR, "Redis error: %s", REDIS->errstr);
-            return -1; 
-        }   
-    
-    }   
-    return 0;
-}
-
-int
-warnusers_redis_run_scard(char * set)
-{
-    char * redis_cmd_buf = (char*)malloc(2048 * sizeof(char));
-    sprintf(redis_cmd_buf,"SCARD %s",set);
-    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
-    if(getReply->type == REDIS_REPLY_NIL)
-        return -1;
-    else if (getReply->type == REDIS_REPLY_STRING)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned a string \"%s\"\n",getReply->str);
-        return atoi(getReply->str);
-    }
-    else if(getReply->type == REDIS_REPLY_INTEGER)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned an int: %lld.",getReply->integer);
-        return getReply->integer;
-    }
-    else
-        LOG(PURGER_LOG_DBG,"GET returned something else.");
-    return -1;
-}
-
-int 
-warnusers_redis_run_get(char * key)
-{
-    char * redis_cmd_buf = (char*)malloc(2048 * sizeof(char));
-    sprintf(redis_cmd_buf,"GET %s",key);
-    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
-    if(getReply->type == REDIS_REPLY_NIL)
-        return -1;
-    else if (getReply->type == REDIS_REPLY_STRING)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned a string \"%s\"\n",getReply->str);
-        return atoi(getReply->str);
-    }
-    else
-        LOG(PURGER_LOG_DBG,"GET didn't return a string");
-    return -1;
-}
-
-int
-warnusers_redis_run_spop(char * uid)
-{
-   redisReply *spopReply = redisCommand(REDIS,"SPOP warnlist");
-   if(spopReply->type == REDIS_REPLY_NIL)
-       return -1;
-   else if(spopReply->type == REDIS_REPLY_STRING)
-   {
-       LOG(PURGER_LOG_DBG,"SPOP returned a string %s",spopReply->str);
-       strcpy(uid,spopReply->str);
-   }
-   else 
-   {
-       LOG(PURGER_LOG_DBG,"SPOP did not return a string");
-   }
-   return 0;
-}
-
-int
-warnusers_redis_run_get_str(char * key, char * str)
-{
-    char * redis_cmd_buf = (char*)malloc(2048*sizeof(char));
-    sprintf(redis_cmd_buf, "GET %s",key);
-    redisReply *getReply = redisCommand(REDIS,redis_cmd_buf);
-    if(getReply->type == REDIS_REPLY_NIL)
-        return -1;
-    else if(getReply->type == REDIS_REPLY_STRING)
-    {
-        LOG(PURGER_LOG_DBG,"GET returned a string \"%s\"\n", getReply->str);
-        strcpy(str,getReply->str);
-        return 0;
-    }
-    else
-        LOG(PURGER_LOG_DBG,"GET didn't return a string.");
-    return -1;
-}
-
 
 int
 warnusers_check_state(int rank, int force)
 {
    char * getCmd = (char *) malloc(sizeof(char)*256);
-   sprintf(getCmd,"PURGER_STATE");
-   int status = warnusers_redis_run_get(getCmd);
+   int status = -1;
+   (*redis_command_ptr)(0,"get PURGER_STATE",(void*)&status,INT); 
    int transition_check = purger_state_check(status,PURGER_STATE_WARNUSERS); 
    if(transition_check == PURGER_STATE_R_NO)
    {
@@ -232,25 +100,25 @@ warnusers_check_state(int rank, int force)
        if(rank == 0)
        {
            char time_stamp[256];
-           warnusers_redis_run_get_str("warnusers_timestamp",time_stamp);
+           (*redis_command_ptr)(0,"get warnusers_timestamp",(void*)time_stamp,CHAR);
            LOG(PURGER_LOG_INFO,"Warnusers starting normally. Last successfull warnusers: %s",time_stamp);
        }
    }
-   sprintf(getCmd,"warnusers-rank-%d",rank);
-   status = warnusers_redis_run_get(getCmd);
-   sprintf(getCmd,"set warnusers-rank-%d 1", rank);
+   sprintf(getCmd,"get warnusers-rank-%d",rank);
+   (*redis_command_ptr)(0,getCmd,(void*)status,INT);
    if(status == 1 && !force)
    {
        if(rank == 0) LOG(PURGER_LOG_ERR,"Warnusers is already running.  If you wish to continue, verify that there is not a warnusers already running and re-run with -f to force it.");
        return -1;
    }
-   if(rank == 0 && warnusers_redis_run_cmd(getCmd,"")<0)
+   sprintf(getCmd,"set warnusers-rank-%d 1", rank);
+   if(rank == 0 && (*redis_command_ptr)(0,getCmd,(void*)&status,NIL)<0)
    {
        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
        return -1;
    }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
-   if(rank == 0 && warnusers_redis_run_cmd(getCmd,"")<0)
+   if(rank == 0 && (*redis_command_ptr)(0,getCmd,(void*)&status,NIL)<0)
    {
        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
        return -1;
@@ -281,6 +149,7 @@ main (int argc, char **argv)
     int db_number = 0;
     sharded_count = 0;
     char * redis_host_list;
+    redis_command_ptr = &non_sharded_redis_command;
     PURGER_debug_stream = stdout;
     PURGER_debug_level = PURGER_LOG_DBG;
 
@@ -318,6 +187,7 @@ main (int argc, char **argv)
             case 's':
                 redis_host_list = optarg;
                 sharded_flag;
+                redis_command_ptr = &redis_blocking_shard_command;
                 break;
 
             case '?':
@@ -363,13 +233,11 @@ main (int argc, char **argv)
     for (index = optind; index < argc; index++)
         LOG(PURGER_LOG_WARN, "Non-option argument %s", argv[index]);
 
-    REDIS = redisConnect(redis_hostname, redis_port);
-    if (REDIS->err)
+    if(redis_init(redis_hostname, redis_port, db_number) < 0)
     {
-        LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
-        exit(EXIT_FAILURE);
+        LOG(PURGER_LOG_ERR,"Unable to initialize redis.");
+        exit(0);
     }
-    
     if(sharded_flag)
     {
         sharded_count = redis_shard_init(redis_host_list, redis_port, db_number);
@@ -382,7 +250,7 @@ main (int argc, char **argv)
     mailinfo.server = "mail.lanl.gov";
     mailinfo.txt = "The following text file in the Turquiose network contains a list of       \
                    your scratch files that have not been modified in the last 14+ days.       \
-                   Those files will be deleted in at least 6 days if not modified by then.    \ 
+                   Those files will be deleted in at least 6 days if not modified by then.    \
                    This notification may not have up-to-the-minute information, but we        \
                    will verify a file's actual age before purging it.   For more information, \
                     please see our purge policy:  http://hpc.lanl.gov/purge_policy.           \
@@ -392,6 +260,7 @@ main (int argc, char **argv)
     time(&time_started);
     if(warnusers_check_state(PURGER_global_rank,force_flag) < 0)
         exit(1);
+    CIRCLE_cb_create(&add_objects);
     CIRCLE_cb_process(&process_objects);
     CIRCLE_begin();
     CIRCLE_finalize();
@@ -404,12 +273,12 @@ main (int argc, char **argv)
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     char getCmd[256];
     sprintf(getCmd,"set warnusers_timestamp \"%s\"",endtime_str);
-    if(warnusers_redis_run_cmd(getCmd,getCmd)<0)
+    if((*redis_command_ptr)(0,getCmd,(void*)NULL,NIL)<0)
     {   
          LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
     }  
     sprintf(getCmd,"set warnusers-rank-%d 0", PURGER_global_rank);
-    if(warnusers_redis_run_cmd(getCmd,getCmd)<0)
+    if((*redis_command_ptr)(0,getCmd,(void*)NULL,NIL)<0)
     {
          LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
     }

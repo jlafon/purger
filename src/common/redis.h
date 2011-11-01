@@ -3,7 +3,7 @@
 #include <hiredis.h>
 #include "log.h"
 #define REDIS_PIPELINE_MAX 1000
-typedef enum { INT, CHAR } returnType;
+typedef enum { INT, CHAR, NIL } returnType;
 redisContext *REDIS;
 redisReply *REPLY;
 

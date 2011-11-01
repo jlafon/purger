@@ -117,28 +117,28 @@ void redis_print_error(redisContext * context)
 }
 int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret)
 {
-    BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
-    if(BLOCKING_reply == NULL)
+    redis_rank_reply[rank] = redisCommand(redis_rank[rank],cmd);
+    if(redis_rank_reply[rank] == NULL)
     {
         LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
-        redis_print_error(BLOCKING_redis);
+        redis_print_error(redis_rank[rank]);
         return -1; 
     }
-    switch(BLOCKING_reply->type)
+    switch(redis_rank_reply[rank]->type)
     {
         case REDIS_REPLY_STATUS: return (ret == INT || ret == CHAR)?-1:0 ; break;
         case REDIS_REPLY_INTEGER: 
                             if(result != NULL && ret == INT) 
-                                *(int*)result = BLOCKING_reply->integer;
-                            LOG(PURGER_LOG_DBG,"Returning type int: %d",BLOCKING_reply->integer);
+                                *(int*)result = redis_rank_reply[rank]->integer;
+                            LOG(PURGER_LOG_DBG,"Returning type int: %d",redis_rank_reply[rank]->integer);
                             break;
         case REDIS_REPLY_NIL:  return (ret == INT || ret == CHAR)?-1:0; break;
         case REDIS_REPLY_STRING: 
                             if(result != NULL && ret == CHAR) 
-                                strcpy((char*)result,BLOCKING_reply->str);
+                                strcpy((char*)result,redis_rank_reply[rank]->str);
                             else if(result != NULL && ret == INT)
-                                *(int*)result = atoi(BLOCKING_reply->str);
-                            LOG(PURGER_LOG_DBG,"Returning type char: %s",BLOCKING_reply->str);
+                                *(int*)result = atoi(redis_rank_reply[rank]->str);
+                            LOG(PURGER_LOG_DBG,"Returning type char: %s",redis_rank_reply[rank]->str);
                             break;
         case REDIS_REPLY_ARRAY:  return (ret == INT || ret == CHAR)?-1:0; break;
         default: break;
