@@ -17,11 +17,14 @@
 FILE           *PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
 int             PURGER_global_rank;
+int             sharded_count;
 char           *TOP_DIR;
 redisContext   *REDIS;
 
 time_t time_started;
 time_t time_finished;
+
+int (*redis_command_ptr)(int rank, char *cmd);
 
 mailinfo_t mailinfo; 
 void
@@ -50,37 +53,24 @@ void
 warnusers_get_uids(CIRCLE_handle *handle)
 {
     int i = 0;
+    int qty = 0;
     char uid[256];
-    int status = warnusers_redis_run_get("treewalk");
-    switch(status)
+    qty = warnusers_redis_run_scard("warnlist");
+    if(qty <= 0)
     {
-        case 0:
-            LOG(PURGER_LOG_DBG,"Treewalk no longer running.");
-            if(warnusers_redis_run_scard("warnlist") <= 0)
-            {
-                LOG(PURGER_LOG_WARN,"Treewalk is not running, and the set is empty. Exiting.");
-                exit(0);
-            }
-            for(i=0; i < warnusers_redis_run_scard("warnlist"); i++)
-            {
-                if(warnusers_redis_run_spop(uid) == -1)
-                {
-                    LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid set.");
-                    exit(0);
-                }
-                handle->enqueue(uid);
-            }
-            break;
-        case 1:
-            if(warnusers_redis_run_scard("warnlist") < 0)
-                LOG(PURGER_LOG_ERR,"Treewalk is running, you need to let treewalk finish.");
-            exit(0);
-            break;
-            
-        default:
-            LOG(PURGER_LOG_ERR,"Treewalk key not set.  Unexpected state.");
-            break;
+        LOG(PURGER_LOG_WARN,"There are no users to warn.");
+        return;
     }
+    for(i=0; i < qty; i++)
+    {
+        if(warnusers_redis_run_spop(uid) == -1)
+        {
+            LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid get.");
+            exit(0);
+        }
+        handle->enqueue(uid);
+    }
+    
 }
 
 void
@@ -89,7 +79,16 @@ process_objects(CIRCLE_handle *handle)
     char uid[256];
     if(PURGER_global_rank == 0)
     {
-        warnusers_get_uids(handle);
+        if(sharded_count == 0)
+            warnusers_get_uids(handle);
+        else
+        {
+            int i = 0;
+            for(i = 0; i < sharded_count; i++)
+            {
+                
+            }
+        }
     }
     else
     {
@@ -277,13 +276,19 @@ main (int argc, char **argv)
 
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
+    int sharded_flag = 0;
     int force_flag = 0;
-
+    int db_number = 0;
+    sharded_count = 0;
+    char * redis_host_list;
     PURGER_debug_stream = stdout;
     PURGER_debug_level = PURGER_LOG_DBG;
 
     int PURGER_global_rank = CIRCLE_init(argc, argv);
+    if(PURGER_global_rank < 0)
+        exit(1);
     opterr = 0;
+    CIRCLE_enable_logging(CIRCLE_LOG_ERR);
     while((c = getopt(argc, argv, "h:p:l:f")) != -1)
     {
         switch(c)
@@ -291,6 +296,10 @@ main (int argc, char **argv)
             case 'h':
                 redis_hostname = optarg;
                 redis_hostname_flag = 1;
+                break;
+
+            case 'i':
+                db_number = atoi(optarg);
                 break;
 
             case 'p':
@@ -304,6 +313,11 @@ main (int argc, char **argv)
                 break; 
             case 'l':
                 PURGER_debug_level = atoi(optarg);
+                break;
+            
+            case 's':
+                redis_host_list = optarg;
+                sharded_flag;
                 break;
 
             case '?':
@@ -354,6 +368,11 @@ main (int argc, char **argv)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
         exit(EXIT_FAILURE);
+    }
+    
+    if(sharded_flag)
+    {
+        sharded_count = redis_shard_init(redis_host_list, redis_port, db_number);
     }
 
     mailinfo.from     = "consult@lanl.gov";

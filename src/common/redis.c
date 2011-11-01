@@ -39,12 +39,12 @@ int redis_shard_finalize()
             LOG(PURGER_LOG_INFO,"Flushing %d items from sharded pipeline %d",redis_local_sharded_pipeline[i],i);
             for(j = 0; j < redis_local_sharded_pipeline[i]; j++)
             {
-		redisAppendCommand(redis_rank[i],"EXEC");
+                redisAppendCommand(redis_rank[i],"EXEC");
                 if(redisGetReply(redis_rank[i],(void*)&redis_rank_reply[i]) == REDIS_OK)
                 {
                     freeReplyObject(redis_rank_reply[i]);
                 }
-	    }
+        }
         }
         redisFree(redis_rank[i]);
     }
@@ -69,7 +69,7 @@ int redis_shard_init(char * hostnames, int port, int db_number)
             LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",host,redis_rank[i]->errstr);
             return -1;
         }
-        redisCommand("SELECT %d", db_number);
+        redisCommand(redis_rank[i],"SELECT %d", db_number);
         i++;
         host = strtok(NULL,",");
     }
@@ -94,9 +94,9 @@ int redis_init(char * hostname, int port, int db_number)
     if(REDIS->err || BLOCKING_redis->err)
     {
         LOG(PURGER_LOG_FATAL, "Redis error: %s", REDIS->errstr);
-        return -1;	    
+        return -1;        
     }
-    redisCommand("SELECT %d",db_number);
+    redisCommand(BLOCKING_redis,"SELECT %d",db_number);
     return 0; 
 }
 void redis_print_error(redisContext * context)
@@ -104,25 +104,55 @@ void redis_print_error(redisContext * context)
     switch(context->err)
     {
          case REDIS_ERR_IO:       
-			LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",context->errstr);
-			redis_handle_sigpipe(); 
-			break;
+            LOG(PURGER_LOG_ERR,"There was an I/O error with redis:%s",context->errstr);
+            redis_handle_sigpipe(); 
+            break;
          case REDIS_ERR_EOF:      LOG(PURGER_LOG_ERR,"The server closed the connection:%s",context->errstr); break;
          case REDIS_ERR_PROTOCOL: LOG(PURGER_LOG_ERR,"There was an error while parsing the protocol:%s",context->errstr); break;
          case REDIS_ERR_OTHER:    LOG(PURGER_LOG_ERR,"Unknown error:%s",context->errstr); break;
-         case REDIS_ERR_OOM:	  LOG(PURGER_LOG_ERR,"Redis OOM:%s",context->errstr); break;
+         case REDIS_ERR_OOM:      LOG(PURGER_LOG_ERR,"Redis OOM:%s",context->errstr); break;
          default:                 LOG(PURGER_LOG_ERR,"Redis error status not set."); break;
     }
     return;
+}
+int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret)
+{
+    BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
+    if(BLOCKING_reply == NULL)
+    {
+        LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
+        redis_print_error(BLOCKING_redis);
+        return -1; 
+    }
+    switch(BLOCKING_reply->type)
+    {
+        case REDIS_REPLY_STATUS: return (ret == INT || ret == CHAR)?-1:0 ; break;
+        case REDIS_REPLY_INTEGER: 
+                            if(result != NULL && ret == INT) 
+                                *(int*)result = BLOCKING_reply->integer;
+                            LOG(PURGER_LOG_DBG,"Returning type int: %d",BLOCKING_reply->integer);
+                            break;
+        case REDIS_REPLY_NIL:  return (ret == INT || ret == CHAR)?-1:0; break;
+        case REDIS_REPLY_STRING: 
+                            if(result != NULL && ret == CHAR) 
+                                strcpy((char*)result,BLOCKING_reply->str);
+                            else if(result != NULL && ret == INT)
+                                *(int*)result = atoi(BLOCKING_reply->str);
+                            LOG(PURGER_LOG_DBG,"Returning type char: %s",BLOCKING_reply->str);
+                            break;
+        case REDIS_REPLY_ARRAY:  return (ret == INT || ret == CHAR)?-1:0; break;
+        default: break;
+    }
+    return 0;
 }
 int redis_blocking_command(char * cmd, void * result, returnType ret)
 {
     BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
     if(BLOCKING_reply == NULL)
     {
-	LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
+        LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
         redis_print_error(BLOCKING_redis);
-	return -1; 
+        return -1; 
     }
     switch(BLOCKING_reply->type)
     {
@@ -151,50 +181,49 @@ int redis_handle_sigpipe()
    redisFree(redis_rank[current_redis_rank]);
    redis_rank[current_redis_rank] = redisConnect(hostlist[current_redis_rank],redis_port);
    if(redis_rank[current_redis_rank] && redis_rank[current_redis_rank]->err)
-        {
-            LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",hostlist[current_redis_rank],redis_rank[current_redis_rank]->errstr);
-            return -1;
-        }
+    {
+        LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",hostlist[current_redis_rank],redis_rank[current_redis_rank]->errstr);
+        return -1;
+    }
    LOG(PURGER_LOG_ERR,"Connection established.");
 return 0;
 }
 
 int redis_flush_pipe(redisContext * c, redisReply * r)
 {
-	int done = 0;
-	do
-	{
-	     if(redisBufferWrite(c,&done) == REDIS_ERR)
-	     {
-			LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
-			perror("redisBufferWrite");
-			redis_print_error(c);
-			break;
-	     }
-	} while( !done );
+    int done = 0;
+    do
+    {
+         if(redisBufferWrite(c,&done) == REDIS_ERR)
+         {
+            LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
+            perror("redisBufferWrite");
+            redis_print_error(c);
+            break;
+         }
+    } while( !done );
     for(done = 0; done < redis_local_sharded_pipeline[current_redis_rank]; done++)
-	    if(redisGetReply(c,(void*)&r) == REDIS_OK)
-	    {
-				freeReplyObject(r);
-	    }
-	    else 
-	    {
-				LOG(PURGER_LOG_ERR,"Error on redisGetReply");
-				redis_print_error(c);
-	    }  
+        if(redisGetReply(c,(void*)&r) == REDIS_OK)
+        {
+            freeReplyObject(r);
+        }
+        else 
+        {
+            LOG(PURGER_LOG_ERR,"Error on redisGetReply");
+            redis_print_error(c);
+        }  
 }
 int redis_shard_vcommand(int rank, const char *format, va_list ap)
 {
     current_redis_rank = rank;
     if(redisAppendCommand(redis_rank[rank],format, ap) != REDIS_OK)
     {
-			LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand  attempting to flush pipe");
-			redis_print_error(redis_rank[rank]);
+        LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand  attempting to flush pipe");
+        redis_print_error(redis_rank[rank]);
     }
     if(redis_local_sharded_pipeline[rank]++ > redis_local_pipeline_max)
     {
         LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
-        int i, done = 0;
         redis_flush_pipe(redis_rank[rank], redis_rank_reply[rank]);
         LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
         redis_local_sharded_pipeline[rank] = 0;
@@ -209,16 +238,15 @@ int redis_shard_command(int rank, char * cmd)
     LOG(PURGER_LOG_DBG,"Sending %s to %d. Pipeline has %d commands",cmd,rank,redis_local_sharded_pipeline[rank]);
     if(redisAppendCommand(redis_rank[rank],cmd) != REDIS_OK)
     {
-			LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand \"%s\", attempting to flush pipe",cmd);
-			redis_print_error(redis_rank[rank]);
+        LOG(PURGER_LOG_ERR,"Error on redisAppendFormattedCommand \"%s\", attempting to flush pipe",cmd);
+        redis_print_error(redis_rank[rank]);
     }
     if(redis_local_sharded_pipeline[rank]++ > redis_local_pipeline_max)
     {
         LOG(PURGER_LOG_INFO,"Flushing pipeline %d with %d commands.",rank,redis_local_sharded_pipeline[rank]);
-	redisAppendCommand(redis_rank[rank],"EXEC");
-        int i, done = 0;
+        redisAppendCommand(redis_rank[rank],"EXEC");
         redis_flush_pipe(redis_rank[rank], redis_rank_reply[rank]);
-	redisAppendCommand(redis_rank[rank],"MULTI");
+        redisAppendCommand(redis_rank[rank],"MULTI");
         LOG(PURGER_LOG_INFO,"Pipeline %d flushed.",rank);
         redis_local_sharded_pipeline[rank] = 0;
     }
