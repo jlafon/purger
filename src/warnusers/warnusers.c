@@ -36,7 +36,7 @@ warnusers_get_uids(int rank, CIRCLE_handle *handle)
     int i = 0;
     int qty = 0;
     char uid[256];
-    (*redis_command_ptr)(rank,"scard warnlist",(void*)&qty,INT);
+    redis_blocking_shard_command(rank,"scard warnlist",(void*)&qty,INT);
     if(qty <= 0)
     {
         LOG(PURGER_LOG_WARN,"There are no users to warn.");
@@ -44,7 +44,8 @@ warnusers_get_uids(int rank, CIRCLE_handle *handle)
     }
     for(i=0; i < qty; i++)
     {
-        if((*redis_command_ptr)(rank,"spop warnlist",(void*)uid,CHAR) < 0)
+        LOG(PURGER_LOG_DBG,"Popping uid.");
+        if(redis_blocking_shard_command(rank,"spop warnlist",(void*)uid,CHAR) < 0)
         {
             LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid get.");
             exit(0);
@@ -74,10 +75,12 @@ process_uid_list(char * uid_str)
 {
     int uid = atoi(uid_str);
     int num_files = 0;
+    int i = 0;
     char command_str[WARN_STRING_LEN];
     sprintf(command_str,"llen %d",uid);
-    (*redis_command_ptr)(uid % sharded_count,command_str,(void*)num_files,INT);
-     
+    redis_blocking_shard_command(uid % sharded_count,command_str,(void*)&num_files,INT);
+    LOG(PURGER_LOG_DBG,"User %d has %d expired files.",uid,num_files);
+    for(i = 0; i < num_files; i++)
 }
 
 void
@@ -88,7 +91,7 @@ process_objects(CIRCLE_handle *handle)
     LOG(PURGER_LOG_DBG, "Popping, queue has %d elements", handle->local_queue_size());
     handle->dequeue(temp);
     LOG(PURGER_LOG_DBG, "Popped [%s]", temp);
-
+    process_uid_list(temp);
     return;
 }
 
@@ -97,7 +100,12 @@ warnusers_check_state(int rank, int force)
 {
    char * getCmd = (char *) malloc(sizeof(char)*256);
    int status = -1;
-   (*redis_command_ptr)(0,"get PURGER_STATE",(void*)&status,INT); 
+   if(redis_blocking_command("get PURGER_STATE",(void*)&status,INT) < 0)
+   {
+       LOG(PURGER_LOG_ERR,"get PURGER_STATE failed.");
+       return -1;
+   }
+   LOG(PURGER_LOG_DBG,"Current purger state: %d",status);
    int transition_check = purger_state_check(status,PURGER_STATE_WARNUSERS); 
    if(transition_check == PURGER_STATE_R_NO)
    {
@@ -114,25 +122,25 @@ warnusers_check_state(int rank, int force)
        if(rank == 0)
        {
            char time_stamp[256];
-           (*redis_command_ptr)(0,"get warnusers_timestamp",(void*)time_stamp,CHAR);
-           LOG(PURGER_LOG_INFO,"Warnusers starting normally. Last successfull warnusers: %s",time_stamp);
+           redis_blocking_command("get warnusers_timestamp",(void*)time_stamp,CHAR);
+               LOG(PURGER_LOG_INFO,"Warnusers starting normally. Last successfull warnusers: %s",time_stamp);
        }
    }
    sprintf(getCmd,"get warnusers-rank-%d",rank);
-   (*redis_command_ptr)(0,getCmd,(void*)status,INT);
+   redis_blocking_command(getCmd,(void*)&status,INT);
    if(status == 1 && !force)
    {
        if(rank == 0) LOG(PURGER_LOG_ERR,"Warnusers is already running.  If you wish to continue, verify that there is not a warnusers already running and re-run with -f to force it.");
        return -1;
    }
    sprintf(getCmd,"set warnusers-rank-%d 1", rank);
-   if(rank == 0 && (*redis_command_ptr)(0,getCmd,(void*)&status,NIL)<0)
+   if(rank == 0 && redis_blocking_command(getCmd,(void*)&status,NIL)<0)
    {
        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
        return -1;
    }
    sprintf(getCmd,"set PURGER_STATE %d",PURGER_STATE_TREEWALK);
-   if(rank == 0 && (*redis_command_ptr)(0,getCmd,(void*)&status,NIL)<0)
+   if(rank == 0 && redis_blocking_command(getCmd,(void*)&status,NIL)<0)
    {
        LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
        return -1;
@@ -172,7 +180,7 @@ main (int argc, char **argv)
         exit(1);
     opterr = 0;
     CIRCLE_enable_logging(CIRCLE_LOG_ERR);
-    while((c = getopt(argc, argv, "h:p:l:f")) != -1)
+    while((c = getopt(argc, argv, "h:p:l:fi:s:")) != -1)
     {
         switch(c)
         {
@@ -200,12 +208,12 @@ main (int argc, char **argv)
             
             case 's':
                 redis_host_list = optarg;
-                sharded_flag;
+                sharded_flag = 1;
                 redis_command_ptr = &redis_blocking_shard_command;
                 break;
 
             case '?':
-                if (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 'l')
+                if (PURGER_global_rank == 0 && (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 'l'))
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -254,6 +262,7 @@ main (int argc, char **argv)
     }
     if(sharded_flag)
     {
+        LOG(PURGER_LOG_INFO,"Sharding enabled.");
         sharded_count = redis_shard_init(redis_host_list, redis_port, db_number);
     }
 
@@ -287,15 +296,18 @@ main (int argc, char **argv)
     strftime(endtime_str, 256, "%b-%d-%Y,%H:%M:%S",localend);
     char getCmd[256];
     sprintf(getCmd,"set warnusers_timestamp \"%s\"",endtime_str);
-    if((*redis_command_ptr)(0,getCmd,(void*)NULL,NIL)<0)
+    if(redis_blocking_command(getCmd,(void*)NULL,NIL)<0)
     {   
          LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
     }  
     sprintf(getCmd,"set warnusers-rank-%d 0", PURGER_global_rank);
-    if((*redis_command_ptr)(0,getCmd,(void*)NULL,NIL)<0)
+    if(redis_blocking_command(getCmd,(void*)NULL,NIL)<0)
     {
          LOG(PURGER_LOG_ERR,"Unable to %s",getCmd);
     }
+    redis_finalize();
+    if(sharded_flag)
+        redis_shard_finalize();
     if(PURGER_global_rank == 0)
     {
         LOG(PURGER_LOG_INFO, "Warnusers run started at: %s", starttime_str);

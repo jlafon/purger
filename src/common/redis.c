@@ -117,7 +117,12 @@ void redis_print_error(redisContext * context)
 }
 int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret)
 {
+    redisAppendCommand(redis_rank[rank],"EXEC");
+    redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]); 
     redis_rank_reply[rank] = redisCommand(redis_rank[rank],cmd);
+    redisAppendCommand(redis_rank[rank],"MULTI");
+     
+    LOG(PURGER_LOG_DBG,"Executed (%s) on rank %d",cmd,rank);
     if(redis_rank_reply[rank] == NULL)
     {
         LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
@@ -126,13 +131,18 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
     }
     switch(redis_rank_reply[rank]->type)
     {
-        case REDIS_REPLY_STATUS: return (ret == INT || ret == CHAR)?-1:0 ; break;
+        case REDIS_REPLY_STATUS: LOG(PURGER_LOG_DBG,"REDIS_REPLY_STATUS: (%s)",redis_rank_reply[rank]->str); 
+                            break;
         case REDIS_REPLY_INTEGER: 
                             if(result != NULL && ret == INT) 
                                 *(int*)result = redis_rank_reply[rank]->integer;
                             LOG(PURGER_LOG_DBG,"Returning type int: %d",redis_rank_reply[rank]->integer);
+                            return (ret == INT);
                             break;
-        case REDIS_REPLY_NIL:  return (ret == INT || ret == CHAR)?-1:0; break;
+        case REDIS_REPLY_NIL:   
+                            LOG(PURGER_LOG_DBG,"REDIS_NIL"); 
+                            return (ret == INT || ret == CHAR)?-1:0; 
+                            break;
         case REDIS_REPLY_STRING: 
                             if(result != NULL && ret == CHAR) 
                                 strcpy((char*)result,redis_rank_reply[rank]->str);
@@ -140,14 +150,33 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
                                 *(int*)result = atoi(redis_rank_reply[rank]->str);
                             LOG(PURGER_LOG_DBG,"Returning type char: %s",redis_rank_reply[rank]->str);
                             break;
-        case REDIS_REPLY_ARRAY:  return (ret == INT || ret == CHAR)?-1:0; break;
+        case REDIS_REPLY_ARRAY:   
+                            LOG(PURGER_LOG_DBG,"REDIS_REPLY_ARRAY[%d]",redis_rank_reply[rank]->elements); 
+                            int i = 0;
+                            for(i = 0; i < redis_rank_reply[rank]->elements; i++)
+                            {
+                                if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_INTEGER)
+                                    LOG(PURGER_LOG_DBG,"Element[%d] = (%d)",i,redis_rank_reply[rank]->element[i]->integer);
+                                else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_STRING)
+                                    LOG(PURGER_LOG_DBG,"Element[%d] = (%s)",i,redis_rank_reply[rank]->element[i]->str);
+                                else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_STATUS)
+                                    LOG(PURGER_LOG_DBG,"Element[%d] = (%s)",i,redis_rank_reply[rank]->element[i]->str);
+                                else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_NIL)
+                                    LOG(PURGER_LOG_DBG,"Element[%d] = (NIL)",i,redis_rank_reply[rank]->element[i]->str);
+                                else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_ARRAY)
+                                    LOG(PURGER_LOG_DBG,"Element[%d] = (ARRAY)",i,redis_rank_reply[rank]->element[i]->str);
+                            }
+                            return (ret == INT || ret == CHAR)?-1:0; break;
         default: break;
     }
     return 0;
 }
 int redis_blocking_command(char * cmd, void * result, returnType ret)
 {
+    if(result == NULL)
+        return;
     BLOCKING_reply = redisCommand(BLOCKING_redis,cmd);
+    LOG(PURGER_LOG_DBG,"Executed (%s).",cmd);
     if(BLOCKING_reply == NULL)
     {
         LOG(PURGER_LOG_ERR,"Redis command failed: %s",cmd);
@@ -156,21 +185,23 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
     }
     switch(BLOCKING_reply->type)
     {
-        case REDIS_REPLY_STATUS: break;
+        case REDIS_REPLY_STATUS: LOG(PURGER_LOG_DBG,"REDIS_REPLY_STATUS (%s)",BLOCKING_reply->str);
+                                 break;
         case REDIS_REPLY_INTEGER: 
-                            if(result != NULL && ret == INT) 
+                            if(ret == INT) 
                                 *(int*)result = BLOCKING_reply->integer;
                             LOG(PURGER_LOG_DBG,"Returning type int: %d",BLOCKING_reply->integer);
                             break;
-        case REDIS_REPLY_NIL: break;
+        case REDIS_REPLY_NIL: LOG(PURGER_LOG_DBG,"REDIS_REPLY_NIL"); return (ret == INT || ret == CHAR)?-1:0; break;
         case REDIS_REPLY_STRING: 
-                            if(result != NULL && ret == CHAR) 
+                            if(ret == CHAR) 
                                 strcpy((char*)result,BLOCKING_reply->str);
-                            else if(result != NULL && ret == INT)
+                            else if(ret == INT)
                                 *(int*)result = atoi(BLOCKING_reply->str);
-                            LOG(PURGER_LOG_DBG,"Returning type char: %s",BLOCKING_reply->str);
+                            LOG(PURGER_LOG_DBG,"Returning type char: %d",*(int*)result);
+                            return 0;
                             break;
-        case REDIS_REPLY_ARRAY: break;
+        case REDIS_REPLY_ARRAY: LOG(PURGER_LOG_DBG,"REDIS_REPLY_ARRAY[%d]",BLOCKING_reply->elements); return (ret == INT || ret == CHAR)?-1:0; break;
         default: break;
     }
     return 0;
@@ -191,10 +222,11 @@ return 0;
 
 int redis_flush_pipe(redisContext * c, redisReply * r)
 {
+    LOG(PURGER_LOG_DBG,"Flushing pipe.");
     int done = 0;
     do
     {
-         if(redisBufferWrite(c,&done) == REDIS_ERR)
+         if(redisBufferWrite(c,&done) != REDIS_OK)
          {
             LOG(PURGER_LOG_ERR,"Error on redisBufferWrite during flush");
             perror("redisBufferWrite");
@@ -202,7 +234,7 @@ int redis_flush_pipe(redisContext * c, redisReply * r)
             break;
          }
     } while( !done );
-    for(done = 0; done < redis_local_sharded_pipeline[current_redis_rank]; done++)
+    for(done = 0; done < redis_local_sharded_pipeline[current_redis_rank]+2; done++)
         if(redisGetReply(c,(void*)&r) == REDIS_OK)
         {
             freeReplyObject(r);
@@ -212,6 +244,7 @@ int redis_flush_pipe(redisContext * c, redisReply * r)
             LOG(PURGER_LOG_ERR,"Error on redisGetReply");
             redis_print_error(c);
         }  
+    LOG(PURGER_LOG_DBG,"Flushing pipe done.");
 }
 int redis_shard_vcommand(int rank, const char *format, va_list ap)
 {
