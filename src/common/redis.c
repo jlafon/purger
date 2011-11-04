@@ -153,7 +153,7 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
         case REDIS_REPLY_ARRAY:  
                             if(ret != CHAR_ARRAY)
                                 return -1;
-                            size_t bytes_copied = 0;
+                            size_t chars_copied = 0;
                             char * tail = (char*)result;
                             LOG(PURGER_LOG_DBG,"REDIS_REPLY_ARRAY[%d]",redis_rank_reply[rank]->elements); 
                             int i = 0;
@@ -164,9 +164,13 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
                                 else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_STRING)
                                 {
                                     LOG(PURGER_LOG_DBG,"Element[%d] = (%s)",i,redis_rank_reply[rank]->element[i]->str);
-                                    bytes_copied += strlen(redis_rank_reply[rank]->element[i]->str);
-                                    if(bytes_copied < len)
-                                        strcpy(result,redis_rank_reply[rank]->element[i]->str);
+                                    chars_copied += strlen(redis_rank_reply[rank]->element[i]->str);
+                                    chars_copied += 1; // NULL char
+                                    if(chars_copied < len)
+                                    {
+                                        strcpy(tail,redis_rank_reply[rank]->element[i]->str);
+                                        tail = (char*)result + chars_copied;    
+                                    }
                                     else
                                         LOG(PURGER_LOG_ERR,"Unable to copy string, not enough buffer left.");
                                 }

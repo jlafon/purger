@@ -123,7 +123,7 @@ process_dir(char * parent,char * dir, CIRCLE_handle *handle)
 void
 treewalk_create_redis_lpush_cmd(char * cmd, char * key, int uid)
 {
-    sprintf(cmd,"LPUSH %d \"%s\"",uid,key);
+    sprintf(cmd,"LPUSH %d %s",uid,key);
 }
 void
 treewalk_create_redis_expire_cmd(char * cmd, char * key)
@@ -189,6 +189,8 @@ process_objects(CIRCLE_handle *handle)
         redis_time[0] = MPI_Wtime();
         (*redis_command_ptr)(crc,redis_cmd_buf);
         redis_time[1] += MPI_Wtime() - redis_time[0];
+        treewalk_create_redis_expire_cmd(redis_cmd_buf,filekey);
+        (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
 
         /* Check to see if the file is expired.
            If so, zadd it by mtime and add the user id
@@ -203,8 +205,6 @@ process_objects(CIRCLE_handle *handle)
             treewalk_redis_run_sadd(&st);
             /* add file to list of expired files for that user */
             treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
-            (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
-            treewalk_create_redis_expire_cmd(redis_cmd_buf,filekey);
             (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
             redis_time[1] += MPI_Wtime() - redis_time[0];
         }
