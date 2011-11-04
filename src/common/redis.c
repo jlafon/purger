@@ -115,7 +115,7 @@ void redis_print_error(redisContext * context)
     }
     return;
 }
-int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret)
+int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret, size_t len)
 {
     redisAppendCommand(redis_rank[rank],"EXEC");
     redis_flush_pipe(redis_rank[rank],redis_rank_reply[rank]); 
@@ -150,7 +150,11 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
                                 *(int*)result = atoi(redis_rank_reply[rank]->str);
                             LOG(PURGER_LOG_DBG,"Returning type char: %s",redis_rank_reply[rank]->str);
                             break;
-        case REDIS_REPLY_ARRAY:   
+        case REDIS_REPLY_ARRAY:  
+                            if(ret != CHAR_ARRAY)
+                                return -1;
+                            size_t bytes_copied = 0;
+                            char * tail = (char*)result;
                             LOG(PURGER_LOG_DBG,"REDIS_REPLY_ARRAY[%d]",redis_rank_reply[rank]->elements); 
                             int i = 0;
                             for(i = 0; i < redis_rank_reply[rank]->elements; i++)
@@ -158,7 +162,14 @@ int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType
                                 if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_INTEGER)
                                     LOG(PURGER_LOG_DBG,"Element[%d] = (%d)",i,redis_rank_reply[rank]->element[i]->integer);
                                 else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_STRING)
+                                {
                                     LOG(PURGER_LOG_DBG,"Element[%d] = (%s)",i,redis_rank_reply[rank]->element[i]->str);
+                                    bytes_copied += strlen(redis_rank_reply[rank]->element[i]->str);
+                                    if(bytes_copied < len)
+                                        strcpy(result,redis_rank_reply[rank]->element[i]->str);
+                                    else
+                                        LOG(PURGER_LOG_ERR,"Unable to copy string, not enough buffer left.");
+                                }
                                 else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_STATUS)
                                     LOG(PURGER_LOG_DBG,"Element[%d] = (%s)",i,redis_rank_reply[rank]->element[i]->str);
                                 else if(redis_rank_reply[rank]->element[i]->type == REDIS_REPLY_NIL)

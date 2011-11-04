@@ -3,7 +3,7 @@
 #include <hiredis.h>
 #include "log.h"
 #define REDIS_PIPELINE_MAX 1000
-typedef enum { INT, CHAR, NIL } returnType;
+typedef enum { INT, CHAR, CHAR_ARRAY,NIL } returnType;
 redisContext *REDIS;
 redisReply *REPLY;
 
@@ -26,7 +26,7 @@ void redis_print_error(redisContext * context);
 int redis_command(int rank,char * cmd);
 int redis_shard_vcommand(int rank, const char * format, va_list ap);
 int redis_shard_command(int rank, char * cmd);
-int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret);
+int redis_blocking_shard_command(int rank, char * cmd, void * result, returnType ret,size_t len);
 int redis_blocking_command(char * cmd, void * result, returnType ret);
 int redis_finalize();
 int redis_shard_finalize();

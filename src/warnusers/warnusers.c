@@ -36,7 +36,7 @@ warnusers_get_uids(int rank, CIRCLE_handle *handle)
     int i = 0;
     int qty = 0;
     char uid[256];
-    redis_blocking_shard_command(rank,"scard warnlist",(void*)&qty,INT);
+    redis_blocking_shard_command(rank,"scard warnlist",(void*)&qty,INT,sizeof(int));
     if(qty <= 0)
     {
         LOG(PURGER_LOG_WARN,"There are no users to warn.");
@@ -45,7 +45,7 @@ warnusers_get_uids(int rank, CIRCLE_handle *handle)
     for(i=0; i < qty; i++)
     {
         LOG(PURGER_LOG_DBG,"Popping uid.");
-        if(redis_blocking_shard_command(rank,"spop warnlist",(void*)uid,CHAR) < 0)
+        if(redis_blocking_shard_command(rank,"spop warnlist",(void*)uid,CHAR,sizeof(char)*256) < 0)
         {
             LOG(PURGER_LOG_ERR,"Something went badly wrong with the uid get.");
             exit(0);
@@ -78,9 +78,16 @@ process_uid_list(char * uid_str)
     int i = 0;
     char command_str[WARN_STRING_LEN];
     sprintf(command_str,"llen %d",uid);
-    redis_blocking_shard_command(uid % sharded_count,command_str,(void*)&num_files,INT);
+    redis_blocking_shard_command(uid % sharded_count,command_str,(void*)&num_files,INT,sizeof(int));
     LOG(PURGER_LOG_DBG,"User %d has %d expired files.",uid,num_files);
-    for(i = 0; i < num_files; i++)
+    if(num_files == 0)
+    {
+        LOG(PURGER_LOG_ERR,"Error: User (%d) is on warnlist but has no expired files in db?",uid);
+        return;
+    }
+    char *files = (char*) malloc(sizeof(char)*4096*num_files);
+    sprintf(command_str,"lrange 0 %d",num_files);
+    redis_blocking_shard_command(uid % sharded_count,command_str,(void*)files,CHAR_ARRAY,sizeof(char)*4096*num_files);
 }
 
 void
@@ -213,7 +220,7 @@ main (int argc, char **argv)
                 break;
 
             case '?':
-                if (PURGER_global_rank == 0 && (optopt == 'd' || optopt == 'h' || optopt == 'p' || optopt == 'l'))
+                if (PURGER_global_rank == 0 && (optopt == 'h' || optopt == 'p' || optopt == 'l'))
                 {
                     print_usage(argv);
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);

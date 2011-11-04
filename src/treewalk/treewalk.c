@@ -25,7 +25,7 @@
 #include <hiredis.h>
 #include <async.h>
 #include <mpi.h>
-#define SECONDS_PER_DAY 60.0*60.0*24.0
+#define SECONDS_PER_DAY 60*60*24
 
 /* Output for debugging */
 FILE*           PURGER_debug_stream;
@@ -125,7 +125,11 @@ treewalk_create_redis_lpush_cmd(char * cmd, char * key, int uid)
 {
     sprintf(cmd,"LPUSH %d \"%s\"",uid,key);
 }
-
+void
+treewalk_create_redis_expire_cmd(char * cmd, char * key)
+{
+    sprintf(cmd,"EXPIRE %s %d",key,((int)SECONDS_PER_DAY*7));
+}
 /*
  * Creates a command to add a user to the list of users to be warned.
  */
@@ -199,6 +203,8 @@ process_objects(CIRCLE_handle *handle)
             treewalk_redis_run_sadd(&st);
             /* add file to list of expired files for that user */
             treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
+            (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
+            treewalk_create_redis_expire_cmd(redis_cmd_buf,filekey);
             (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
             redis_time[1] += MPI_Wtime() - redis_time[0];
         }
@@ -506,7 +512,7 @@ treewalk_init_opts(treewalk_options_st * opts)
     opts->db_number = 0;
     opts->rank = 0;
     opts->restart_flag = 0;
-    opts->expire_threshold = 0.0;
+    opts->expire_threshold = SECONDS_PER_DAY*14;
 }
 
 /*
