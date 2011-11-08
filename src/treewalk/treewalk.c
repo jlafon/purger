@@ -69,7 +69,7 @@ static void
 treewalk_signal_handler(int signum, struct sigcontext ctx)
 {
      if(signum == SIGSEGV)
-     LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
+         LOG(PURGER_LOG_ERR,"Received SIGSEGV (%d), offending address %p",signum,(void*)ctx.cr2);
      LOG(PURGER_LOG_ERR,"Received signal %d",signum);
      redis_handle_sigpipe(); 
      return;
@@ -154,59 +154,65 @@ process_objects(CIRCLE_handle *handle)
     struct stat st;
     int status = 0;
     int crc = 0;
-    /* Pop an item off the queue */ 
-    handle->dequeue(temp);
+    int count = 0;
+    for(count = 0; count < 10; count++)
+    {
+        /* Pop an item off the queue */ 
+        handle->dequeue(temp);
 
-    /* Try and stat it, checking to see if it is a link */
-    stat_time[0] = MPI_Wtime();
-    status = lstat(temp,&st);
-    stat_time[1] += MPI_Wtime()-stat_time[0];
-    if(status != EXIT_SUCCESS)
-    {
-        LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
-    }
-    /* Check to see if it is a directory.  If so, put its children in the queue */
-    else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
-    {
-        dir_count++;
-        readdir_time[0] = MPI_Wtime();
-        process_dir(stat_temp,temp,handle); 
-        readdir_time[1] += MPI_Wtime() - readdir_time[0];
-    }
-    else if(!benchmarking_flag && S_ISREG(st.st_mode)) 
-    {
-        file_count++;
-        /* Hash the file */
-        hash_time[0] = MPI_Wtime();
-        treewalk_redis_keygen(filekey, temp);
-        crc = (int)purger_crc32(filekey,32) % sharded_count;
-        hash_time[1] += MPI_Wtime() - hash_time[0];
-        
-        /* Create and hset with basic attributes. */
-        treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
-        
-        /* Execute the redis command */
-        redis_time[0] = MPI_Wtime();
-        (*redis_command_ptr)(crc,redis_cmd_buf);
-        redis_time[1] += MPI_Wtime() - redis_time[0];
-        treewalk_create_redis_expire_cmd(redis_cmd_buf,filekey);
-        (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
-
-        /* Check to see if the file is expired.
-           If so, zadd it by mtime and add the user id
-           to warnlist */
-        if(difftime(time_started,st.st_mtime) > expire_threshold)
+        /* Try and stat it, checking to see if it is a link */
+        stat_time[0] = MPI_Wtime();
+        status = lstat(temp,&st);
+        stat_time[1] += MPI_Wtime()-stat_time[0];
+        if(status != EXIT_SUCCESS)
         {
-            LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
+            LOG(PURGER_LOG_ERR, "Error: Couldn't stat \"%s\"", temp);
+        }
+        /* Check to see if it is a directory.  If so, put its children in the queue */
+        else if(S_ISDIR(st.st_mode) && !(S_ISLNK(st.st_mode)))
+        {
+            // break loop
+            count = 10;
+            dir_count++;
+            readdir_time[0] = MPI_Wtime();
+            process_dir(stat_temp,temp,handle); 
+            readdir_time[1] += MPI_Wtime() - readdir_time[0];
+        }
+        else if(!benchmarking_flag && S_ISREG(st.st_mode)) 
+        {
+            file_count++;
+            /* Hash the file */
+            hash_time[0] = MPI_Wtime();
+            treewalk_redis_keygen(filekey, temp);
+            crc = (int)purger_crc32(filekey,32) % sharded_count;
+            hash_time[1] += MPI_Wtime() - hash_time[0];
+            
+            /* Create and hset with basic attributes. */
+            treewalk_create_redis_attr_cmd(redis_cmd_buf, &st, temp, filekey);
+            
+            /* Execute the redis command */
             redis_time[0] = MPI_Wtime();
-            /* The mtime of the file as a zadd. */
-            treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
-            /* add user to warn list */
-            treewalk_redis_run_sadd(&st);
-            /* add file to list of expired files for that user */
-            treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
-            (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
+            (*redis_command_ptr)(crc,redis_cmd_buf);
             redis_time[1] += MPI_Wtime() - redis_time[0];
+            treewalk_create_redis_expire_cmd(redis_cmd_buf,filekey);
+            (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
+
+            /* Check to see if the file is expired.
+               If so, zadd it by mtime and add the user id
+               to warnlist */
+            if(difftime(time_started,st.st_mtime) > expire_threshold)
+            {
+                LOG(PURGER_LOG_DBG,"File expired: \"%s\"",temp);
+                redis_time[0] = MPI_Wtime();
+                /* The mtime of the file as a zadd. */
+                treewalk_redis_run_zadd(filekey, (long)st.st_mtime, "mtime",crc);
+                /* add user to warn list */
+                treewalk_redis_run_sadd(&st);
+                /* add file to list of expired files for that user */
+                treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
+                (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
+                redis_time[1] += MPI_Wtime() - redis_time[0];
+            }
         }
     }
     process_objects_total[1] += MPI_Wtime() - process_objects_total[0];

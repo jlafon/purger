@@ -1,4 +1,5 @@
 #include <string.h>
+#include "sds.h"
 #include "redis.h"
 
 
@@ -224,13 +225,22 @@ int redis_blocking_command(char * cmd, void * result, returnType ret)
 int redis_handle_sigpipe()
 {
    LOG(PURGER_LOG_ERR,"Caught sigpipe, attempting to reinitialize connection.");
-   redisFree(redis_rank[current_redis_rank]);
-   redis_rank[current_redis_rank] = redisConnect(hostlist[current_redis_rank],redis_port);
-   if(redis_rank[current_redis_rank] && redis_rank[current_redis_rank]->err)
+   LOG(PURGER_LOG_ERR,"Output buffer contains %d bytes",sdslen(redis_rank[current_redis_rank]->obuf));
+   redisContext * temp = redisConnect(hostlist[current_redis_rank],redis_port);
+//   redis_rank[current_redis_rank] = redisConnect(hostlist[current_redis_rank],redis_port);
+   if(temp && temp->err)
+   //if(redis_rank[current_redis_rank] && redis_rank[current_redis_rank]->err)
     {
         LOG(PURGER_LOG_FATAL,"Redis server (%s) error: %s",hostlist[current_redis_rank],redis_rank[current_redis_rank]->errstr);
         return -1;
     }
+   //redisFree(redis_rank[current_redis_rank]);
+   temp->obuf = redis_rank[current_redis_rank]->obuf;
+   if(redis_rank[current_redis_rank]->fd > 0)
+       close(redis_rank[current_redis_rank]);
+   if(redis_rank[current_redis_rank]->reader != NULL)
+       redisReaderFree(redis_rank[current_redis_rank]->reader);
+   redis_rank[current_redis_rank] = temp;
    LOG(PURGER_LOG_ERR,"Connection established.");
 return 0;
 }

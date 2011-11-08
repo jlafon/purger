@@ -1,7 +1,7 @@
 bin_PROGRAMS = warnusers
 warnusers_SOURCES = warnusers.c
 warnusers_LDADD = \
-    -lcrypto                               \
+    -lcrypto -lldap                        \
     $(libcircle_LIBS)                      \
     $(MPI_CLDFLAGS)                        \
     $(top_srcdir)/src/common/lib_purger_common.a \

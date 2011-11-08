@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <ldap.h>
 #include "state.h"
 #include "warnusers.h"
 #include "mail.h"
@@ -17,7 +18,7 @@ PURGER_loglevel PURGER_debug_level;
 int             PURGER_global_rank;
 int             sharded_count;
 char           *TOP_DIR;
-
+LDAP           *LDAP_handle;
 time_t time_started;
 time_t time_finished;
 
@@ -70,6 +71,27 @@ void add_objects(CIRCLE_handle *handle)
     return;
 }
 
+int
+init_ldap(char * host, int port)
+{
+    int status = ldap_initialize(&LDAP_handle,host);
+    if(status != LDAP_SUCCESS)
+    {
+        LOG(PURGER_LOG_ERR,"Error: unable to create LDAP handle.");
+        return -1;
+    }
+    int version = LDAP_VERSION3;
+    ldap_set_option(LDAP_handle, LDAP_OPT_PROTOCOL_VERSION, (void*)&version);
+}
+
+char 
+*get_ldap_moniker(int uid)
+{
+    char search_str[256];
+    sprintf(search_str,"(uid=%d)",uid);
+   // ldap_search_s(LDAP_handle,);
+    
+}
 void
 process_uid_list(char * uid_str)
 {
@@ -88,6 +110,8 @@ process_uid_list(char * uid_str)
     char *files = (char*) malloc(sizeof(char)*4096*num_files);
     sprintf(command_str,"lrange 0 %d",num_files);
     redis_blocking_shard_command(uid % sharded_count,command_str,(void*)files,CHAR_ARRAY,sizeof(char)*4096*num_files);
+    //char *moniker = get_ldap_moniker(int uid);
+    //    sprintf("/%s/%s/"); 
 }
 
 void
