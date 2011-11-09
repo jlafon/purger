@@ -17,8 +17,10 @@ FILE           *PURGER_debug_stream;
 PURGER_loglevel PURGER_debug_level;
 int             PURGER_global_rank;
 int             sharded_count;
+int             ldap_port;
 char           *TOP_DIR;
 LDAP           *LDAP_handle;
+char           *ldap_server;
 time_t time_started;
 time_t time_finished;
 
@@ -82,15 +84,18 @@ init_ldap(char * host, int port)
     }
     int version = LDAP_VERSION3;
     ldap_set_option(LDAP_handle, LDAP_OPT_PROTOCOL_VERSION, (void*)&version);
+
 }
 
 char 
-*get_ldap_moniker(int uid)
+*get_ldap_moniker(int uid,char * base)
 {
     char search_str[256];
     sprintf(search_str,"(uid=%d)",uid);
-   // ldap_search_s(LDAP_handle,);
-    
+    LDAPMessage * reply;
+    struct timeval timeout;
+
+    ldap_search_ext_s(LDAP_handle,base,search_str,NULL,0,);
 }
 void
 process_uid_list(char * uid_str)
@@ -198,6 +203,7 @@ main (int argc, char **argv)
     int redis_hostname_flag = 0;
     int redis_port_flag = 0;
     int sharded_flag = 0;
+    int ldap_flag = 0;
     int force_flag = 0;
     int db_number = 0;
     sharded_count = 0;
@@ -211,10 +217,17 @@ main (int argc, char **argv)
         exit(1);
     opterr = 0;
     CIRCLE_enable_logging(CIRCLE_LOG_ERR);
-    while((c = getopt(argc, argv, "h:p:l:fi:s:")) != -1)
+    while((c = getopt(argc, argv, "h:p:l:fi:s:a:o:")) != -1)
     {
         switch(c)
         {
+            case 'o':
+                ldap_port = atoi(optarg);
+                break;
+            case 'a':
+                ldap_server = optarg;
+                ldap_flag = 1;
+                break;
             case 'h':
                 redis_hostname = optarg;
                 redis_hostname_flag = 1;
@@ -296,7 +309,13 @@ main (int argc, char **argv)
         LOG(PURGER_LOG_INFO,"Sharding enabled.");
         sharded_count = redis_shard_init(redis_host_list, redis_port, db_number);
     }
-
+    if(!ldap_flag)
+    {
+        LOG(PURGER_LOG_ERR,"You must specify an ldap server.");
+        exit(EXIT_FAILURE);
+    }
+    else
+        ldap_init(ldap_server,ldap_port); 
     mailinfo.from     = "consult@lanl.gov";
     mailinfo.fromreal = "ydms-master@lanl.gov";
     mailinfo.subject = "[PURGER NOTIFICATION]";

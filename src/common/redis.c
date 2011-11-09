@@ -41,6 +41,7 @@ int redis_shard_finalize()
             for(j = 0; j < redis_local_sharded_pipeline[i]; j++)
             {
                 redisAppendCommand(redis_rank[i],"EXEC");
+                redisAppendCommand(redis_rank[i],"SAVE");
                 if(redisGetReply(redis_rank[i],(void*)&redis_rank_reply[i]) == REDIS_OK)
                 {
                     freeReplyObject(redis_rank_reply[i]);

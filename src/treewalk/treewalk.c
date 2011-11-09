@@ -121,9 +121,9 @@ process_dir(char * parent,char * dir, CIRCLE_handle *handle)
  * an expired file key to a user's list.
  */
 void
-treewalk_create_redis_lpush_cmd(char * cmd, char * key, int uid)
+treewalk_create_redis_sadd_cmd(char * cmd, char * key, int uid)
 {
-    sprintf(cmd,"LPUSH %d %s",uid,key);
+    sprintf(cmd,"SADD %d %s",uid,key);
 }
 void
 treewalk_create_redis_expire_cmd(char * cmd, char * key)
@@ -209,7 +209,7 @@ process_objects(CIRCLE_handle *handle)
                 /* add user to warn list */
                 treewalk_redis_run_sadd(&st);
                 /* add file to list of expired files for that user */
-                treewalk_create_redis_lpush_cmd(redis_cmd_buf,filekey, st.st_uid);
+                treewalk_create_redis_sadd_cmd(redis_cmd_buf,filekey, st.st_uid);
                 (*redis_command_ptr)(st.st_uid % sharded_count,redis_cmd_buf);
                 redis_time[1] += MPI_Wtime() - redis_time[0];
             }
@@ -256,7 +256,7 @@ treewalk_create_redis_attr_cmd(char *buf, struct stat *st, char *filename, char 
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, "%s", filekey);
 
     /* Add the filename itself to the redis set command */
-    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name \"%s\"", encoded_filename);
+    fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " name %s", encoded_filename);
 
     /* Add the args for sprintstatf */
     fmt_cnt += sprintf(redis_cmd_fmt + fmt_cnt, " %s", redis_cmd_fmt_cnt);
@@ -354,6 +354,7 @@ treewalk_init_globals()
 {
     benchmarking_flag = 0;
     sharded_flag = 0;
+    sharded_count = 0;
     process_objects_total[2] = 0;
     redis_time[2] = 0;
     stat_time[2] = 0;
