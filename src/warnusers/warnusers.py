@@ -120,6 +120,11 @@ def processUid(uid,dbno,scratch):
         print "Sent email message"
     except Exception, e:
         print "Unable to send mail to " + email + ". Error: " + str(e)
+        return
+#    for file in files:
+#       try:
+            
+     
 
 
 def processUids(uids,dbno,scratch):
