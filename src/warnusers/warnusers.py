@@ -7,17 +7,13 @@ import base64
 import smtplib
 from email.mime.text import MIMEText
 messagefile = "message.txt"
-dbserver = "yell-fsdb"
-ldapserver = "ldap://ldap.lanl.gov"
-rootaddr = 'root@ydms-master.lanl.gov'
-dn = "ou=people,dc=lanl,dc=gov"
-unixdn = "ou=unixsrv,dc=lanl,dc=gov"
+dbserver = ""
+ldapserver = ""
+rootaddr = ''
+dn = ""
+unixdn = ""
 warnmessage = """
-The following text file in the Yellow network contains a list of your scratch files that have not been modified in the last 14+ days.
-Those files will be deleted in at least 6 days if not modified by then.  This notification may not have up-to-the-minute information,
-but we will verify a file's actual age before purging it.  For more information, please see our purge policy:  
-http://hpc.lanl.gov/purge_policy.  If you have any questions or concerns, please contact ICN Consultants at 505-665-444 option 3
-or consult@lanl.gov."""
+."""
 
 def getLdapEmail(uid):
     try:
@@ -95,7 +91,7 @@ def processUid(uid,dbno,scratch):
         print "Unable to create file for user or unable to open message.txt" + name + ". Error: " + str(e)
         raise
     try:
-        con = redis.StrictRedis(host='yell-fsdb',port=6379,db=dbno)
+        con = redis.StrictRedis(host='server',port=6379,db=dbno)
     except Exception, e:
         print "Redis Error: " + str(e)
         raise
@@ -114,8 +110,8 @@ def processUid(uid,dbno,scratch):
             raise
     outFile.close()
     try:
-        s = smtplib.SMTP('mail.lanl.gov')
-        s.sendmail(rootaddr,['jlafon@lanl.gov'],msg.as_string())
+        s = smtplib.SMTP('mail.com')
+        s.sendmail(rootaddr,['you@domain'],msg.as_string())
         s.quit()
         print "Sent email message"
     except Exception, e:
@@ -133,7 +129,7 @@ def processUids(uids,dbno,scratch):
         processUid(uid,dbno,scratch)
 
 def main():
-    # print getLdapEmail('jlafon')
+    
     dbno = 0
     uids = getUidList(dbno)
     print "Processing %d uids" % len(uids)
